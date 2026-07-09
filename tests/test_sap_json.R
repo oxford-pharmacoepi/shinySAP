@@ -23,6 +23,14 @@ sap <- list(
     background = blank_to_na(""),
     objectives = as_array(split_lines("Estimate incidence\n\n  Characterise users  "))
   ),
+  cdm_sources = list(list(
+    name = "CPRD GOLD",
+    source_key = "cprd",
+    data_type = "Primary care records",
+    population_size = 12000000,
+    cdm_version = "5.4",
+    country = blank_to_na("")
+  )),
   cdm_changes = list(),
   cohorts = list(list(
     name = "Metformin new users",
@@ -32,8 +40,9 @@ sap <- list(
     inclusion_criteria = as_array(character(0)),
     washout_days = NA
   )),
-  analyses = list(list(
+  proposed_analyses = list(list(
     name = "Incidence",
+    data_sources = as_array("CPRD GOLD"),
     time_at_risk = list(start_offset_days = 1, start_anchor = "cohort start")
   ))
 )
@@ -49,7 +58,24 @@ check("empty section is an array", grepl('"cdm_changes": \\[\\]', txt))
 check("empty criteria list is an array", grepl('"inclusion_criteria": \\[\\]', txt))
 check("NA numeric serialises to null", is.null(back$cohorts[[1]]$washout_days))
 check("scalars are unboxed", identical(back$study$title, "Metformin and lactic acidosis"))
-check("nested time_at_risk survives", back$analyses[[1]]$time_at_risk$start_offset_days == 1)
+check("nested time_at_risk survives", back$proposed_analyses[[1]]$time_at_risk$start_offset_days == 1)
+check("cdm_sources serialises", identical(back$cdm_sources[[1]]$source_key, "cprd"))
+check("single data_source stays an array",
+      is.list(back$proposed_analyses[[1]]$data_sources) &&
+        length(back$proposed_analyses[[1]]$data_sources) == 1)
+
+# Section rename: 0.2.0 reads proposed_analyses, but must still load 0.1.0 files.
+check("coalesce_key prefers the new name",
+      identical(coalesce_key(list(proposed_analyses = list("new"), analyses = list("old")),
+                             "proposed_analyses", "analyses"), list("new")))
+check("coalesce_key falls back to the old name",
+      identical(coalesce_key(list(analyses = list("old")), "proposed_analyses", "analyses"),
+                list("old")))
+check("coalesce_key on an empty new key falls back",
+      identical(coalesce_key(list(proposed_analyses = list(), analyses = list("old")),
+                             "proposed_analyses", "analyses"), list("old")))
+check("coalesce_key with neither key gives an empty list",
+      identical(coalesce_key(list(), "proposed_analyses", "analyses"), list()))
 
 check("slugify", identical(slugify("Metformin & Lactic Acidosis!"), "metformin-lactic-acidosis"))
 check("slugify empty falls back", identical(slugify(""), "sap"))

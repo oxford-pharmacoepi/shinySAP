@@ -44,6 +44,15 @@ prefiller <- function(prefill) {
   }
 }
 
+# First non-empty key, so a renamed section can still read older SAP files.
+coalesce_key <- function(x, ...) {
+  for (key in c(...)) {
+    v <- x[[key]]
+    if (!is.null(v) && length(v) > 0) return(v)
+  }
+  list()
+}
+
 sap_json <- function(sap) {
   jsonlite::toJSON(sap, pretty = TRUE, auto_unbox = TRUE, na = "null", null = "null")
 }

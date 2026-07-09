@@ -70,3 +70,44 @@ item_card <- function(id, title, ...) {
 empty_state <- function(text) {
   div(class = "text-muted fst-italic border rounded p-4 text-center", text)
 }
+
+# A picker over entities defined elsewhere in the SAP (a cohort, a CDM source).
+# create = TRUE so an analysis can name something not yet written down.
+entity_picker <- function(inputId, label, selected = "", choices = character(0),
+                          multiple = FALSE, placeholder = "Select or type") {
+  selected <- as.character(unlist(selected))
+  selectizeInput(
+    inputId, label,
+    choices = unique(c("", choices, selected)),
+    selected = selected, multiple = multiple, width = "100%",
+    options = list(create = TRUE, placeholder = placeholder)
+  )
+}
+
+# Keep entity_picker()s in step with the section that defines those entities.
+#
+# The first time this runs the inserted inputs have not reported back from the
+# client, so input$field is NULL and we must fall back to the prefilled value
+# or a freshly loaded SAP would be blanked. But a multi-select the user has
+# emptied also reads NULL -- so once a field has reported any value, take the
+# input at its word and never reinstate the prefill.
+sync_pickers <- function(session, fields, choices, pf) {
+  reported <- new.env(parent = emptyenv())
+  observe({
+    available <- choices()
+    for (field in fields) {
+      current <- isolate(session$input[[field]])
+      if (!is.null(current)) {
+        assign(field, TRUE, envir = reported)
+      } else if (!isTRUE(mget(field, envir = reported, ifnotfound = FALSE)[[1]])) {
+        current <- as.character(unlist(pf(field)))
+      }
+      if (is.null(current)) current <- character(0)
+      updateSelectizeInput(
+        session, field,
+        choices = unique(c("", available, current)),
+        selected = current
+      )
+    }
+  })
+}

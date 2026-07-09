@@ -1,4 +1,4 @@
-# Section 3: Analyses --------------------------------------------------------
+# Section 4: Proposed Analyses -----------------------------------------------
 
 ANALYSIS_TYPES <- c(
   "Cohort characterisation", "Incidence rate", "Prevalence",
@@ -7,17 +7,6 @@ ANALYSIS_TYPES <- c(
 )
 
 ANCHORS <- c("cohort start", "cohort end")
-
-# Cohort pickers accept free text so an analysis can reference a cohort that
-# has not been written down yet.
-cohort_picker <- function(inputId, label, selected, choices) {
-  selectizeInput(
-    inputId, label,
-    choices = unique(c("", choices, selected)),
-    selected = selected, width = "100%",
-    options = list(create = TRUE, placeholder = "Select or type a cohort")
-  )
-}
 
 analysis_item_ui <- function(id, prefill = NULL) {
   ns <- NS(id)
@@ -33,10 +22,16 @@ analysis_item_ui <- function(id, prefill = NULL) {
     textAreaInput(ns("description"), "Description", pf("description"), rows = 2, width = "100%"),
     layout_columns(
       col_widths = c(4, 4, 4),
-      cohort_picker(ns("target_cohort"), "Target cohort", pf("target_cohort"), character(0)),
-      cohort_picker(ns("comparator_cohort"), "Comparator cohort", pf("comparator_cohort"), character(0)),
-      cohort_picker(ns("outcome_cohort"), "Outcome cohort", pf("outcome_cohort"), character(0))
+      entity_picker(ns("target_cohort"), "Target cohort", pf("target_cohort"),
+                    placeholder = "Select or type a cohort"),
+      entity_picker(ns("comparator_cohort"), "Comparator cohort", pf("comparator_cohort"),
+                    placeholder = "Select or type a cohort"),
+      entity_picker(ns("outcome_cohort"), "Outcome cohort", pf("outcome_cohort"),
+                    placeholder = "Select or type a cohort")
     ),
+    entity_picker(ns("data_sources"), "CDM sources this analysis runs on",
+                  pf("data_sources", character(0)), multiple = TRUE,
+                  placeholder = "Select or type one or more CDM sources"),
     tags$label(class = "form-label fw-semibold", "Time at risk"),
     layout_columns(
       col_widths = c(3, 3, 3, 3),
@@ -67,26 +62,15 @@ analysis_item_ui <- function(id, prefill = NULL) {
 }
 
 analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
-                                 cohort_names = reactive(character(0))) {
+                                 cohort_names = reactive(character(0)),
+                                 source_names = reactive(character(0))) {
   moduleServer(id, function(input, output, session) {
     observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
     pf <- prefiller(prefill)
 
-    # Keep the three pickers in step with whatever the Cohorts tab now holds,
-    # without clobbering a selection the user already made. On the first pass
-    # the inputs have not registered yet, so fall back to the prefilled value.
-    observe({
-      choices <- cohort_names()
-      for (field in c("target_cohort", "comparator_cohort", "outcome_cohort")) {
-        current <- isolate(input[[field]])
-        if (is.null(current)) current <- as.character(pf(field))
-        updateSelectizeInput(
-          session, field,
-          choices = unique(c("", choices, current)),
-          selected = current
-        )
-      }
-    })
+    sync_pickers(session, c("target_cohort", "comparator_cohort", "outcome_cohort"),
+                 cohort_names, pf)
+    sync_pickers(session, "data_sources", source_names, pf)
 
     reactive(list(
       name                 = blank_to_na(input$name),
@@ -95,6 +79,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
       target_cohort        = blank_to_na(input$target_cohort),
       comparator_cohort    = blank_to_na(input$comparator_cohort),
       outcome_cohort       = blank_to_na(input$outcome_cohort),
+      data_sources         = as_array(input$data_sources %||% character(0)),
       time_at_risk         = list(
         start_offset_days = input$tar_start_offset %||% NA,
         start_anchor      = input$tar_start_anchor,
@@ -116,27 +101,29 @@ analyses_ui <- function(id) {
     div(
       class = "d-flex justify-content-between align-items-center mb-3",
       div(
-        h3("Analyses", class = "mb-1"),
-        p(class = "text-muted mb-0", "What is estimated, on which cohorts, and how.")
+        h3("Proposed analyses", class = "mb-1"),
+        p(class = "text-muted mb-0", "What is estimated, on which cohorts and sources, and how.")
       ),
       actionButton(ns("add"), "Add analysis", class = "btn btn-primary", icon = icon("plus"))
     ),
     conditionalPanel(
       condition = sprintf("output['%s'] == 0", ns("n")),
-      empty_state("No analyses defined yet.")
+      empty_state("No analyses proposed yet.")
     ),
     div(id = ns("items"))
   )
 }
 
-analyses_server <- function(id, cohort_names = reactive(character(0))) {
+analyses_server <- function(id, cohort_names = reactive(character(0)),
+                            source_names = reactive(character(0))) {
   moduleServer(id, function(input, output, session) {
-    # Cohort names change on every keystroke in the Cohorts tab; settle first
-    # so the pickers are not rebuilt mid-word.
-    settled_names <- debounce(cohort_names, 600)
+    # Names change on every keystroke in the section that owns them; settle
+    # first so the pickers are not rebuilt mid-word.
+    settled_cohorts <- debounce(cohort_names, 600)
+    settled_sources <- debounce(source_names, 600)
 
     item_server <- function(iid, prefill, on_remove) {
-      analysis_item_server(iid, prefill, on_remove, settled_names)
+      analysis_item_server(iid, prefill, on_remove, settled_cohorts, settled_sources)
     }
     items <- dynamic_items("analysis", "items", analysis_item_ui, item_server)
 

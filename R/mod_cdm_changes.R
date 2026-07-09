@@ -22,16 +22,19 @@ cdm_item_ui <- function(id, prefill = NULL) {
     layout_columns(
       col_widths = c(6, 6),
       textInput(ns("cdm_version"), "CDM version affected", pf("cdm_version"), width = "100%"),
-      textInput(ns("data_source"), "Data source", pf("data_source"), width = "100%")
+      entity_picker(ns("data_source"), "Data source", pf("data_source"),
+                    placeholder = "Select or type a CDM source")
     ),
     textAreaInput(ns("description"), "Description of change", pf("description"), rows = 3, width = "100%"),
     textAreaInput(ns("rationale"), "Rationale", pf("rationale"), rows = 2, width = "100%")
   )
 }
 
-cdm_item_server <- function(id, prefill = NULL, on_remove = function() {}) {
+cdm_item_server <- function(id, prefill = NULL, on_remove = function() {},
+                            source_names = reactive(character(0))) {
   moduleServer(id, function(input, output, session) {
     observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
+    sync_pickers(session, "data_source", source_names, prefiller(prefill))
     reactive(list(
       cdm_table   = blank_to_na(input$cdm_table),
       cdm_field   = blank_to_na(input$cdm_field),
@@ -63,9 +66,14 @@ cdm_changes_ui <- function(id) {
   )
 }
 
-cdm_changes_server <- function(id) {
+cdm_changes_server <- function(id, source_names = reactive(character(0))) {
   moduleServer(id, function(input, output, session) {
-    items <- dynamic_items("cdm", "items", cdm_item_ui, cdm_item_server)
+    settled_names <- debounce(source_names, 600)
+
+    item_server <- function(iid, prefill, on_remove) {
+      cdm_item_server(iid, prefill, on_remove, settled_names)
+    }
+    items <- dynamic_items("cdm", "items", cdm_item_ui, item_server)
 
     observeEvent(input$add, items$add())
 

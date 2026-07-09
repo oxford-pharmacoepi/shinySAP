@@ -9,15 +9,19 @@ backend as a single JSON dictionary and written to `output/`.
 | Tab | Captures |
 | --- | --- |
 | **Study** | Title, acronym, authors, SAP version, date, background, objectives |
+| **CDM Sources** | The databases the study runs against — name, short key, data type, country, custodian, population size, CDM & vocabulary version, snapshot/release, data lock point, observation period, description |
 | **CDM Changes** | Changes to the common data model the study depends on — table, field, change type, CDM version, data source, description, rationale |
 | **Cohorts** | Name, role (target / comparator / outcome / strata), cohort ID, entry events, inclusion & exclusion criteria, exit criteria, prior observation, washout, concept set |
-| **Analyses** | Name, analysis type, target / comparator / outcome cohorts, time at risk, covariates, stratifications, statistical method, effect measure, sensitivity analyses |
+| **Proposed Analyses** | Name, analysis type, target / comparator / outcome cohorts, CDM sources it runs on, time at risk, covariates, stratifications, statistical method, effect measure, sensitivity analyses |
 | **Review & Save** | Live JSON preview, save to `output/`, download, and reload a saved SAP |
 
-CDM changes, cohorts and analyses are repeating sections — use **Add** to append
-another, **Remove** to drop one. The cohort pickers in the Analyses tab are
-populated from the cohorts you have defined, but accept free text so you can
-reference a cohort you have not written down yet.
+CDM sources, CDM changes, cohorts and analyses are repeating sections — use
+**Add** to append another, **Remove** to drop one.
+
+Sections cross-reference each other. The cohort pickers on Proposed Analyses are
+populated from the cohorts you have defined; the data-source pickers on CDM
+Changes and Proposed Analyses are populated from the CDM Sources tab. All of them
+accept free text, so you can reference something you have not written down yet.
 
 ## Running
 
@@ -42,7 +46,7 @@ JSON arrays even when they hold a single entry.
 
 ```json
 {
-  "sap_schema_version": "0.1.0",
+  "sap_schema_version": "0.2.0",
   "generated_at": "2026-07-09T14:02:11+0100",
   "study": {
     "title": "Metformin and lactic acidosis",
@@ -53,6 +57,23 @@ JSON arrays even when they hold a single entry.
     "background": "...",
     "objectives": ["Estimate the incidence of lactic acidosis"]
   },
+  "cdm_sources": [
+    {
+      "name": "CPRD GOLD",
+      "source_key": "cprd",
+      "data_type": "Primary care records",
+      "country": "United Kingdom",
+      "custodian": "MHRA",
+      "population_size": 12000000,
+      "cdm_version": "5.4",
+      "vocabulary_version": "v5.0 30-AUG-24",
+      "release_date": "2026-01-15",
+      "data_lock": "2025-12-31",
+      "observation_period_start": "1987-01-01",
+      "observation_period_end": "2025-12-31",
+      "description": "..."
+    }
+  ],
   "cdm_changes": [
     {
       "cdm_table": "drug_exposure",
@@ -78,7 +99,7 @@ JSON arrays even when they hold a single entry.
       "concept_set": "cs_metformin"
     }
   ],
-  "analyses": [
+  "proposed_analyses": [
     {
       "name": "Incidence of lactic acidosis",
       "analysis_type": "Incidence rate",
@@ -86,6 +107,7 @@ JSON arrays even when they hold a single entry.
       "target_cohort": "Metformin new users",
       "comparator_cohort": null,
       "outcome_cohort": "Lactic acidosis",
+      "data_sources": ["CPRD GOLD"],
       "time_at_risk": {
         "start_offset_days": 1,
         "start_anchor": "cohort start",
@@ -105,16 +127,23 @@ JSON arrays even when they hold a single entry.
 Loading a saved file back into the form (**Review & Save → Load a SAP...**)
 repopulates every section, so a SAP can be revised and re-saved.
 
+### Schema versions
+
+`0.2.0` added `cdm_sources` and renamed `analyses` to `proposed_analyses`.
+Loading a `0.1.0` file still works — its `analyses` are read into Proposed
+Analyses, and saving writes it back out as `0.2.0`.
+
 ## Layout
 
 ```
 app.R                   UI, server, and the reactive that assembles the JSON
 R/utils.R               JSON helpers, slugify, save/read
-R/dynamic_items.R       add/remove machinery for the repeating sections
+R/dynamic_items.R       add/remove machinery and pickers for repeating sections
 R/mod_study.R           Study metadata
+R/mod_cdm_sources.R     Section: CDM Sources
 R/mod_cdm_changes.R     Section: CDM Changes
 R/mod_cohorts.R         Section: Cohorts
-R/mod_analyses.R        Section: Analyses
+R/mod_analyses.R        Section: Proposed Analyses
 R/mod_review.R          Review, save, download, load
 tests/test_sap_json.R   Round-trip check on the JSON contract
 output/                 Saved SAPs

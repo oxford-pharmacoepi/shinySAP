@@ -7,10 +7,10 @@ review_ui <- function(id) {
     p(class = "text-muted", "The JSON below is exactly what gets written to the output directory."),
     layout_columns(
       col_widths = c(3, 3, 3, 3),
+      value_box("CDM sources", textOutput(ns("n_sources")), theme = "primary"),
       value_box("CDM changes", textOutput(ns("n_cdm")), theme = "primary"),
       value_box("Cohorts", textOutput(ns("n_cohorts")), theme = "primary"),
-      value_box("Analyses", textOutput(ns("n_analyses")), theme = "primary"),
-      value_box("Objectives", textOutput(ns("n_objectives")), theme = "primary")
+      value_box("Proposed analyses", textOutput(ns("n_analyses")), theme = "primary")
     ),
     div(
       class = "d-flex gap-2 my-3 align-items-start flex-wrap",
@@ -35,10 +35,10 @@ review_server <- function(id, sap, output_dir, on_load) {
   moduleServer(id, function(input, output, session) {
     saved_path <- reactiveVal(NULL)
 
-    output$n_cdm       <- renderText(length(sap()$cdm_changes))
-    output$n_cohorts   <- renderText(length(sap()$cohorts))
-    output$n_analyses  <- renderText(length(sap()$analyses))
-    output$n_objectives <- renderText(length(sap()$study$objectives))
+    output$n_sources  <- renderText(length(sap()$cdm_sources))
+    output$n_cdm      <- renderText(length(sap()$cdm_changes))
+    output$n_cohorts  <- renderText(length(sap()$cohorts))
+    output$n_analyses <- renderText(length(sap()$proposed_analyses))
 
     output$json <- renderText(as.character(sap_json(sap())))
 
