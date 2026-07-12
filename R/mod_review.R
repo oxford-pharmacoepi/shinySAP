@@ -4,7 +4,7 @@ review_ui <- function(id) {
   ns <- NS(id)
   tagList(
     h3("Review & save"),
-    p(class = "text-muted", "The JSON below is exactly what gets written to the output directory."),
+    p(class = "text-muted", "JSON SAP for review."),
     layout_columns(
       col_widths = c(3, 3, 3, 3),
       value_box("CDM sources", textOutput(ns("n_sources")), theme = "primary"),
