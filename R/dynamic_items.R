@@ -91,11 +91,15 @@ entity_picker <- function(inputId, label, selected = "", choices = character(0),
 # or a freshly loaded SAP would be blanked. But a multi-select the user has
 # emptied also reads NULL -- so once a field has reported any value, take the
 # input at its word and never reinstate the prefill.
+#
+# `fields` may be a function, for a caller whose set of pickers depends on
+# another input: reading that input inside it makes the observer re-run when the
+# set changes, and pick up the pickers that have just been rendered.
 sync_pickers <- function(session, fields, choices, pf) {
   reported <- new.env(parent = emptyenv())
   observe({
     available <- choices()
-    for (field in fields) {
+    for (field in if (is.function(fields)) fields() else fields) {
       current <- isolate(session$input[[field]])
       if (!is.null(current)) {
         assign(field, TRUE, envir = reported)

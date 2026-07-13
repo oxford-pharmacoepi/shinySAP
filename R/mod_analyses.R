@@ -1,12 +1,9 @@
 # Section 4: Proposed Analyses -----------------------------------------------
-
-ANALYSIS_TYPES <- c(
-  "Cohort characterisation", "Incidence rate", "Prevalence",
-  "Comparative cohort", "Self-controlled case series", "Case-control",
-  "Survival analysis", "Patient-level prediction", "Drug utilisation", "Other"
-)
-
-ANCHORS <- c("cohort start", "cohort end")
+#
+# The card is in two halves: the common fields below, and a type block rendered
+# from the registry in R/analysis_templates.R. ANALYSIS_TYPES, ANCHORS and
+# ANALYSIS_COMMON_FIELDS live there too -- redefining any of them here would
+# silently win, since R/ is sourced alphabetically.
 
 analysis_item_ui <- function(id, prefill = NULL) {
   ns <- NS(id)
@@ -17,47 +14,15 @@ analysis_item_ui <- function(id, prefill = NULL) {
       col_widths = c(7, 5),
       textInput(ns("name"), "Analysis name", pf("name"), width = "100%"),
       selectInput(ns("analysis_type"), "Analysis type", ANALYSIS_TYPES,
-                  selected = pf("analysis_type", ANALYSIS_TYPES[1]), width = "100%")
+                  selected = canonical_analysis_type(pf("analysis_type", ANALYSIS_TYPES[1])),
+                  width = "100%")
     ),
     textAreaInput(ns("description"), "Description", pf("description"), rows = 2, width = "100%"),
-    layout_columns(
-      col_widths = c(4, 4, 4),
-      entity_picker(ns("target_cohort"), "Target cohort", pf("target_cohort"),
-                    placeholder = "Select or type a cohort"),
-      entity_picker(ns("comparator_cohort"), "Comparator cohort", pf("comparator_cohort"),
-                    placeholder = "Select or type a cohort"),
-      entity_picker(ns("outcome_cohort"), "Outcome cohort", pf("outcome_cohort"),
-                    placeholder = "Select or type a cohort")
-    ),
     entity_picker(ns("data_sources"), "CDM sources this analysis runs on",
                   pf("data_sources", character(0)), multiple = TRUE,
                   placeholder = "Select or type one or more CDM sources"),
-    tags$label(class = "form-label fw-semibold", "Time at risk"),
-    layout_columns(
-      col_widths = c(3, 3, 3, 3),
-      numericInput(ns("tar_start_offset"), "Start (days)", value = pf("tar_start_offset", 0), width = "100%"),
-      selectInput(ns("tar_start_anchor"), "Anchored on", ANCHORS,
-                  selected = pf("tar_start_anchor", ANCHORS[1]), width = "100%"),
-      numericInput(ns("tar_end_offset"), "End (days)", value = pf("tar_end_offset", 0), width = "100%"),
-      selectInput(ns("tar_end_anchor"), "Anchored on", ANCHORS,
-                  selected = pf("tar_end_anchor", ANCHORS[2]), width = "100%")
-    ),
-    layout_columns(
-      col_widths = c(6, 6),
-      textAreaInput(ns("covariates"), "Covariates / adjustment (one per line)",
-                    join_lines(pf("covariates", character(0))), rows = 4, width = "100%",
-                    placeholder = "Age at index\nSex\nCharlson comorbidity index"),
-      textAreaInput(ns("stratifications"), "Stratifications (one per line)",
-                    join_lines(pf("stratifications", character(0))), rows = 4, width = "100%",
-                    placeholder = "Sex\n10-year age bands")
-    ),
-    layout_columns(
-      col_widths = c(6, 6),
-      textInput(ns("statistical_method"), "Statistical method", pf("statistical_method"), width = "100%"),
-      textInput(ns("effect_measure"), "Effect measure", pf("effect_measure"), width = "100%")
-    ),
-    textAreaInput(ns("sensitivity_analyses"), "Sensitivity analyses (one per line)",
-                  join_lines(pf("sensitivity_analyses", character(0))), rows = 3, width = "100%")
+    tags$hr(class = "my-3"),
+    uiOutput(ns("type_fields"))
   )
 }
 
@@ -66,32 +31,78 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
                                  source_names = reactive(character(0))) {
   moduleServer(id, function(input, output, session) {
     observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
-    pf <- prefiller(prefill)
 
-    sync_pickers(session, c("target_cohort", "comparator_cohort", "outcome_cohort"),
-                 cohort_names, pf)
-    sync_pickers(session, "data_sources", source_names, pf)
+    # session$ns, not NS(id): dynamic_items() hands the server the bare item id
+    # and the fully-qualified one to the UI. They only line up because
+    # moduleServer() runs under the parent's reactive domain.
+    ns      <- session$ns
+    base_pf <- prefiller(prefill)
 
-    reactive(list(
-      name                 = blank_to_na(input$name),
-      analysis_type        = input$analysis_type,
-      description          = blank_to_na(input$description),
-      target_cohort        = blank_to_na(input$target_cohort),
-      comparator_cohort    = blank_to_na(input$comparator_cohort),
-      outcome_cohort       = blank_to_na(input$outcome_cohort),
-      data_sources         = as_array(input$data_sources %||% character(0)),
-      time_at_risk         = list(
-        start_offset_days = input$tar_start_offset %||% NA,
-        start_anchor      = input$tar_start_anchor,
-        end_offset_days   = input$tar_end_offset %||% NA,
-        end_anchor        = input$tar_end_anchor
-      ),
-      covariates           = as_array(split_lines(input$covariates)),
-      stratifications      = as_array(split_lines(input$stratifications)),
-      statistical_method   = blank_to_na(input$statistical_method),
-      effect_measure       = blank_to_na(input$effect_measure),
-      sensitivity_analyses = as_array(split_lines(input$sensitivity_analyses))
-    ))
+    # Shiny keeps an input's last reported value after its node leaves the DOM,
+    # so a template block rebuilt after a type switch can read back what the user
+    # typed into it. NULL means the input has never been rendered -- fall back to
+    # the saved file. A length-1 NA means the user *cleared* a numeric, and must
+    # stay cleared, or the saved value would quietly reappear. Pickers are not
+    # served from here: sync_pickers() owns those, and its update always lands
+    # after the render, so a second opinion here could only disagree with it.
+    live_pf <- function(key, default = NULL) {
+      v <- isolate(input[[key]])
+      if (is.null(v)) return(base_pf(key, default))
+      if (length(v) == 1 && is.na(v)) return(NULL)
+      v
+    }
+
+    # The default has to match analysis_item_ui()'s, or a new card paints one
+    # template, binds and reports its inputs, then repaints with another --
+    # leaving a set of stale values behind on the first.
+    type_r <- reactive(
+      canonical_analysis_type(input$analysis_type %||% base_pf("analysis_type", ANALYSIS_TYPES[1]))
+    )
+
+    # Only the type may invalidate this. A dependency on the field values would
+    # rebuild the block on every keystroke, and one on the name reactives would
+    # rebuild it whenever a cohort is edited in another tab; both steal focus
+    # mid-edit.
+    output$type_fields <- renderUI({
+      tmpl <- analysis_template(type_r())
+      tagList(
+        if (!is.null(tmpl$hint)) p(class = "text-muted small mb-3", tmpl$hint),
+        tmpl$ui(ns, live_pf)
+      )
+    })
+    # Load-bearing. The Analyses tab is a hidden tab-pane until it is selected,
+    # and a hidden output does not render -- so without this, a SAP loaded from
+    # the Review tab would leave every type block unbuilt, its inputs reading
+    # NULL, and every parameters object would serialise empty.
+    outputOptions(output, "type_fields", suspendWhenHidden = FALSE)
+
+    # A function, not a vector, so the observer re-runs on a type change and
+    # picks up the freshly rendered pickers.
+    sync_pickers(session, function() analysis_template(type_r())$pickers$cohorts %||% character(0),
+                 cohort_names, base_pf)
+    sync_pickers(session, function() analysis_template(type_r())$pickers$sources %||% character(0),
+                 source_names, base_pf)
+    sync_pickers(session, "data_sources", source_names, base_pf)
+
+    # For one round-trip after a type switch the new block's inputs have not
+    # reported yet, so parameters briefly reads as nulls. Harmless while the only
+    # consumers are the Review tab (suspended while the user is on Analyses) and
+    # the Save button (a later click) -- but an autosave observe({ sap(); ... })
+    # would capture the gap.
+    reactive({
+      tmpl <- analysis_template(type_r())
+      list(
+        name          = blank_to_na(input$name),
+        # type_r(), not input$analysis_type: the type we emit and the collector
+        # that produced `parameters` must never disagree.
+        analysis_type = type_r(),
+        description   = blank_to_na(input$description),
+        data_sources  = as_array(input$data_sources %||% character(0)),
+        # collect() reads only its own template's input ids, so values stranded
+        # by a previously selected template never reach the JSON.
+        parameters    = tmpl$collect(input)
+      )
+    })
   })
 }
 
@@ -135,13 +146,21 @@ analyses_server <- function(id, cohort_names = reactive(character(0)),
     load <- function(analyses) {
       items$clear()
       for (a in analyses) {
-        # time_at_risk is nested in the JSON; flatten it back onto the inputs.
-        tar <- a$time_at_risk
-        a$tar_start_offset <- tar$start_offset_days
-        a$tar_start_anchor <- tar$start_anchor
-        a$tar_end_offset   <- tar$end_offset_days
-        a$tar_end_anchor   <- tar$end_anchor
-        items$add(a)
+        a$analysis_type <- canonical_analysis_type(a$analysis_type)
+        tmpl <- analysis_template(a$analysis_type)
+        # Pre-0.3.0 files kept the type-specific fields at the top level, so they
+        # load with no migration step. is.null(), not %||%: an empty parameters
+        # object reads back as a zero-length list, which %||% would take for
+        # absent and then mistake a 0.3.0 file for an old one.
+        params <- if (is.null(a$parameters)) a else a$parameters
+        flat   <- tmpl$flatten(params)
+        if (!is.list(flat)) flat <- list()
+        # c(), not modifyList(): modifyList merges nested lists instead of
+        # replacing them, drops keys whose new value is NULL, and errors on a
+        # non-list -- after items$clear() has already emptied the section. And
+        # because prefill[[key]] takes the first match, a template parameter that
+        # collides with a common key cannot clobber it.
+        items$add(c(a[intersect(ANALYSIS_COMMON_FIELDS, names(a))], flat))
       }
     }
 

@@ -12,7 +12,7 @@ backend as a single JSON dictionary and written to `output/`.
 | **CDM Sources** | The databases the study runs against — name, short key, data type, country, custodian, population size, CDM & vocabulary version, snapshot/release, data lock point, observation period, description |
 | **CDM Changes** | Changes to the common data model the study depends on — table, field, change type, CDM version, data source, description, rationale |
 | **Cohorts** | Name, role (target / comparator / outcome / strata), cohort ID, entry events, inclusion & exclusion criteria, exit criteria, prior observation, washout, concept set |
-| **Proposed Analyses** | Name, analysis type, target / comparator / outcome cohorts, CDM sources it runs on, time at risk, covariates, stratifications, statistical method, effect measure, sensitivity analyses |
+| **Proposed Analyses** | Name, analysis type, description, CDM sources it runs on — plus a set of inputs that **depends on the analysis type** (an incidence rate asks for a denominator and a time at risk; a prevalence asks for time points and no time at risk) |
 | **Review & Save** | Live JSON preview, save to `output/`, download, and reload a saved SAP |
 
 CDM sources, CDM changes, cohorts and analyses are repeating sections — use
@@ -102,27 +102,35 @@ JSON arrays even when they hold a single entry.
   "proposed_analyses": [
     {
       "name": "Incidence of lactic acidosis",
-      "analysis_type": "Incidence rate",
+      "analysis_type": "Incidence",
       "description": "...",
-      "target_cohort": "Metformin new users",
-      "comparator_cohort": null,
-      "outcome_cohort": "Lactic acidosis",
       "data_sources": ["CPRD GOLD"],
-      "time_at_risk": {
-        "start_offset_days": 1,
-        "start_anchor": "cohort start",
-        "end_offset_days": 0,
-        "end_anchor": "cohort end"
-      },
-      "covariates": ["Age at index", "Sex"],
-      "stratifications": ["Sex"],
-      "statistical_method": "Poisson regression",
-      "effect_measure": "Incidence rate ratio",
-      "sensitivity_analyses": ["30-day washout"]
+      "parameters": {
+        "denominator_cohort": "Metformin new users",
+        "outcome_cohort": "Lactic acidosis",
+        "denominator_unit": "person-years",
+        "rate_multiplier": 1000,
+        "repeated_events": false,
+        "calendar_intervals": ["2015-2019", "2020-2024"],
+        "time_at_risk": {
+          "start_offset_days": 1,
+          "start_anchor": "cohort start",
+          "end_offset_days": 0,
+          "end_anchor": "cohort end"
+        },
+        "stratifications": ["Sex"],
+        "sensitivity_analyses": ["30-day washout"]
+      }
     }
   ]
 }
 ```
+
+An analysis carries four keys of its own — `name`, `analysis_type`, `description`
+and `data_sources` — and everything else under `parameters`. Which keys appear
+there is decided by `analysis_type`, so a reader can tell "no comparator, because
+this is an incidence analysis" from "the comparator was left blank". A prevalence
+analysis, for instance, has no `time_at_risk` at all.
 
 Loading a saved file back into the form (**Review & Save → Load a SAP...**)
 repopulates every section, so a SAP can be revised and re-saved.
@@ -131,22 +139,44 @@ repopulates every section, so a SAP can be revised and re-saved.
 
 `0.2.0` added `cdm_sources` and renamed `analyses` to `proposed_analyses`.
 Loading a `0.1.0` file still works — its `analyses` are read into Proposed
-Analyses, and saving writes it back out as `0.2.0`.
+Analyses.
+
+`0.3.0` gave each analysis type its own set of inputs and moved the
+type-specific fields under `parameters`. Older files still load: an analysis
+with no `parameters` is read from its top-level keys, and `"Incidence rate"` —
+the pre-`0.3.0` name — is read as `"Incidence"`. Saving writes `0.3.0` back out.
+
+### Adding an analysis type's form
+
+Each type's inputs live in their own file, `R/analysis_type_<name>.R`, which
+calls `register_analysis_template()` with four mirrored pieces: `ui` builds the
+inputs, `collect` reads them back into JSON, `pickers` names the ids that pick a
+cohort or a CDM source, and `flatten` undoes whatever nesting `collect` did so a
+saved file can repopulate the form. Copy an existing one and edit it — that is
+the whole wiring, no other file needs touching.
+
+A type listed in `ANALYSIS_TYPES` with no template of its own falls back to
+`"Other"`, the generic form, so the app keeps working while the rest are filled
+in. `R/analysis_registry.R` holds the registry, the type resolver, and the input
+blocks templates share (time at risk, stratifications); its header comment sets
+out the rules, including why the template files have to sit flat in `R/`.
 
 ## Layout
 
 ```
-app.R                   UI, server, and the reactive that assembles the JSON
-R/utils.R               JSON helpers, slugify, save/read
-R/dynamic_items.R       add/remove machinery and pickers for repeating sections
-R/mod_study.R           Study metadata
-R/mod_cdm_sources.R     Section: CDM Sources
-R/mod_cdm_changes.R     Section: CDM Changes
-R/mod_cohorts.R         Section: Cohorts
-R/mod_analyses.R        Section: Proposed Analyses
-R/mod_review.R          Review, save, download, load
-tests/test_sap_json.R   Round-trip check on the JSON contract
-output/                 Saved SAPs
+app.R                     UI, server, and the reactive that assembles the JSON
+R/utils.R                 JSON helpers, slugify, save/read
+R/dynamic_items.R         add/remove machinery and pickers for repeating sections
+R/analysis_registry.R     analysis type registry, resolver, shared input blocks
+R/analysis_type_*.R       one input template per analysis type
+R/mod_study.R             Study metadata
+R/mod_cdm_sources.R       Section: CDM Sources
+R/mod_cdm_changes.R       Section: CDM Changes
+R/mod_cohorts.R           Section: Cohorts
+R/mod_analyses.R          Section: Proposed Analyses
+R/mod_review.R            Review, save, download, load
+tests/test_sap_json.R     Round-trip check on the JSON contract
+output/                   Saved SAPs
 ```
 
 Each repeating item is a real Shiny module inserted with `insertUI`, not a

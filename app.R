@@ -9,7 +9,8 @@ library(bslib)
 library(jsonlite)
 
 # 0.2.0 added cdm_sources and renamed analyses -> proposed_analyses.
-SAP_SCHEMA_VERSION <- "0.2.0"
+# 0.3.0 moved the type-specific analysis fields under `parameters`.
+SAP_SCHEMA_VERSION <- "0.3.0"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")

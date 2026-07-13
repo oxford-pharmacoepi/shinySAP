@@ -68,7 +68,16 @@ review_server <- function(id, sap, output_dir, on_load) {
         showNotification(paste("Could not read that file:", conditionMessage(loaded)), type = "error")
         return()
       }
-      on_load(loaded)
+      # Each section clears itself before repopulating, so an error partway
+      # through would leave the form half-wiped with nothing said about it.
+      failed <- tryCatch({
+        on_load(loaded)
+        NULL
+      }, error = function(e) e)
+      if (!is.null(failed)) {
+        showNotification(paste("Could not load that SAP:", conditionMessage(failed)), type = "error")
+        return()
+      }
       showNotification("SAP loaded.", type = "message")
     })
   })
