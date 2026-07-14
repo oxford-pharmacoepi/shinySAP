@@ -310,15 +310,15 @@ prev <- round_trip(ANALYSIS_TEMPLATES[["Prevalence"]], list(
   fullContribution          = TRUE,
   completeDatabaseIntervals = TRUE,
   level                     = "person",
-  includeOverallStrata      = TRUE,
-  strata_lines              = "Sex\n10-year age bands"
+  include_overall_strata    = TRUE,
+  strata                    = c("sex", "sex, age_group")
 ))
 check("prevalence: emits no time_at_risk", is.null(prev$json$time_at_risk))
-check("prevalence: strata split into an array",
-      identical(unlist(prev$json$strata), c("Sex", "10-year age bands")))
+check("prevalence: strata are a list of variable groups",
+      identical(lapply(prev$json$strata, unlist), list("sex", c("sex", "age_group"))))
 check("prevalence: sensitivity_analyses is gone",
       !"sensitivity_analyses" %in% names(prev$json))
-check("prevalence: includeOverallStrata serialises when strata exist",
+check("prevalence: includeOverallStrata serialises camelCase from the shared checkbox",
       identical(prev$json$includeOverallStrata, TRUE))
 check("prevalence: period reads the period interval select", identical(prev$json$interval, "overall"))
 check("prevalence: a ticked checkbox is true", identical(prev$json$fullContribution, TRUE))
@@ -361,11 +361,10 @@ prev_pt <- round_trip(ANALYSIS_TEMPLATES[["Prevalence"]], list(
   fullContribution          = TRUE,       # stale period values, must not serialise
   completeDatabaseIntervals = TRUE,
   level                     = "person",
-  includeOverallStrata      = TRUE,
-  strata_lines              = ""
+  include_overall_strata    = TRUE
 ))
 check("point prevalence: reads the point interval select", identical(prev_pt$json$interval, "months"))
-check("point prevalence: an empty strata textarea is an array",
+check("point prevalence: no strata is an empty list, the estimators' default",
       identical(prev_pt$json$strata, list()))
 check("point prevalence: includeOverallStrata stays true without strata",
       identical(prev_pt$json$includeOverallStrata, TRUE))
@@ -441,9 +440,13 @@ check("snake_case prevalence: timePoint migrates", identical(snake_prev("timePoi
 check("snake_case prevalence: checkboxes migrate without flipping",
       isTRUE(snake_prev("fullContribution")) &&
         identical(snake_prev("completeDatabaseIntervals"), FALSE) &&
-        identical(snake_prev("includeOverallStrata"), FALSE))
-check("snake_case prevalence: stratifications migrate to the strata textarea",
-      identical(unlist(snake_prev("strata_lines")), "Sex"))
+        identical(snake_prev("include_overall_strata"), FALSE))
+check("snake_case prevalence: stratifications migrate to strata tokens",
+      identical(snake_prev("strata"), "Sex"))
+check("textarea-era prevalence: flat strata lines migrate to strata tokens",
+      identical(prefiller(ANALYSIS_TEMPLATES[["Prevalence"]]$flatten(
+        list(strata = list("Sex", "10-year age bands"))))("strata"),
+        c("Sex", "10-year age bands")))
 
 # Loading a pre-0.3.0 prevalence analysis: a day count that names a calendar
 # unit becomes the interval; free-text time_points have had no home since
@@ -671,6 +674,16 @@ check("validate: a cohort nobody defined does not error and is not called wrong-
                  problems(with_params(denominator_cohort = "Typed by hand")))))
 check("validate: templates with no validator report nothing",
       length(ANALYSIS_TEMPLATES[["Other"]]$validate(list(), cohorts_idx)) == 0)
+check("validate: prevalence strata are checked against its denominator",
+      any(grepl("does not carry that column",
+                ANALYSIS_TEMPLATES[["Prevalence"]]$validate(
+                  list(denominatorTable = "Metformin denominator",
+                       strata = list(list("region"))),
+                  cohorts_idx))))
+check("validate: prevalence strata the denominator carries raise no problems",
+      length(ANALYSIS_TEMPLATES[["Prevalence"]]$validate(
+        list(denominatorTable = "Metformin denominator", strata = list(list("sex"))),
+        cohorts_idx)) == 0)
 
 # Loading a pre-0.3.0 analysis: flat top-level keys, the old type name, and the
 # generic form's `target_cohort` where the template now wants a denominator.

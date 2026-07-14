@@ -152,6 +152,8 @@ ANALYSIS_TEMPLATES <- list()
 #   ui        function(ns, pf) -> the type's inputs
 #   collect   function(input) -> the type's JSON, reading ONLY its own input ids
 #   pickers   input ids that pick a cohort or a CDM source, by entity
+#   denominator  the input id naming the denominator cohort; the strata picker
+#             and the denominator summary are driven from it
 #   subcohorts multi-selects of cohort IDs, keyed to one of the template's
 #             cohort pickers: field id -> list(from, label). The template's
 #             ui() renders uiOutput(ns("<field>_ui")); the analyses module
@@ -170,14 +172,14 @@ ANALYSIS_TEMPLATES <- list()
 #             name a cohort nobody defined (the pickers allow free text), so look
 #             one up with cohort_by_name() and handle NULL.
 register_analysis_template <- function(type, hint = NULL, ui, collect,
-                                       pickers = list(), subcohorts = list(),
-                                       serialised_type = NULL,
+                                       pickers = list(), denominator = "denominator_cohort",
+                                       subcohorts = list(), serialised_type = NULL,
                                        flatten = function(p) p,
                                        validate = function(params, cohorts) character(0)) {
   ANALYSIS_TEMPLATES[[type]] <<- list(
     hint = hint, ui = ui, collect = collect, pickers = pickers,
-    subcohorts = subcohorts, serialised_type = serialised_type,
-    flatten = flatten, validate = validate
+    denominator = denominator, subcohorts = subcohorts,
+    serialised_type = serialised_type, flatten = flatten, validate = validate
   )
 }
 
@@ -285,8 +287,15 @@ strata_ui <- function(ns, pf) tagList(
     options = list(create = TRUE,
                    placeholder = "Columns on the denominator cohort; comma to cross (sex, age_group)")
   ),
-  checkboxInput(ns("include_overall_strata"), "Also report an overall (unstratified) result",
-                value = isTRUE(pf("include_overall_strata", TRUE)))
+  # Inert without strata -- the estimators then return only the overall
+  # estimate -- so the choice is offered only when strata exist. The checkbox
+  # keeps its value while hidden, so strata removed and re-added get the
+  # user's earlier choice back.
+  conditionalPanel(
+    condition = sprintf("(input['%s'] || []).length > 0", ns("strata")),
+    checkboxInput(ns("include_overall_strata"), "Also report an overall (unstratified) result",
+                  value = isTRUE(pf("include_overall_strata", TRUE)), width = "100%")
+  )
 )
 
 # Selectize tokens -> the JSON's list of groups. "sex, age_group" is one group.

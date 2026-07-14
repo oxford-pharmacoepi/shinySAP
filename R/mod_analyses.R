@@ -125,13 +125,19 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
       })
     })
 
+    # Which input names the denominator differs by template (the registry's
+    # `denominator` slot), so everything driven from it looks the id up first.
+    denominator_pick <- function() {
+      input[[analysis_template(type_r())$denominator %||% "denominator_cohort"]]
+    }
+
     # Unlike the cohort and source pickers, the strata picker's choices come from
     # *another input on this same card* -- you may only stratify by a column the
     # chosen denominator cohort actually carries. So it re-syncs when the
     # denominator changes, not when the cohort list does.
     sync_pickers(session, function() analysis_template(type_r())$pickers$strata %||% character(0),
                  reactive(cohort_strata_variables(
-                   cohort_by_name(cohort_index(), input$denominator_cohort))),
+                   cohort_by_name(cohort_index(), denominator_pick()))),
                  base_pf)
 
     # The denominator_summary_ui() block is a placeholder that this fills, because
@@ -139,7 +145,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # unconditionally: a template that does not use the block simply never renders
     # the placeholder, and this output goes unused.
     output$denominator_summary <- renderUI({
-      denominator_summary(cohort_by_name(cohort_index(), input$denominator_cohort))
+      denominator_summary(cohort_by_name(cohort_index(), denominator_pick()))
     })
 
     # For one round-trip after a type switch the new block's inputs have not

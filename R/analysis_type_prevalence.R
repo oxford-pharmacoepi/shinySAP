@@ -69,22 +69,10 @@ register_analysis_template(
       )
     ),
 
-    # strata_lines, not strata: the JSON key is `strata`, but that id is a
-    # *picker* on the incidence template, and an id may not be a picker in one
-    # template and a plain input in another. collect()/flatten() translate.
-    textAreaInput(ns("strata_lines"), "Strata (one per line)",
-                  join_lines(pf("strata_lines", character(0))), rows = 4, width = "100%",
-                  placeholder = "Sex\n10-year age bands"),
-
-    # Inert without strata -- the estimators then return only the overall
-    # estimate -- so the choice is only offered when strata exist; it always
-    # serialises, TRUE by default. The checkbox keeps its value while hidden,
-    # so strata removed and re-added get the user's earlier choice back.
-    conditionalPanel(
-      condition = sprintf("(input['%s'] || '').trim() !== ''", ns("strata_lines")),
-      checkboxInput(ns("includeOverallStrata"), "Report an overall estimate alongside strata",
-                    value = isTRUE(pf("includeOverallStrata", TRUE)), width = "100%")
-    )
+    # The shared structured-strata block: one token per stratification, comma
+    # to cross variables, choices fed from the chosen denominator's
+    # strata_variables (see pickers$strata and `denominator` below).
+    strata_ui(ns, pf)
   ),
 
   # No prevalence_type reads as point, matching the select's default above.
@@ -113,20 +101,31 @@ register_analysis_template(
         level                     = input$level
       ),
       list(
-        strata               = as_array(split_lines(input$strata_lines)),
+        strata               = parse_strata(input$strata),
         # TRUE until the checkbox reports otherwise -- the estimators' own
-        # default, and inert anyway while strata are empty.
-        includeOverallStrata = isTRUE(input$includeOverallStrata %||% TRUE)
+        # default, and inert anyway while strata are empty. The camelCase key
+        # is this template's convention; the input id is the shared block's.
+        includeOverallStrata = isTRUE(input$include_overall_strata %||% TRUE)
       )
     )
   },
 
-  pickers = list(cohorts = c("denominatorTable", "outcomeTable")),
+  pickers = list(
+    cohorts = c("denominatorTable", "outcomeTable"),
+    # Choices come from the selected denominator's strata_variables, not from
+    # the cohort list -- see analysis_item_server().
+    strata  = "strata"
+  ),
+
+  denominator = "denominatorTable",
 
   subcohorts = list(
     denominatorCohortId = list(from = "denominatorTable", label = "Denominator cohort IDs"),
     outcomeCohortId     = list(from = "outcomeTable",     label = "Outcome cohort IDs")
   ),
+
+  validate = function(p, cohorts)
+    validate_strata_against(p$strata, cohort_by_name(cohorts, p$denominatorTable)),
 
   # The file's analysis_type names the estimator planned; "Prevalence" is only
   # the registry key. ANALYSIS_TYPE_ALIASES maps both names back on load.
@@ -161,10 +160,18 @@ register_analysis_template(
       p$fullContribution <- p[["full_contribution"]]
     if (is.null(p$completeDatabaseIntervals))
       p$completeDatabaseIntervals <- p[["complete_database_intervals"]]
-    if (is.null(p$includeOverallStrata))
-      p$includeOverallStrata <- p[["include_overall_strata"]]
-    if (is.null(p$strata_lines))
-      p$strata_lines <- p[["strata"]] %||% p[["stratifications"]]
+    # The checkbox id is the shared block's snake_case; the JSON key is this
+    # template's camelCase. Files from before the alignment already used the
+    # snake_case key, which is the input id itself.
+    if (is.null(p$include_overall_strata))
+      p$include_overall_strata <- p[["includeOverallStrata"]]
+    if (is.null(p$include_overall_strata))
+      p$include_overall_strata <- TRUE
+
+    # Tokens for the strata multi-select. strata_tokens() reads every shape
+    # this field has had: a list of variable groups (current), a flat array of
+    # free-text lines (the textarea era), and legacy `stratifications`.
+    p$strata <- strata_tokens(p[["strata"]] %||% p[["stratifications"]])
 
     # collect() serialises only the selected type's arguments, so a loaded
     # point analysis carries no period fields and vice versa. Fill the gaps
