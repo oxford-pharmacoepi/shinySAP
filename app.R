@@ -11,7 +11,13 @@ library(jsonlite)
 # 0.2.0 added cdm_sources and renamed analyses -> proposed_analyses.
 # 0.3.0 moved the type-specific analysis fields under `parameters`.
 # 0.3.1 made the Incidence parameters map 1:1 onto estimateIncidence().
-SAP_SCHEMA_VERSION <- "0.3.2"
+# 0.4.0 added cohort sets (cohorts gained parent_cohort; prevalence gained
+#       denominatorCohortId / outcomeCohortId, null = all IDs in the set) and
+#       aligned prevalence with the estimators: parameters use the argument
+#       names and order, strata replaces stratifications, sensitivity_analyses
+#       is dropped there, and a prevalence analysis_type names the estimator
+#       (estimatePointPrevalence / estimatePeriodPrevalence).
+SAP_SCHEMA_VERSION <- "0.4.0"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")

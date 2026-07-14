@@ -22,10 +22,16 @@ ANALYSIS_TYPES <- c(
   "Survival analysis", "Patient-level prediction", "Drug utilisation", "Other"
 )
 
-# Types renamed after SAPs had already been saved under the old label. Without
-# this, selectInput() drops a `selected` it cannot find in `choices`, the browser
-# falls back to the first option, and the analysis silently changes type.
-ANALYSIS_TYPE_ALIASES <- c("Incidence rate" = "Incidence")
+# Types renamed after SAPs had already been saved under the old label, plus the
+# labels templates serialise through `serialised_type` -- both must resolve back
+# to their registry key. Without this, selectInput() drops a `selected` it
+# cannot find in `choices`, the browser falls back to the first option, and the
+# analysis silently changes type.
+ANALYSIS_TYPE_ALIASES <- c(
+  "Incidence rate"           = "Incidence",
+  "estimatePointPrevalence"  = "Prevalence",
+  "estimatePeriodPrevalence" = "Prevalence"
+)
 
 # The half of the card every analysis type shares, and the only keys load() lifts
 # straight from the file without going through a template.
@@ -35,12 +41,22 @@ ANALYSIS_COMMON_FIELDS <- c("name", "analysis_type", "data_sources")
 # one, or the card would carry a duplicate input id.
 RESERVED_INPUT_IDS <- c(ANALYSIS_COMMON_FIELDS, "remove", "box", "type_fields")
 
-# Ids a template renders that are outputs, not inputs: they hold no value, so
-# they are exempt from the collect/flatten round-trip check in the tests.
-DISPLAY_ONLY_IDS <- c("denominator_summary")
+ANCHORS           <- c("cohort start", "cohort end")
+DENOMINATOR_UNITS <- c("person-years", "person-months", "person-days")
 
-ANCHORS          <- c("cohort start", "cohort end")
-PREVALENCE_TYPES <- c("Point prevalence", "Period prevalence")
+# IncidencePrevalence::estimate*Prevalence() argument domains. The two estimators
+# accept different intervals -- "overall" is period-only -- so each prevalence
+# type gets its own interval vector. timePoint is point-only; level,
+# fullContribution and completeDatabaseIntervals are period-only.
+PREVALENCE_TYPES            <- c("Point prevalence", "Period prevalence")
+POINT_PREVALENCE_INTERVALS  <- c("weeks", "months", "quarters", "years")
+PERIOD_PREVALENCE_INTERVALS <- c(POINT_PREVALENCE_INTERVALS, "overall")
+PREVALENCE_TIMEPOINTS       <- c("start", "middle", "end")
+PREVALENCE_LEVELS           <- c("person", "record")
+# Ids a template renders that are outputs, not inputs: they hold no value, so
+# they are exempt from the collect/flatten round-trip check in the tests. The
+# *_ui ids are the subcohort placeholders (see `subcohorts` below).
+DISPLAY_ONLY_IDS <- c("denominator_summary", "denominatorCohortId_ui", "outcomeCohortId_ui")
 
 # IncidencePrevalence::estimateIncidence(interval =): more than one may be given,
 # and results are estimated for each.
@@ -136,6 +152,16 @@ ANALYSIS_TEMPLATES <- list()
 #   ui        function(ns, pf) -> the type's inputs
 #   collect   function(input) -> the type's JSON, reading ONLY its own input ids
 #   pickers   input ids that pick a cohort or a CDM source, by entity
+#   subcohorts multi-selects of cohort IDs, keyed to one of the template's
+#             cohort pickers: field id -> list(from, label). The template's
+#             ui() renders uiOutput(ns("<field>_ui")); the analyses module
+#             fills it only when the picked cohort spans a set.
+#   serialised_type  optional function(input) -> the analysis_type written to
+#             the file when it is finer than the registry key (e.g. the
+#             estimator planned). Every value it can return MUST appear in
+#             ANALYSIS_TYPE_ALIASES, or the file would load as "Other";
+#             flatten() sees the raw label under `analysis_type` and recovers
+#             whatever inputs encode it.
 #   flatten   function(params) -> prefill keys; the inverse of collect's nesting,
 #             or identity if collect nests nothing. Also the place to migrate an
 #             older file's keys onto the current inputs.
@@ -144,12 +170,34 @@ ANALYSIS_TEMPLATES <- list()
 #             name a cohort nobody defined (the pickers allow free text), so look
 #             one up with cohort_by_name() and handle NULL.
 register_analysis_template <- function(type, hint = NULL, ui, collect,
-                                       pickers = list(), flatten = function(p) p,
+                                       pickers = list(), subcohorts = list(),
+                                       serialised_type = NULL,
+                                       flatten = function(p) p,
                                        validate = function(params, cohorts) character(0)) {
   ANALYSIS_TEMPLATES[[type]] <<- list(
     hint = hint, ui = ui, collect = collect, pickers = pickers,
+    subcohorts = subcohorts, serialised_type = serialised_type,
     flatten = flatten, validate = validate
   )
+}
+
+# The cohort IDs a "cohort set" spans: the picked cohort's own ID plus the ID of
+# every cohort that names it as parent, labelled for a picker. A cohort without
+# an ID contributes nothing -- there is no ID to reference. One ID is not a set:
+# callers treat length < 2 as "no sub-cohorts".
+subcohort_choices <- function(parent_name, cohorts) {
+  parent_name <- as.character(parent_name %||% "")
+  if (!nzchar(parent_name)) return(numeric(0))
+  out <- numeric(0)
+  for (ch in cohorts) {
+    id <- ch$cohort_id
+    if (is.null(id) || length(id) != 1 || is.na(id)) next
+    nm  <- as.character(ch$name %||% "")
+    par <- as.character(ch$parent_cohort %||% "")
+    if (identical(nm, parent_name) || identical(par, parent_name))
+      out[sprintf("%s (%s)", nm, format(id))] <- as.numeric(id)
+  }
+  out
 }
 
 # NULL, NA and "" must all resolve rather than error: ANALYSIS_TEMPLATES[[NULL]]

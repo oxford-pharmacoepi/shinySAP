@@ -61,7 +61,7 @@ AGE_MAX <- 150
 # adds more.
 DEFAULT_STRATA_VARIABLES <- c("age_group", "sex")
 
-COHORT_COMMON_FIELDS <- c("name", "kind", "cohort_id", "description")
+COHORT_COMMON_FIELDS <- c("name", "kind", "cohort_id", "parent_cohort", "description")
 
 canonical_cohort_kind <- function(x) {
   if (length(x) != 1 || is.na(x) || !nzchar(x)) return(unname(COHORT_KINDS[[1]]))

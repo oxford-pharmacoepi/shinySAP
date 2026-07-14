@@ -123,6 +123,9 @@ check("resolver: NA falls back", identical(canonical_analysis_type(NA), ANALYSIS
 check("resolver: empty string falls back", identical(canonical_analysis_type(""), ANALYSIS_TYPES[1]))
 check("resolver: a renamed type is aliased",
       identical(canonical_analysis_type("Incidence rate"), "Incidence"))
+check("resolver: serialised estimator names resolve to the Prevalence template",
+      identical(canonical_analysis_type("estimatePointPrevalence"), "Prevalence") &&
+        identical(canonical_analysis_type("estimatePeriodPrevalence"), "Prevalence"))
 check("resolver: a known type is left alone",
       identical(canonical_analysis_type("Prevalence"), "Prevalence"))
 
@@ -298,22 +301,166 @@ check("washout: a pre-0.3.2 sentinel migrates to a numeric array on the way out"
       is.infinite(washout_days(parse_washout(washout_select_value("unbounded")))))
 
 prev <- round_trip(ANALYSIS_TEMPLATES[["Prevalence"]], list(
-  denominator_cohort   = "Metformin new users",
-  outcome_cohort       = "Lactic acidosis",
-  prevalence_type      = "Point prevalence",
-  interval_length_days = NA,
-  full_contribution    = TRUE,
-  time_points          = "2020-01-01",
-  stratifications      = "",
-  sensitivity_analyses = ""
+  denominatorTable          = "Metformin new users",
+  outcomeTable              = "Lactic acidosis",
+  prevalence_type           = "Period prevalence",
+  period_interval           = "overall",
+  point_interval            = "months",   # stale value on the hidden point select
+  timePoint                 = "start",    # ditto
+  fullContribution          = TRUE,
+  completeDatabaseIntervals = TRUE,
+  level                     = "person",
+  includeOverallStrata      = TRUE,
+  strata_lines              = "Sex\n10-year age bands"
 ))
 check("prevalence: emits no time_at_risk", is.null(prev$json$time_at_risk))
-check("prevalence: a cleared numeric is null", is.null(prev$json$interval_length_days))
-check("prevalence: a ticked checkbox is true", identical(prev$json$full_contribution, TRUE))
-check("prevalence: a single time point stays an array",
-      is.list(prev$json$time_points) && length(prev$json$time_points) == 1)
-check("prevalence: prefiller recovers the prevalence type",
-      identical(prev$pf("prevalence_type"), "Point prevalence"))
+check("prevalence: strata split into an array",
+      identical(unlist(prev$json$strata), c("Sex", "10-year age bands")))
+check("prevalence: sensitivity_analyses is gone",
+      !"sensitivity_analyses" %in% names(prev$json))
+check("prevalence: includeOverallStrata serialises when strata exist",
+      identical(prev$json$includeOverallStrata, TRUE))
+check("prevalence: period reads the period interval select", identical(prev$json$interval, "overall"))
+check("prevalence: a ticked checkbox is true", identical(prev$json$fullContribution, TRUE))
+check("prevalence: estimation level survives", identical(prev$json$level, "person"))
+check("prevalence: point-only timePoint is not serialised for a period analysis",
+      !"timePoint" %in% names(prev$json))
+check("prevalence: prevalence_type is not among the parameters",
+      !"prevalence_type" %in% names(prev$json))
+
+# The point/period split serialises as the analysis_type, one level above the
+# parameters, and flatten() recovers the select from it on load.
+check("prevalence: serialised_type names the period estimator",
+      identical(ANALYSIS_TEMPLATES[["Prevalence"]]$serialised_type(
+        list(prevalence_type = "Period prevalence")), "estimatePeriodPrevalence"))
+check("prevalence: serialised_type defaults to the point estimator",
+      identical(ANALYSIS_TEMPLATES[["Prevalence"]]$serialised_type(list()),
+                "estimatePointPrevalence"))
+check("prevalence: flatten recovers the type select from the estimator name",
+      identical(prefiller(ANALYSIS_TEMPLATES[["Prevalence"]]$flatten(
+        list(analysis_type = "estimatePeriodPrevalence")))("prevalence_type"),
+        "Period prevalence"))
+check("prevalence: an older file's own prevalence_type parameter wins",
+      identical(prefiller(ANALYSIS_TEMPLATES[["Prevalence"]]$flatten(
+        list(analysis_type = "Prevalence", prevalence_type = "Period prevalence")
+      ))("prevalence_type"), "Period prevalence"))
+check("prevalence: flatten feeds the period interval select",
+      identical(prev$pf("period_interval"), "overall"))
+check("prevalence: 'overall' never reaches the point select, it is not a choice there",
+      identical(prev$pf("point_interval", "years"), "years"))
+
+prev_pt <- round_trip(ANALYSIS_TEMPLATES[["Prevalence"]], list(
+  denominatorTable          = "Metformin new users",
+  denominatorCohortId       = c("2", "3"),   # selectize reports IDs as strings
+  outcomeTable              = "Lactic acidosis",
+  outcomeCohortId           = "7",
+  prevalence_type           = "Point prevalence",
+  point_interval            = "months",
+  period_interval           = "overall",  # stale value on the hidden period select
+  timePoint                 = "middle",
+  fullContribution          = TRUE,       # stale period values, must not serialise
+  completeDatabaseIntervals = TRUE,
+  level                     = "person",
+  includeOverallStrata      = TRUE,
+  strata_lines              = ""
+))
+check("point prevalence: reads the point interval select", identical(prev_pt$json$interval, "months"))
+check("point prevalence: an empty strata textarea is an array",
+      identical(prev_pt$json$strata, list()))
+check("point prevalence: includeOverallStrata stays true without strata",
+      identical(prev_pt$json$includeOverallStrata, TRUE))
+check("prevalence: includeOverallStrata defaults true before the checkbox reports",
+      identical(ANALYSIS_TEMPLATES[["Prevalence"]]$collect(list())$includeOverallStrata, TRUE))
+check("point prevalence: keys follow estimatePointPrevalence()'s signature order",
+      identical(names(prev_pt$json),
+                c("denominatorTable", "outcomeTable", "denominatorCohortId",
+                  "outcomeCohortId", "interval", "timePoint",
+                  "strata", "includeOverallStrata")))
+check("period prevalence: keys follow estimatePeriodPrevalence()'s signature order",
+      identical(names(prev$json),
+                c("denominatorTable", "outcomeTable", "denominatorCohortId",
+                  "outcomeCohortId", "interval", "completeDatabaseIntervals",
+                  "fullContribution", "level", "strata", "includeOverallStrata")))
+check("point prevalence: timePoint survives", identical(prev_pt$json$timePoint, "middle"))
+check("point prevalence: period-only fields are not serialised",
+      !any(c("fullContribution", "completeDatabaseIntervals", "level") %in% names(prev_pt$json)))
+check("point prevalence: flatten feeds both interval selects",
+      identical(prev_pt$pf("point_interval"), "months") &&
+        identical(prev_pt$pf("period_interval"), "months"))
+# ==, not identical(): whole numbers come back from JSON as integers.
+check("prevalence: denominatorCohortId serialises as a numeric array",
+      all(unlist(prev_pt$json$denominatorCohortId) == c(2, 3)))
+check("prevalence: a single outcomeCohortId still serialises as an array",
+      grepl('"outcomeCohortId": \\[7\\]', as.character(sap_json(
+        ANALYSIS_TEMPLATES[["Prevalence"]]$collect(list(outcomeCohortId = "7"))))))
+check("prevalence: no cohort set means the ID fields are null (= all)",
+      is.null(prev$json$denominatorCohortId) && is.null(prev$json$outcomeCohortId))
+check("prevalence: prefiller recovers the cohort IDs",
+      all(unlist(prev_pt$pf("denominatorCohortId")) == c(2, 3)) &&
+        unlist(prev_pt$pf("outcomeCohortId")) == 7)
+
+# Cohort sets: the IDs offered for a denominator are its own plus those of
+# every cohort naming it as parent ---------------------------------------
+
+set_cohorts <- list(
+  list(name = "Adults",       cohort_id = 1,  parent_cohort = NA),
+  list(name = "Adults 18-39", cohort_id = 2,  parent_cohort = "Adults"),
+  list(name = "Adults 40-64", cohort_id = 3,  parent_cohort = "Adults"),
+  list(name = "Children",     cohort_id = 9,  parent_cohort = NA),
+  list(name = "No ID yet",    cohort_id = NA, parent_cohort = "Adults")
+)
+check("subcohorts: a set is the parent's ID plus its children's",
+      identical(unname(subcohort_choices("Adults", set_cohorts)), c(1, 2, 3)))
+check("subcohorts: IDs are labelled with their cohort names",
+      identical(names(subcohort_choices("Adults", set_cohorts)),
+                c("Adults (1)", "Adults 18-39 (2)", "Adults 40-64 (3)")))
+check("subcohorts: a cohort with no children is not a set",
+      length(subcohort_choices("Children", set_cohorts)) < 2)
+check("subcohorts: a blank or absent parent detects nothing",
+      length(subcohort_choices("", set_cohorts)) == 0 &&
+        length(subcohort_choices(NULL, set_cohorts)) == 0)
+check("subcohorts: a child without an ID contributes nothing",
+      !anyNA(subcohort_choices("Adults", set_cohorts)))
+
+# Prevalence keys were snake_case before they were aligned with the
+# IncidencePrevalence argument names; a file saved under those names must land
+# on the renamed inputs.
+snake_prev <- prefiller(ANALYSIS_TEMPLATES[["Prevalence"]]$flatten(list(
+  denominator_cohort          = "Metformin new users",
+  outcome_cohort              = "Lactic acidosis",
+  time_point                  = "middle",
+  full_contribution           = TRUE,
+  complete_database_intervals = FALSE,
+  include_overall_strata      = FALSE,
+  stratifications             = list("Sex")
+)))
+check("snake_case prevalence: cohorts migrate",
+      identical(snake_prev("denominatorTable"), "Metformin new users") &&
+        identical(snake_prev("outcomeTable"), "Lactic acidosis"))
+check("snake_case prevalence: timePoint migrates", identical(snake_prev("timePoint"), "middle"))
+check("snake_case prevalence: checkboxes migrate without flipping",
+      isTRUE(snake_prev("fullContribution")) &&
+        identical(snake_prev("completeDatabaseIntervals"), FALSE) &&
+        identical(snake_prev("includeOverallStrata"), FALSE))
+check("snake_case prevalence: stratifications migrate to the strata textarea",
+      identical(unlist(snake_prev("strata_lines")), "Sex"))
+
+# Loading a pre-0.3.0 prevalence analysis: a day count that names a calendar
+# unit becomes the interval; free-text time_points have had no home since
+# sensitivity_analyses was dropped and no longer survive.
+legacy_prev <- prefiller(ANALYSIS_TEMPLATES[["Prevalence"]]$flatten(list(
+  target_cohort        = "Metformin new users",
+  prevalence_type      = "Point prevalence",
+  interval_length_days = 30,
+  time_points          = list("2020-01-01", "2021-01-01")
+)))
+check("legacy prevalence: target_cohort migrates to the denominator",
+      identical(legacy_prev("denominatorTable"), "Metformin new users"))
+check("legacy prevalence: a 30-day interval length maps to months",
+      identical(legacy_prev("point_interval"), "months"))
+check("legacy prevalence: an unmappable interval length falls back to the default",
+      identical(prefiller(ANALYSIS_TEMPLATES[["Prevalence"]]$flatten(
+        list(interval_length_days = 45)))("point_interval", "years"), "years"))
 
 # Cohort kinds -----------------------------------------------------------------
 # 0.3.0 replaced `role` (Target / Comparator / ...) with `kind`. Each kind now
