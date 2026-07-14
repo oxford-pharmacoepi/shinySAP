@@ -41,13 +41,22 @@ register_analysis_template(
     # --- Risk set definition (the estimand) ---
     layout_columns(
       col_widths = c(4, 4, 4),
-      # No default: "" so it starts unset and validate() can insist on a choice.
-      # estimateIncidence() itself defaults to Inf, but a washout is too
-      # consequential to inherit silently -- a SAP has to say it out loud.
-      # The value is a number of days, or Inf; see OUTCOME_WASHOUT_CHOICES for how
-      # Inf reaches the JSON, since JSON has no Infinity.
-      selectInput(ns("outcome_washout"), "Outcome washout (days)", OUTCOME_WASHOUT_CHOICES,
-                  selected = pf("outcome_washout", ""), width = "100%"),
+      # outcomeWashout is a number of days, so it is typed rather than picked from
+      # a menu -- any number, not just the handful a dropdown could offer. It
+      # starts blank on purpose: estimateIncidence() defaults to Inf, but a washout
+      # is too consequential to inherit silently, and validate() insists on it.
+      #
+      # A number field cannot hold Inf, and blanking it already means "never
+      # stated", so unbounded is a checkbox. See parse_washout() for the three
+      # states the pair encodes.
+      div(
+        numericInput(ns("outcome_washout"), "Outcome washout (days)",
+                     value = washout_days_value(pf("outcome_washout", NULL)),
+                     min = 0, step = 1, width = "100%"),
+        checkboxInput(ns("outcome_washout_unbounded"), "Unbounded (one event per person)",
+                      value = isTRUE(pf("outcome_washout_unbounded", FALSE))),
+        div(class = "form-text", "Leave both blank and the SAP is incomplete.")
+      ),
       checkboxInput(ns("repeated_events"), "Count repeated events",
                     value = isTRUE(pf("repeated_events", FALSE))),
       entity_picker(ns("censor_cohort"), "Censoring cohort", pf("censor_cohort"),
@@ -76,7 +85,8 @@ register_analysis_template(
       list(
         interval                    = as_array(input$interval),
         complete_database_intervals = isTRUE(input$complete_database_intervals),
-        outcome_washout             = parse_washout(input$outcome_washout),
+        outcome_washout             = parse_washout(input$outcome_washout,
+                                                    input$outcome_washout_unbounded),
         repeated_events             = isTRUE(input$repeated_events)
       ),
       strata_collect(input)
@@ -121,10 +131,18 @@ register_analysis_template(
     p <- c(p, p$estimand %||% list())
     p$estimand <- NULL
 
-    # The select holds a string; the JSON holds a one-element numeric array (with
-    # Inf as [null]). This also reads the pre-0.3.2 shapes -- the "unbounded"
-    # sentinel string, and a bare number for a finite washout.
-    p$outcome_washout <- washout_select_value(p$outcome_washout)
+    # The JSON holds ONE value; the form holds TWO inputs, because a number field
+    # cannot show Inf and the checkbox carries it instead. Read the flag off the
+    # JSON first -- overwriting outcome_washout would destroy the Inf we need it
+    # for. washout_days() also reads the pre-0.3.2 shapes here: the "unbounded"
+    # sentinel string, and a bare number rather than an array.
+    w <- p$outcome_washout
+    p$outcome_washout_unbounded <- washout_is_unbounded(w)
+    # p[...] <- list(NULL) keeps the key with a NULL value; p$x <- NULL would DELETE
+    # it. That matters because `$` partial-matches on lists: with outcome_washout
+    # gone, p$outcome_washout would silently resolve to outcome_washout_unbounded
+    # and hand the number field a TRUE.
+    p["outcome_washout"] <- list(washout_days_value(w))
 
     # The strata multi-select holds one token per group, crossed vars comma-joined.
     p$strata <- strata_tokens(p$strata)

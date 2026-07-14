@@ -80,37 +80,42 @@ INTERVALS <- c("weeks", "months", "quarters", "years", "overall")
 # So never unlist() a washout either -- [null] would collapse to length 0. Read it
 # with washout_days(), which resolves the null back to Inf.
 
-# The empty first choice is load-bearing. A washout of 0 days is a substantively
-# different analysis from an unstated one, so the select must be able to be
-# genuinely unset -- otherwise the browser picks the first option and quietly
-# decides for the author, and the incidence validator's "no safe default" rule
-# can never fire.
-OUTCOME_WASHOUT_CHOICES <- c(
-  "Choose a washout..."              = "",
-  "None (0 days)"                    = "0",
-  "30 days"                          = "30",
-  "90 days"                          = "90",
-  "365 days"                         = "365",
-  "Unbounded (one event per person)" = "Inf"
-)
+# The washout is captured as a NUMBER of days -- any number, not a menu of
+# preset ones. But a number field cannot hold Inf, and blanking it has to keep
+# meaning "never stated", so "unbounded" gets its own checkbox alongside it. The
+# two inputs together carry the three states:
+#
+#   box clear, field blank  -> NULL     the author never said; validate() objects
+#   box clear, field n      -> [n]      n days, 0 included
+#   box ticked              -> [null]    Inf, whatever is in the field
+#
+# The field must start EMPTY rather than at some default. estimateIncidence()
+# defaults to Inf, but a washout is too consequential to inherit silently -- a SAP
+# has to say it out loud, which is the whole point of the "no safe default" rule.
 
-# The select's value -> what goes in the JSON. NULL means the user has not said,
-# which a validator can then object to; there is deliberately no default.
-# "unbounded" is the pre-0.3.2 sentinel, still accepted so an old file loads.
-parse_washout <- function(x) {
-  x <- trimws(as.character(x %||% ""))
-  if (!nzchar(x)) return(NULL)
+# The two inputs -> the JSON value. The checkbox wins: a ticked box is Inf no
+# matter what the number field happens to still hold.
+#
+# `x` may also be a string, which is how an old file and the tests reach here --
+# "365", or the pre-0.3.2 "unbounded" sentinel.
+parse_washout <- function(x, unbounded = FALSE) {
+  if (isTRUE(unbounded)) return(as_num_array(Inf))
+  x <- trimws(as.character(x %||% "")[1])         # a blank numericInput sends NA
+  if (is.na(x) || !nzchar(x)) return(NULL)
   if (tolower(x) %in% c("inf", "infinity", "unbounded")) return(as_num_array(Inf))
   n <- suppressWarnings(as.numeric(x))
   if (is.na(n) || n < 0) NULL else as_num_array(n)
 }
 
 # The washout as a number, resolving a JSON null back to Inf. NULL means unset --
-# the one state that is not a number.
+# the one state that is not a number. Also reads the pre-0.3.2 shapes, so the
+# validator and the form agree about what an old file says: the "unbounded"
+# sentinel string, and a bare number rather than a one-element array.
 washout_days <- function(w) {
   if (is.null(w) || !length(w)) return(NULL)
   v <- w[[1]]
   if (is.null(v)) return(Inf)                     # [null] -- an unbounded washout
+  if (is.character(v) && tolower(v) %in% c("unbounded", "inf", "infinity")) return(Inf)
   n <- suppressWarnings(as.numeric(v))
   if (is.na(n)) NULL else n
 }
@@ -120,16 +125,12 @@ washout_is_unbounded <- function(w) {
   !is.null(d) && is.infinite(d)
 }
 
-# The JSON value -> the select's string value, for pf() on the way back in. Also
-# the migration: before 0.3.2 an unbounded washout was the string "unbounded" and
-# a finite one a bare number, neither of which is an array.
-washout_select_value <- function(w) {
-  if (is.null(w) || !length(w)) return(NULL)
-  v <- w[[1]]
-  if (is.null(v)) return("Inf")
-  if (is.character(v) && tolower(v) %in% c("unbounded", "inf", "infinity")) return("Inf")
-  d <- suppressWarnings(as.numeric(v))
-  if (is.na(d)) NULL else if (is.infinite(d)) "Inf" else format(d)
+# The JSON value -> the number field, for pf() on the way back in. NULL leaves the
+# field blank -- which is right for BOTH an unset washout and an unbounded one,
+# since a number field cannot show Inf and the checkbox carries that instead.
+washout_days_value <- function(w) {
+  d <- washout_days(w)
+  if (is.null(d) || is.infinite(d)) NULL else d
 }
 
 format_washout <- function(w) {
