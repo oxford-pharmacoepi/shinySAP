@@ -69,16 +69,19 @@ register_analysis_template(
       )
     ),
 
-    textAreaInput(ns("strata"), "Strata (one per line)",
-                  join_lines(pf("strata", character(0))), rows = 4, width = "100%",
-                  placeholder = "Sex 10-year age bands"),
+    # strata_lines, not strata: the JSON key is `strata`, but that id is a
+    # *picker* on the incidence template, and an id may not be a picker in one
+    # template and a plain input in another. collect()/flatten() translate.
+    textAreaInput(ns("strata_lines"), "Strata (one per line)",
+                  join_lines(pf("strata_lines", character(0))), rows = 4, width = "100%",
+                  placeholder = "Sex\n10-year age bands"),
 
     # Inert without strata -- the estimators then return only the overall
     # estimate -- so the choice is only offered when strata exist; it always
     # serialises, TRUE by default. The checkbox keeps its value while hidden,
     # so strata removed and re-added get the user's earlier choice back.
     conditionalPanel(
-      condition = sprintf("(input['%s'] || '').trim() !== ''", ns("strata")),
+      condition = sprintf("(input['%s'] || '').trim() !== ''", ns("strata_lines")),
       checkboxInput(ns("includeOverallStrata"), "Report an overall estimate alongside strata",
                     value = isTRUE(pf("includeOverallStrata", TRUE)), width = "100%")
     )
@@ -110,7 +113,7 @@ register_analysis_template(
         level                     = input$level
       ),
       list(
-        strata               = as_array(split_lines(input$strata)),
+        strata               = as_array(split_lines(input$strata_lines)),
         # TRUE until the checkbox reports otherwise -- the estimators' own
         # default, and inert anyway while strata are empty.
         includeOverallStrata = isTRUE(input$includeOverallStrata %||% TRUE)
@@ -139,13 +142,14 @@ register_analysis_template(
   # [[, not $: on a file that lacks one, $ would partial-match a longer name
   # (`time_point` finds `time_points`) and migrate the wrong value.
   flatten = function(p) {
-    # The point/period select is not among the parameters: since 0.5.0 the
-    # split lives in the file's analysis_type, which load() passes through
-    # here. Files older than that still carry prevalence_type and keep it.
+    # The point/period select is not among the parameters: the split lives in
+    # the file's analysis_type, which load() passes through here. Files saved
+    # before the estimator rename still carry prevalence_type and keep it;
+    # with neither, the select's own default (point) applies.
     if (is.null(p$prevalence_type))
       p$prevalence_type <- switch(as.character(p$analysis_type %||% ""),
         estimatePointPrevalence  = "Point prevalence",
-        estimatePeriodPrevalence = "Period prevalence")
+        estimatePeriodPrevalence = "Period prevalence") %||% "Point prevalence"
 
     if (is.null(p$denominatorTable))
       p$denominatorTable <- p[["denominator_cohort"]] %||% p[["target_cohort"]]
@@ -159,15 +163,25 @@ register_analysis_template(
       p$completeDatabaseIntervals <- p[["complete_database_intervals"]]
     if (is.null(p$includeOverallStrata))
       p$includeOverallStrata <- p[["include_overall_strata"]]
-    if (is.null(p$strata))
-      p$strata <- p[["stratifications"]]
+    if (is.null(p$strata_lines))
+      p$strata_lines <- p[["strata"]] %||% p[["stratifications"]]
+
+    # collect() serialises only the selected type's arguments, so a loaded
+    # point analysis carries no period fields and vice versa. Fill the gaps
+    # with the estimators' own defaults: every rendered input must be findable
+    # after a round trip (the mirror invariant), and a type switch after load
+    # should start from the defaults, not blanks.
+    if (is.null(p$timePoint))                 p$timePoint                 <- PREVALENCE_TIMEPOINTS[1]
+    if (is.null(p$fullContribution))          p$fullContribution          <- FALSE
+    if (is.null(p$completeDatabaseIntervals)) p$completeDatabaseIntervals <- TRUE
+    if (is.null(p$level))                     p$level                     <- PREVALENCE_LEVELS[1]
 
     # An old interval length becomes the new interval when the day count is a
-    # calendar unit. Pre-0.3.0 free-text time_points, and lengths that fit no
-    # unit, used to move onto a sensitivity line; sensitivity_analyses was
-    # dropped in 0.6.0, so they no longer survive a load. `interval` is read
-    # with [[ throughout: on an old record with no such key, $ would
-    # partial-match interval_length_days and make the interval look already set.
+    # calendar unit. Free-text time_points, and lengths that fit no unit, have
+    # no field left to land in (this template has no sensitivity_analyses), so
+    # they do not survive a load. `interval` is read with [[ throughout: on an
+    # old record with no such key, $ would partial-match interval_length_days
+    # and make the interval look already set.
     days <- p$interval_length_days
     if (is.null(p[["interval"]]) && length(days) == 1 && !is.na(days)) {
       p$interval <-
@@ -182,7 +196,7 @@ register_analysis_template(
     # value selectInput cannot find would silently become the first choice.
     interval <- p[["interval"]]
     p$period_interval <- interval
-    if (!is.null(interval) && interval %in% POINT_PREVALENCE_INTERVALS)
+    if (!is.null(interval) && !identical(interval, "overall"))
       p$point_interval <- interval
     p
   }

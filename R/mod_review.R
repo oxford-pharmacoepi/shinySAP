@@ -22,6 +22,7 @@ review_ui <- function(id) {
                   placeholder = "No file selected", width = "320px")
       )
     ),
+    uiOutput(ns("problems")),
     uiOutput(ns("status")),
     tagAppendAttributes(
       verbatimTextOutput(ns("json")),
@@ -31,9 +32,23 @@ review_ui <- function(id) {
   )
 }
 
-review_server <- function(id, sap, output_dir, on_load) {
+review_server <- function(id, sap, output_dir, on_load,
+                          problems = reactive(list())) {
   moduleServer(id, function(input, output, session) {
     saved_path <- reactiveVal(NULL)
+
+    output$problems <- renderUI({
+      found <- problems()
+      if (!length(found)) return(NULL)
+      div(
+        class = "alert alert-warning",
+        tags$strong(sprintf("%d item(s) need attention before this SAP is complete:",
+                            length(found))),
+        tags$ul(class = "mb-0 mt-2", lapply(found, function(p) {
+          tags$li(tags$strong(p$name), tags$ul(lapply(p$messages, tags$li)))
+        }))
+      )
+    })
 
     output$n_sources  <- renderText(length(sap()$cdm_sources))
     output$n_cdm      <- renderText(length(sap()$cdm_changes))
@@ -49,7 +64,17 @@ review_server <- function(id, sap, output_dir, on_load) {
       }
       path <- save_sap(sap(), output_dir)
       saved_path(path)
-      showNotification(paste("Saved", basename(path)), type = "message")
+      # A SAP is drafted over many sittings, so an incomplete one must still be
+      # saveable -- say what is outstanding rather than refusing the checkpoint.
+      n <- length(problems())
+      if (n > 0) {
+        showNotification(
+          sprintf("Saved %s, but %d item(s) still need attention.", basename(path), n),
+          type = "warning", duration = 8
+        )
+      } else {
+        showNotification(paste("Saved", basename(path)), type = "message")
+      }
     })
 
     output$status <- renderUI({

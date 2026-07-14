@@ -17,7 +17,6 @@ analysis_item_ui <- function(id, prefill = NULL) {
                   selected = canonical_analysis_type(pf("analysis_type", ANALYSIS_TYPES[1])),
                   width = "100%")
     ),
-    textAreaInput(ns("description"), "Description", pf("description"), rows = 2, width = "100%"),
     entity_picker(ns("data_sources"), "CDM sources this analysis runs on",
                   pf("data_sources", character(0)), multiple = TRUE,
                   placeholder = "Select or type one or more CDM sources"),
@@ -29,7 +28,7 @@ analysis_item_ui <- function(id, prefill = NULL) {
 analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
                                  cohort_names = reactive(character(0)),
                                  source_names = reactive(character(0)),
-                                 cohort_details = reactive(list())) {
+                                 cohort_index = reactive(list())) {
   moduleServer(id, function(input, output, session) {
     observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
 
@@ -112,7 +111,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
       for (field in names(specs)) local({
         f <- field; spec <- specs[[f]]
         output[[paste0(f, "_ui")]] <- renderUI({
-          choices <- subcohort_choices(input[[spec$from]], cohort_details())
+          choices <- subcohort_choices(input[[spec$from]], cohort_index())
           if (length(choices) < 2)
             return(div(style = "display: none;",
                        selectizeInput(ns(f), spec$label, choices = character(0),
@@ -126,12 +125,29 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
       })
     })
 
+    # Unlike the cohort and source pickers, the strata picker's choices come from
+    # *another input on this same card* -- you may only stratify by a column the
+    # chosen denominator cohort actually carries. So it re-syncs when the
+    # denominator changes, not when the cohort list does.
+    sync_pickers(session, function() analysis_template(type_r())$pickers$strata %||% character(0),
+                 reactive(cohort_strata_variables(
+                   cohort_by_name(cohort_index(), input$denominator_cohort))),
+                 base_pf)
+
+    # The denominator_summary_ui() block is a placeholder that this fills, because
+    # it has to react to the picker and a static ui() cannot. Served
+    # unconditionally: a template that does not use the block simply never renders
+    # the placeholder, and this output goes unused.
+    output$denominator_summary <- renderUI({
+      denominator_summary(cohort_by_name(cohort_index(), input$denominator_cohort))
+    })
+
     # For one round-trip after a type switch the new block's inputs have not
     # reported yet, so parameters briefly reads as nulls. Harmless while the only
     # consumers are the Review tab (suspended while the user is on Analyses) and
     # the Save button (a later click) -- but an autosave observe({ sap(); ... })
     # would capture the gap.
-    reactive({
+    data_r <- reactive({
       tmpl <- analysis_template(type_r())
       list(
         name          = blank_to_na(input$name),
@@ -141,13 +157,26 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
         # aliases map it back to the same template on load.
         analysis_type = if (is.null(tmpl$serialised_type)) type_r()
                         else tmpl$serialised_type(input),
-        description   = blank_to_na(input$description),
         data_sources  = as_array(input$data_sources %||% character(0)),
         # collect() reads only its own template's input ids, so values stranded
         # by a previously selected template never reach the JSON.
         parameters    = tmpl$collect(input)
       )
     })
+
+    # A template's validate() is written against a fully specified analysis. In
+    # the gap after a type switch it would be looking at half-reported inputs, so
+    # a thrown error here must not take the whole app down with it -- report it
+    # as a problem like any other.
+    problems_r <- reactive({
+      d <- data_r()
+      tryCatch(
+        as.character(analysis_template(d$analysis_type)$validate(d$parameters, cohort_index())),
+        error = function(e) paste("Could not validate this analysis:", conditionMessage(e))
+      )
+    })
+
+    reactive(list(data = data_r(), problems = problems_r()))
   })
 }
 
@@ -172,17 +201,17 @@ analyses_ui <- function(id) {
 
 analyses_server <- function(id, cohort_names = reactive(character(0)),
                             source_names = reactive(character(0)),
-                            cohort_details = reactive(list())) {
+                            cohort_index = reactive(list())) {
   moduleServer(id, function(input, output, session) {
-    # Names change on every keystroke in the section that owns them; settle
-    # first so the pickers are not rebuilt mid-word.
+    # These change on every keystroke in the section that owns them; settle first
+    # so the pickers are not rebuilt, and the summary not redrawn, mid-word.
     settled_cohorts <- debounce(cohort_names, 600)
     settled_sources <- debounce(source_names, 600)
-    settled_details <- debounce(cohort_details, 600)
+    settled_index   <- debounce(cohort_index, 600)
 
     item_server <- function(iid, prefill, on_remove) {
       analysis_item_server(iid, prefill, on_remove, settled_cohorts, settled_sources,
-                           settled_details)
+                           settled_index)
     }
     items <- dynamic_items("analysis", "items", analysis_item_ui, item_server)
 
@@ -217,6 +246,19 @@ analyses_server <- function(id, cohort_names = reactive(character(0)),
       }
     }
 
-    list(data = items$data, load = load)
+    # Each item now reports {data, problems}; the SAP only wants the data.
+    data_r <- reactive(lapply(items$data(), function(x) x$data))
+
+    # Problems, per analysis, for the Review tab to show and to refuse a save on.
+    problems_r <- reactive({
+      found <- lapply(items$data(), function(x) {
+        msgs <- x$problems
+        if (!length(msgs)) return(NULL)
+        list(name = x$data$name %||% "Untitled analysis", messages = msgs)
+      })
+      found[!vapply(found, is.null, logical(1))]
+    })
+
+    list(data = data_r, load = load, problems = problems_r)
   })
 }

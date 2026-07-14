@@ -35,7 +35,7 @@ ANALYSIS_TYPE_ALIASES <- c(
 
 # The half of the card every analysis type shares, and the only keys load() lifts
 # straight from the file without going through a template.
-ANALYSIS_COMMON_FIELDS <- c("name", "analysis_type", "description", "data_sources")
+ANALYSIS_COMMON_FIELDS <- c("name", "analysis_type", "data_sources")
 
 # Ids already taken by the common half and by item_card(). No template may reuse
 # one, or the card would carry a duplicate input id.
@@ -53,6 +53,91 @@ POINT_PREVALENCE_INTERVALS  <- c("weeks", "months", "quarters", "years")
 PERIOD_PREVALENCE_INTERVALS <- c(POINT_PREVALENCE_INTERVALS, "overall")
 PREVALENCE_TIMEPOINTS       <- c("start", "middle", "end")
 PREVALENCE_LEVELS           <- c("person", "record")
+# Ids a template renders that are outputs, not inputs: they hold no value, so
+# they are exempt from the collect/flatten round-trip check in the tests. The
+# *_ui ids are the subcohort placeholders (see `subcohorts` below).
+DISPLAY_ONLY_IDS <- c("denominator_summary", "denominatorCohortId_ui", "outcomeCohortId_ui")
+
+# IncidencePrevalence::estimateIncidence(interval =): more than one may be given,
+# and results are estimated for each.
+INTERVALS <- c("weeks", "months", "quarters", "years", "overall")
+
+# estimateIncidence(outcomeWashout =) is a NUMBER of days, defaulting to Inf. So
+# the SAP holds a number -- but three states have to stay apart:
+#
+#   unset            the author never said. The validator objects; see below.
+#   a number of days including 0, which is a substantively different analysis.
+#   Inf              the API's own default: one event per person, ever.
+#
+# JSON has no Infinity, so the washout travels as a ONE-ELEMENT NUMERIC ARRAY,
+# exactly the convention age_groups and time_at_risk already use (R/cohort_kinds.R):
+# Inf is null *inside* an array, while a bare null keeps its schema-wide meaning of
+# "absent".
+#
+#   [365]   365 days        [0]  no washout
+#   [null]  Inf, unbounded  null the author never said
+#
+# So never unlist() a washout either -- [null] would collapse to length 0. Read it
+# with washout_days(), which resolves the null back to Inf.
+
+# The empty first choice is load-bearing. A washout of 0 days is a substantively
+# different analysis from an unstated one, so the select must be able to be
+# genuinely unset -- otherwise the browser picks the first option and quietly
+# decides for the author, and the incidence validator's "no safe default" rule
+# can never fire.
+OUTCOME_WASHOUT_CHOICES <- c(
+  "Choose a washout..."              = "",
+  "None (0 days)"                    = "0",
+  "30 days"                          = "30",
+  "90 days"                          = "90",
+  "365 days"                         = "365",
+  "Unbounded (one event per person)" = "Inf"
+)
+
+# The select's value -> what goes in the JSON. NULL means the user has not said,
+# which a validator can then object to; there is deliberately no default.
+# "unbounded" is the pre-0.3.2 sentinel, still accepted so an old file loads.
+parse_washout <- function(x) {
+  x <- trimws(as.character(x %||% ""))
+  if (!nzchar(x)) return(NULL)
+  if (tolower(x) %in% c("inf", "infinity", "unbounded")) return(as_num_array(Inf))
+  n <- suppressWarnings(as.numeric(x))
+  if (is.na(n) || n < 0) NULL else as_num_array(n)
+}
+
+# The washout as a number, resolving a JSON null back to Inf. NULL means unset --
+# the one state that is not a number.
+washout_days <- function(w) {
+  if (is.null(w) || !length(w)) return(NULL)
+  v <- w[[1]]
+  if (is.null(v)) return(Inf)                     # [null] -- an unbounded washout
+  n <- suppressWarnings(as.numeric(v))
+  if (is.na(n)) NULL else n
+}
+
+washout_is_unbounded <- function(w) {
+  d <- washout_days(w)
+  !is.null(d) && is.infinite(d)
+}
+
+# The JSON value -> the select's string value, for pf() on the way back in. Also
+# the migration: before 0.3.2 an unbounded washout was the string "unbounded" and
+# a finite one a bare number, neither of which is an array.
+washout_select_value <- function(w) {
+  if (is.null(w) || !length(w)) return(NULL)
+  v <- w[[1]]
+  if (is.null(v)) return("Inf")
+  if (is.character(v) && tolower(v) %in% c("unbounded", "inf", "infinity")) return("Inf")
+  d <- suppressWarnings(as.numeric(v))
+  if (is.na(d)) NULL else if (is.infinite(d)) "Inf" else format(d)
+}
+
+format_washout <- function(w) {
+  d <- washout_days(w)
+  if (is.null(d)) return("not stated")
+  if (is.infinite(d)) return("unbounded")
+  paste(d, "days")
+}
 
 # The registry ----------------------------------------------------------------
 #
@@ -60,32 +145,39 @@ PREVALENCE_LEVELS           <- c("person", "record")
 # the order they register in does not matter.
 ANALYSIS_TEMPLATES <- list()
 
-# A template's parts mirror one another, so a field cannot be added to the form
-# without also being serialised and read back:
+# A template is a set of pieces that mirror one another, so a field cannot be
+# added to the form without also being serialised and read back:
 #
-#   hint       one line shown above the block, or NULL
-#   ui         function(ns, pf) -> the type's inputs
-#   collect    function(input) -> the type's JSON, reading ONLY its own input ids
-#   pickers    input ids that pick a cohort or a CDM source, by entity
+#   hint      one line shown above the block, or NULL
+#   ui        function(ns, pf) -> the type's inputs
+#   collect   function(input) -> the type's JSON, reading ONLY its own input ids
+#   pickers   input ids that pick a cohort or a CDM source, by entity
 #   subcohorts multi-selects of cohort IDs, keyed to one of the template's
-#              cohort pickers: field id -> list(from, label). The template's
-#              ui() renders uiOutput(ns("<field>_ui")); the analyses module
-#              fills it only when the picked cohort spans a set.
+#             cohort pickers: field id -> list(from, label). The template's
+#             ui() renders uiOutput(ns("<field>_ui")); the analyses module
+#             fills it only when the picked cohort spans a set.
 #   serialised_type  optional function(input) -> the analysis_type written to
-#              the file when it is finer than the registry key (e.g. the
-#              estimator planned). Every value it can return MUST appear in
-#              ANALYSIS_TYPE_ALIASES, or the file would load as "Other";
-#              flatten() sees the raw label under `analysis_type` and recovers
-#              whatever inputs encode it.
-#   flatten    function(params) -> prefill keys; the inverse of collect's
-#              nesting, or identity if collect nests nothing
+#             the file when it is finer than the registry key (e.g. the
+#             estimator planned). Every value it can return MUST appear in
+#             ANALYSIS_TYPE_ALIASES, or the file would load as "Other";
+#             flatten() sees the raw label under `analysis_type` and recovers
+#             whatever inputs encode it.
+#   flatten   function(params) -> prefill keys; the inverse of collect's nesting,
+#             or identity if collect nests nothing. Also the place to migrate an
+#             older file's keys onto the current inputs.
+#   validate  function(params, cohorts) -> character() of problems, where
+#             `cohorts` is the named list from cohorts$by_name(). An analysis can
+#             name a cohort nobody defined (the pickers allow free text), so look
+#             one up with cohort_by_name() and handle NULL.
 register_analysis_template <- function(type, hint = NULL, ui, collect,
                                        pickers = list(), subcohorts = list(),
                                        serialised_type = NULL,
-                                       flatten = function(p) p) {
+                                       flatten = function(p) p,
+                                       validate = function(params, cohorts) character(0)) {
   ANALYSIS_TEMPLATES[[type]] <<- list(
     hint = hint, ui = ui, collect = collect, pickers = pickers,
-    subcohorts = subcohorts, serialised_type = serialised_type, flatten = flatten
+    subcohorts = subcohorts, serialised_type = serialised_type,
+    flatten = flatten, validate = validate
   )
 }
 
@@ -174,6 +266,156 @@ strat_collect <- function(input) list(
   stratifications      = as_array(split_lines(input$stratifications)),
   sensitivity_analyses = as_array(split_lines(input$sensitivity_analyses))
 )
+
+# Structured strata, for templates that map onto IncidencePrevalence -----------
+#
+# `strata` there is a list of *variable groups*, naming columns on the
+# denominator cohort table: list("sex", c("sex", "age_group")) means one
+# stratification by sex and another by the cross of sex and age group. A flat
+# one-per-line textarea cannot say that, so each token in this multi-select is
+# one stratification, and a comma inside a token crosses its variables.
+#
+# The choices come from the *selected denominator cohort's* strata_variables, so
+# this is a picker: a template must declare it under pickers$strata, and
+# analysis_item_server() keeps it in step with the denominator.
+strata_ui <- function(ns, pf) tagList(
+  selectizeInput(
+    ns("strata"), "Strata", choices = character(0),
+    selected = strata_tokens(pf("strata", list())), multiple = TRUE, width = "100%",
+    options = list(create = TRUE,
+                   placeholder = "Columns on the denominator cohort; comma to cross (sex, age_group)")
+  ),
+  checkboxInput(ns("include_overall_strata"), "Also report an overall (unstratified) result",
+                value = isTRUE(pf("include_overall_strata", TRUE)))
+)
+
+# Selectize tokens -> the JSON's list of groups. "sex, age_group" is one group.
+parse_strata <- function(x) {
+  toks <- trimws(as.character(unlist(x %||% character(0))))
+  toks <- toks[nzchar(toks)]
+  lapply(toks, function(tok) {
+    vars <- trimws(unlist(strsplit(tok, ",", fixed = TRUE)))
+    as_array(vars[nzchar(vars)])
+  })
+}
+
+# The JSON's list of groups -> selectize tokens, for pf() on the way back in.
+strata_tokens <- function(groups) {
+  if (!length(groups)) return(character(0))
+  vapply(groups, function(g) paste(as.character(unlist(g)), collapse = ", "), character(1))
+}
+
+strata_collect <- function(input) list(
+  strata                 = parse_strata(input$strata),
+  include_overall_strata = isTRUE(input$include_overall_strata)
+)
+
+# The variables a denominator cohort actually carries, which is what an analysis
+# built on it may stratify by.
+cohort_strata_variables <- function(cohort) {
+  as.character(unlist(cohort$strata_variables %||% character(0)))
+}
+
+# A read-only echo of what the chosen denominator already fixes, so nobody
+# re-specifies a study period or an age band that the cohort has already
+# decided. Unlike the other shared blocks this one owns an *output*, not inputs:
+# it must react to the denominator picker, which the static ui() cannot. The
+# item server fills it (see analysis_item_server), so a template gets the block
+# just by dropping this placeholder into its ui().
+denominator_summary_ui <- function(ns, pf) {
+  uiOutput(ns("denominator_summary"))
+}
+
+# cohort is the cohorts$by_name() entry for whatever the denominator picker
+# holds, or NULL when it names a cohort that has not been written down.
+denominator_summary <- function(cohort) {
+  if (is.null(cohort)) {
+    return(div(
+      class = "alert alert-warning py-2 small mb-3",
+      "This cohort is not defined on the Cohorts tab, so nothing can be inherited from it."
+    ))
+  }
+  if (!is_denominator_kind(cohort$kind)) {
+    return(div(
+      class = "alert alert-warning py-2 small mb-3",
+      sprintf(paste("'%s' is not a denominator cohort, so it fixes no study period, age groups,",
+                    "sex or time at risk. Set its kind on the Cohorts tab."),
+              cohort$name %||% "This cohort")
+    ))
+  }
+  fact <- function(label, value) {
+    div(class = "col", tags$span(class = "text-muted", label), tags$br(), tags$strong(value))
+  }
+  none <- function(x) {
+    x <- as.character(unlist(x %||% character(0)))
+    if (!length(x) || !any(nzchar(x))) "—" else paste(x, collapse = ", ")
+  }
+  # Never unlist() a bound pair -- a JSON null upper bound would collapse.
+  bounds <- function(pairs, open = "Inf") {
+    if (!length(pairs)) return("—")
+    paste(format_bound_list(pairs, open = open), collapse = " | ")
+  }
+  div(
+    class = "border rounded bg-body-tertiary p-3 mb-3 small",
+    div(class = "text-muted mb-2", "Inherited from this cohort — set it on the Cohorts tab:"),
+    div(
+      class = "row row-cols-auto gap-3",
+      fact("Cohort date range",
+           if (is.null(cohort$cohort_date_range_start) && is.null(cohort$cohort_date_range_end)) "—"
+           else paste(none(cohort$cohort_date_range_start), "to",
+                      none(cohort$cohort_date_range_end))),
+      fact("Age groups", bounds(cohort$age_groups, open = AGE_MAX)),
+      fact("Sex", none(cohort$sex)),
+      fact("Prior observation", paste(none(cohort$days_prior_observation), "days")),
+      # Only a target denominator has one; a plain denominator contributes all
+      # observed time, so there is nothing to show.
+      if (identical(canonical_cohort_kind(cohort$kind), "target_denominator"))
+        fact("Time at risk (days from target entry)", bounds(cohort$time_at_risk))
+    )
+  )
+}
+
+# Two things can be wrong with a stratification, and they are different:
+#
+#   1. The variable is not a column on the denominator cohort at all, so
+#      estimateIncidence(strata = ) would fail outright.
+#   2. The column exists but the cohort has already collapsed it -- a male-only
+#      cohort has no sex left to vary, a single-age-band cohort no age. The call
+#      would succeed and return a stratification of one level, which is not the
+#      analysis anyone meant.
+#
+# `groups` is the JSON shape: a list of variable groups. Returns character(0)
+# when there is nothing to object to, including when the cohort is unknown --
+# that is denominator_summary()'s problem to report, not this one's.
+validate_strata_against <- function(groups, cohort) {
+  if (!length(groups) || is.null(cohort)) return(character(0))
+  errs     <- character(0)
+  declared <- cohort_strata_variables(cohort)
+  sex      <- as.character(unlist(cohort$sex %||% "Both"))
+  n_ages   <- length(cohort$age_groups %||% list())
+
+  for (v in unique(as.character(unlist(groups)))) {
+    if (!v %in% declared) {
+      errs <- c(errs, sprintf(
+        "Cannot stratify by '%s': the denominator cohort does not carry that column (it has %s).",
+        v, if (length(declared)) paste(declared, collapse = ", ") else "none"))
+      next
+    }
+    # sex = "Both" generates one cohort holding both sexes, which can be split.
+    # sex = c("Male", "Female") generates two single-sex cohorts, neither of which
+    # has a sex left to vary.
+    if (identical(v, "sex") && !"Both" %in% sex) {
+      errs <- c(errs, sprintf(
+        "Cannot stratify by sex: the denominator cohort is restricted to %s.",
+        paste(sex, collapse = " and ")))
+    }
+    if (identical(v, "age_group") && n_ages < 2) {
+      errs <- c(errs,
+        "Cannot stratify by age_group: the denominator cohort defines fewer than two age groups.")
+    }
+  }
+  unique(errs)
+}
 
 # Every input id a template's ui() creates, recovered by handing it a namespace
 # that records instead of namespacing. Saves maintaining the id list by hand in a

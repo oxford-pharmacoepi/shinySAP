@@ -10,13 +10,14 @@ library(jsonlite)
 
 # 0.2.0 added cdm_sources and renamed analyses -> proposed_analyses.
 # 0.3.0 moved the type-specific analysis fields under `parameters`.
-# 0.4.0 added cohort sets: cohorts gained parent_cohort, and prevalence
-#       parameters gained denominatorCohortId / outcomeCohortId (null = all).
-# 0.5.0 dropped the prevalence_type parameter: a prevalence analysis_type now
-#       names the estimator (estimatePointPrevalence / estimatePeriodPrevalence).
-# 0.6.0 prevalence: stratifications renamed to strata, sensitivity_analyses
-#       removed (other analysis types keep both).
-SAP_SCHEMA_VERSION <- "0.6.0"
+# 0.3.1 made the Incidence parameters map 1:1 onto estimateIncidence().
+# 0.4.0 added cohort sets (cohorts gained parent_cohort; prevalence gained
+#       denominatorCohortId / outcomeCohortId, null = all IDs in the set) and
+#       aligned prevalence with the estimators: parameters use the argument
+#       names and order, strata replaces stratifications, sensitivity_analyses
+#       is dropped there, and a prevalence analysis_type names the estimator
+#       (estimatePointPrevalence / estimatePeriodPrevalence).
+SAP_SCHEMA_VERSION <- "0.4.0"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")
@@ -39,10 +40,12 @@ server <- function(input, output, session) {
   sources  <- cdm_sources_server("sources")
   cdm      <- cdm_changes_server("cdm", source_names = sources$names)
   cohorts  <- cohorts_server("cohorts")
+  # by_name, not just names: the templates echo what the denominator cohort
+  # already fixes, and validate against it.
   analyses <- analyses_server("analyses",
                               cohort_names = cohorts$names,
-                              source_names = sources$names,
-                              cohort_details = cohorts$data)
+                              cohort_index = cohorts$by_name,
+                              source_names = sources$names)
 
   # The single source of truth for what gets serialised.
   sap <- reactive(list(
@@ -56,6 +59,9 @@ server <- function(input, output, session) {
   ))
 
   load_sap <- function(loaded) {
+    # Anything that has to move between sections (0.3.0 put time at risk on the
+    # cohort, not the analysis) must happen before any section builds its cards.
+    loaded <- migrate_sap(loaded)
     study$load(loaded$study %||% list())
     sources$load(loaded$cdm_sources %||% list())
     cdm$load(loaded$cdm_changes %||% list())
@@ -65,7 +71,8 @@ server <- function(input, output, session) {
     nav_select("nav", selected = "Study", session = session)
   }
 
-  review_server("review", sap = sap, output_dir = OUTPUT_DIR, on_load = load_sap)
+  review_server("review", sap = sap, output_dir = OUTPUT_DIR, on_load = load_sap,
+                problems = reactive(c(cohorts$problems(), analyses$problems())))
 }
 
 shinyApp(ui, server)
