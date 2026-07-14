@@ -231,5 +231,12 @@ migrate_cohort <- function(ch) {
   }
   ch$prior_observation_days <- NULL
 
+  # 0.4.1 dropped the declared strata columns. generateDenominatorCohortSet()
+  # produces age_group and sex and nothing else, so the field could only ever agree
+  # with STRATA_VARIABLES or be wrong. An older file that named an extra ETL column
+  # loses it -- and any analysis stratified by that column now fails validation,
+  # which is the honest outcome: the generator was never going to produce it.
+  ch$strata_variables <- NULL
+
   ch
 }

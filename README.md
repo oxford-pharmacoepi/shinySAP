@@ -109,8 +109,7 @@ JSON arrays even when they hold a single entry.
       "age_groups": [[0, 17], [18, 64], [65, 150]],
       "sex": ["Both"],
       "days_prior_observation": [365],
-      "requirement_interactions": true,
-      "strata_variables": ["age_group", "sex"]
+      "requirement_interactions": true
     }
   ],
   "proposed_analyses": [
@@ -185,10 +184,12 @@ and the Cohorts tab already carries it.
 **`strata` is a list of variable groups**, naming columns on the denominator
 cohort: `[["sex"], ["sex", "age_group"]]` means one stratification by sex and
 another by the cross of sex and age group — exactly
-`strata = list("sex", c("sex", "age_group"))`. A cohort declares which columns it
-carries (`strata_variables`, defaulting to `age_group` and `sex`, which
-`generateDenominatorCohortSet()` always produces), and an analysis may only
-stratify by those.
+`strata = list("sex", c("sex", "age_group"))`. The only columns available are
+`age_group` and `sex` — the ones `generateDenominatorCohortSet()` puts on the
+denominator table — and an analysis may only stratify by those. This is **not** a
+field on the cohort: the generator makes those two columns and no others, so there
+is nothing for an author to decide, and the strata picker on an analysis offers
+exactly them.
 
 **`outcome_washout` is a number of days**, matching
 `estimateIncidence(outcomeWashout =)`, which takes a number and defaults to `Inf`.
@@ -260,6 +261,17 @@ and aligned Prevalence with the estimators the way `0.3.1` aligned Incidence:
 `stratifications`, `sensitivity_analyses` is dropped there, and a prevalence
 `analysis_type` names the estimator (`estimatePointPrevalence` /
 `estimatePeriodPrevalence`).
+
+`0.4.1` **dropped `strata_variables`** from the denominator kinds.
+`generateDenominatorCohortSet()` puts `age_group` and `sex` on the denominator
+table and nothing else, so the columns an analysis may stratify by were never the
+author's to choose. As a textarea it could only agree with that or be wrong — and
+being wrong was the dangerous case: naming an extra ETL column made the strata
+picker offer it and the validator accept it, for a `strata =` that the generator
+would never satisfy. The columns are now fixed (`STRATA_VARIABLES` in
+`R/cohort_kinds.R`). An older file's declared columns are dropped on load, and an
+analysis stratified by a column beyond those two now fails validation — which is
+the honest outcome, since it was never going to run.
 
 Older files still load, and `migrate_sap()` in `R/utils.R` runs before any
 section does. Beyond the aliasing above, it repairs two things it cannot leave

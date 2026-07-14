@@ -95,8 +95,8 @@ register_analysis_template(
 
   pickers = list(
     cohorts = c("denominator_cohort", "outcome_cohort", "censor_cohort"),
-    # Choices come from the selected denominator's strata_variables, not from the
-    # cohort list -- see analysis_item_server().
+    # Choices are the columns the selected denominator carries (STRATA_VARIABLES),
+    # not the cohort list -- see analysis_item_server().
     strata  = "strata"
   ),
 

@@ -70,9 +70,9 @@ register_analysis_template(
       )
     ),
 
-    # The shared structured-strata block: one token per stratification, comma
-    # to cross variables, choices fed from the chosen denominator's
-    # strata_variables (see pickers$strata and `denominator` below).
+    # The shared structured-strata block: one token per stratification, comma to
+    # cross variables, choices being the columns the chosen denominator carries
+    # (see pickers$strata and `denominator` below).
     strata_ui(ns, pf)
   ),
 
@@ -113,8 +113,8 @@ register_analysis_template(
 
   pickers = list(
     cohorts = c("denominatorTable", "outcomeTable"),
-    # Choices come from the selected denominator's strata_variables, not from
-    # the cohort list -- see analysis_item_server().
+    # Choices are the columns the selected denominator carries (STRATA_VARIABLES),
+    # not the cohort list -- see analysis_item_server().
     strata  = "strata"
   ),
 

@@ -124,3 +124,44 @@ test_that("cohort validate: time at risk must have at least one interval",
           expect_true(any(grepl("at least one interval",
                                 TD$validate(within(td_ok, time_at_risk <- list()),
                                             cohorts_idx)))))
+
+# Strata columns are NOT a cohort field ----------------------------------------
+#
+# 0.4.1 removed the "strata columns on this denominator" textarea.
+# generateDenominatorCohortSet() produces age_group and sex and nothing else, so
+# there was nothing for an author to decide -- and the field let them *declare* a
+# column the generator does not make, which the strata picker then offered and the
+# validator waved through.
+
+test_that("cohort: a denominator no longer collects strata columns", {
+  expect_false("strata_variables" %in%
+                 names(COHORT_TEMPLATES[["denominator"]]$collect(list())))
+  expect_false("strata_variables" %in%
+                 names(COHORT_TEMPLATES[["target_denominator"]]$collect(list())))
+})
+test_that("cohort: the denominator card no longer renders a strata input", {
+  for (kind in c("denominator", "target_denominator")) {
+    expect_false("strata_variables" %in%
+                   template_field_ids(COHORT_TEMPLATES[[kind]]))
+  }
+})
+test_that("cohort: a denominator's strata columns come from the kind, not a field", {
+  expect_identical(cohort_strata_variables(list(kind = "denominator")), STRATA_VARIABLES)
+  expect_identical(cohort_strata_variables(list(kind = "target_denominator")),
+                   STRATA_VARIABLES)
+})
+test_that("cohort: a declared column in an OLD file cannot smuggle itself back in", {
+  # The field is gone; naming it in the JSON must not re-enable stratifying by it.
+  smuggled <- list(kind = "denominator", strata_variables = list("age_group", "sex", "region"))
+  expect_false("region" %in% cohort_strata_variables(smuggled))
+})
+test_that("cohort: anything that is not a denominator carries no strata columns", {
+  expect_length(cohort_strata_variables(list(kind = "outcome")), 0)
+  expect_length(cohort_strata_variables(NULL), 0)
+})
+test_that("migrate_sap: an old file's declared strata columns are dropped", {
+  m <- migrate_sap(list(cohorts = list(list(
+    name = "D", kind = "denominator", strata_variables = list("age_group", "sex", "region")
+  ))))
+  expect_null(m$cohorts[[1]]$strata_variables)
+})

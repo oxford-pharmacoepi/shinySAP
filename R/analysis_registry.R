@@ -278,9 +278,10 @@ strat_collect <- function(input) list(
 # one-per-line textarea cannot say that, so each token in this multi-select is
 # one stratification, and a comma inside a token crosses its variables.
 #
-# The choices come from the *selected denominator cohort's* strata_variables, so
-# this is a picker: a template must declare it under pickers$strata, and
-# analysis_item_server() keeps it in step with the denominator.
+# The choices are the columns the *selected denominator cohort* carries, so this is
+# a picker: a template must declare it under pickers$strata, and
+# analysis_item_server() keeps it in step with the denominator. Those columns are
+# fixed (STRATA_VARIABLES) -- a cohort does not declare them.
 strata_ui <- function(ns, pf) tagList(
   selectizeInput(
     ns("strata"), "Strata", choices = character(0),
@@ -320,10 +321,16 @@ strata_collect <- function(input) list(
   include_overall_strata = isTRUE(input$include_overall_strata)
 )
 
-# The variables a denominator cohort actually carries, which is what an analysis
+# The columns a denominator cohort actually carries, which is what an analysis
 # built on it may stratify by.
+#
+# Not a field on the cohort: generateDenominatorCohortSet() produces age_group and
+# sex and nothing else, so there is nothing for an author to decide. Anything that
+# is not a denominator carries no strata columns at all -- an analysis on it is
+# already wrong for a bigger reason, which its own validator reports.
 cohort_strata_variables <- function(cohort) {
-  as.character(unlist(cohort$strata_variables %||% character(0)))
+  if (is.null(cohort) || !is_denominator_kind(cohort$kind)) return(character(0))
+  STRATA_VARIABLES
 }
 
 # A read-only echo of what the chosen denominator already fixes, so nobody

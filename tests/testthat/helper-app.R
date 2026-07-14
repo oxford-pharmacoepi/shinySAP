@@ -34,15 +34,17 @@ round_trip <- function(tmpl, input) {
 # Note the target cohort and the target denominator are separate entries. They are
 # different objects: the first is defined by entry criteria, the second is
 # generated from it by generateTargetDenominatorCohortSet().
+#
+# No strata_variables here: as of 0.4.1 the columns a denominator carries are not
+# a field on it. generateDenominatorCohortSet() makes age_group and sex, so
+# cohort_strata_variables() reads STRATA_VARIABLES off the kind instead.
 cohorts_idx <- list(
   "Metformin new users"   = list(kind = "target", entry_events = list("First dispensation")),
   "Metformin denominator" = list(kind = "target_denominator",
                                  target_cohort = "Metformin new users",
                                  time_at_risk = list(c(0, Inf)), sex = list("Both"),
-                                 age_groups = list(c(0, 17), c(18, 64)),
-                                 strata_variables = list("age_group", "sex")),
+                                 age_groups = list(c(0, 17), c(18, 64))),
   "Men only"              = list(kind = "denominator", sex = list("Male"),
-                                 age_groups = list(c(18, 64)),
-                                 strata_variables = list("age_group", "sex")),
+                                 age_groups = list(c(18, 64))),
   "Lactic acidosis"       = list(kind = "outcome", sex = list("Both"))
 )

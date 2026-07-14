@@ -17,7 +17,9 @@ library(jsonlite)
 #       names and order, strata replaces stratifications, sensitivity_analyses
 #       is dropped there, and a prevalence analysis_type names the estimator
 #       (estimatePointPrevalence / estimatePeriodPrevalence).
-SAP_SCHEMA_VERSION <- "0.4.0"
+# 0.4.1 dropped the denominator's declared strata_variables: the generator makes
+#       age_group and sex and nothing else, so they are fixed, not authored.
+SAP_SCHEMA_VERSION <- "0.4.1"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")

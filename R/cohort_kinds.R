@@ -56,10 +56,13 @@ COHORT_SEXES <- c("Both", "Male", "Female")
 # ageGroup defaults to list(c(0, 150)); 150 is the package's open-ended upper age.
 AGE_MAX <- 150
 
-# The columns generateDenominatorCohortSet() puts on the denominator table, and
-# so the only things estimateIncidence(strata =) can stratify by unless the ETL
-# adds more.
-DEFAULT_STRATA_VARIABLES <- c("age_group", "sex")
+# The columns generateDenominatorCohortSet() puts on the denominator table, and so
+# the only things estimateIncidence(strata =) / estimatePrevalence(strata =) can
+# stratify by. Fixed, not declared per cohort: the generator makes these two and
+# nothing else, so a cohort has no say in it. (Until 0.4.1 this was a textarea on
+# the denominator card, which let an author name a column the generator does not
+# produce -- the strata picker then offered it and the validator waved it through.)
+STRATA_VARIABLES <- c("age_group", "sex")
 
 COHORT_COMMON_FIELDS <- c("name", "kind", "cohort_id", "parent_cohort", "description")
 
@@ -201,12 +204,10 @@ denominator_requirements_ui <- function(ns, pf) tagList(
     checkboxInput(ns("requirement_interactions"),
                   "Generate a cohort for every combination of age group, sex and prior observation",
                   value = isTRUE(pf("requirement_interactions", TRUE)))
-  ),
-  # estimateIncidence(strata =) can only use columns on the denominator table.
-  # The generator always produces age_group and sex; list anything your ETL adds.
-  textAreaInput(ns("strata_variables"), "Strata columns on this denominator (one per line)",
-                join_lines(pf("strata_variables", DEFAULT_STRATA_VARIABLES)), rows = 2,
-                width = "100%", placeholder = "age_group\nsex\nregion")
+  )
+  # No strata input: the columns a denominator carries are not the author's to
+  # choose. generateDenominatorCohortSet() produces age_group and sex, and nothing
+  # else -- see STRATA_VARIABLES, which is now the only place that is said.
 )
 
 denominator_requirements_collect <- function(input) list(
@@ -215,8 +216,7 @@ denominator_requirements_collect <- function(input) list(
   age_groups               = parse_bound_list(input$age_groups),
   sex                      = as_array(input$sex %||% "Both"),
   days_prior_observation   = as_num_array(input$days_prior_observation %||% 0),
-  requirement_interactions = isTRUE(input$requirement_interactions),
-  strata_variables         = as_array(split_lines(input$strata_variables))
+  requirement_interactions = isTRUE(input$requirement_interactions)
 )
 
 # Nothing nested beyond the pair lists, which pf() re-formats in the UI.
