@@ -73,7 +73,7 @@ empty_state <- function(text) {
 
 # A picker over entities defined elsewhere in the SAP (a cohort, a CDM source).
 # create = TRUE so an analysis can name something not yet written down.
-entity_picker <- function(inputId, label, selected = "", choices = character(0),
+entity_picker <- function(inputId, label, selected = "", choices = character(0), # nolint: object_name_linter.
                           multiple = FALSE, placeholder = "Select or type") {
   selected <- as.character(unlist(selected))
   selectizeInput(

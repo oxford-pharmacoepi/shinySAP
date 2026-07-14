@@ -61,7 +61,7 @@ as_date_value <- function(x) {
 # A silently pre-filled today would decide both on their behalf -- the same trap
 # the outcome washout's empty first choice exists to avoid. An empty string is
 # neither undefined nor null, so the picker starts empty and stays that way.
-date_input <- function(inputId, label, value = NULL, ...) {
+date_input <- function(inputId, label, value = NULL, ...) { # nolint: object_name_linter.
   value <- as_date_value(value)
   di <- dateInput(inputId, label, value = value, width = "100%", ...)
   if (!is.null(value)) return(di)
@@ -162,7 +162,8 @@ migrate_sap <- function(sap) {
         name                  = den,
         kind                  = "target_denominator",
         description           = sprintf(
-          "Denominator generated from '%s'. Added when this SAP was read: before 0.3.2 the time at risk lived on the analysis.", nm),
+          paste0("Denominator generated from '%s'. Added when this SAP was read: ",
+                 "before 0.3.2 the time at risk lived on the analysis."), nm),
         target_cohort         = as.character(nm),
         time_at_risk          = tar,
         requirements_at_entry = TRUE

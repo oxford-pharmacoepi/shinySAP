@@ -109,7 +109,8 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     observe({
       specs <- analysis_template(type_r())$subcohorts
       for (field in names(specs)) local({
-        f <- field; spec <- specs[[f]]
+        f <- field
+        spec <- specs[[f]]
         output[[paste0(f, "_ui")]] <- renderUI({
           choices <- subcohort_choices(input[[spec$from]], cohort_index())
           if (length(choices) < 2)

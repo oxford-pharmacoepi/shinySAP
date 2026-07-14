@@ -46,7 +46,7 @@ JSON arrays even when they hold a single entry.
 
 ```json
 {
-  "sap_schema_version": "0.3.2",
+  "sap_schema_version": "0.4.0",
   "generated_at": "2026-07-09T14:02:11+0100",
   "study": {
     "title": "Metformin and lactic acidosis",
@@ -253,6 +253,14 @@ number); it is now a one-element numeric array, with `Inf` as `[null]` — the s
 Inf-as-null-inside-an-array rule the cohort's `age_groups` and `time_at_risk` use.
 Both older shapes still load.
 
+`0.4.0` added cohort sets — a cohort gained `parent_cohort`, and prevalence
+gained `denominatorCohortId` / `outcomeCohortId` (null = all IDs in the set) —
+and aligned Prevalence with the estimators the way `0.3.1` aligned Incidence:
+`parameters` use the argument names and order, `strata` replaces
+`stratifications`, `sensitivity_analyses` is dropped there, and a prevalence
+`analysis_type` names the estimator (`estimatePointPrevalence` /
+`estimatePeriodPrevalence`).
+
 Older files still load, and `migrate_sap()` in `R/utils.R` runs before any
 section does. Beyond the aliasing above, it repairs two things it cannot leave
 alone:
@@ -274,7 +282,7 @@ An old cohort `role` of `Target` becomes the `target` **kind — a plain cohort*
 not a denominator. Mapping it to one would silently discard its entry events,
 inclusion criteria and concept set, which a denominator's block does not carry.
 
-Saving writes `0.3.2` back out.
+Saving writes the current schema version (`0.4.0`) back out.
 
 ### Validation
 
