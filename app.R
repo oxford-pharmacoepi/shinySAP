@@ -11,7 +11,7 @@ library(jsonlite)
 # 0.2.0 added cdm_sources and renamed analyses -> proposed_analyses.
 # 0.3.0 moved the type-specific analysis fields under `parameters`.
 # 0.3.1 made the Incidence parameters map 1:1 onto estimateIncidence().
-SAP_SCHEMA_VERSION <- "0.3.1"
+SAP_SCHEMA_VERSION <- "0.3.2"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")
@@ -66,7 +66,7 @@ server <- function(input, output, session) {
   }
 
   review_server("review", sap = sap, output_dir = OUTPUT_DIR, on_load = load_sap,
-                problems = analyses$problems)
+                problems = reactive(c(cohorts$problems(), analyses$problems())))
 }
 
 shinyApp(ui, server)

@@ -22,6 +22,13 @@ join_lines <- function(x) {
 # always arrays in the JSON regardless of how many entries the user typed.
 as_array <- function(x) I(as.character(x))
 
+# Same, for a field that must stay numeric -- an age group or a time-at-risk
+# bound. Under na = "null" jsonlite writes Inf as null, so c(0, Inf) becomes
+# [0, null]: an unbounded upper bound. Reading it back gives list(0, NULL), so
+# index such a pair with [[1]]/[[2]] and never unlist() it, or the null collapses
+# and a two-element pair silently becomes one.
+as_num_array <- function(x) I(as.numeric(x))
+
 # Blank text becomes null rather than "" so consumers can test for absence.
 blank_to_na <- function(x) {
   x <- trimws(x %||% "")
@@ -78,32 +85,117 @@ read_sap <- function(path) {
 # to move *between* sections has to happen here -- and before cohorts$load(), or
 # the cohort cards are already built by the time the analysis is read.
 #
-# 0.3.0 moved time at risk from each analysis onto the cohort it runs on, so two
-# analyses sharing a denominator can no longer disagree about it. An older file
-# holds it on the analysis; copy it across or it is silently lost.
+# Before 0.3.2 an analysis named a plain target cohort as its denominator and
+# carried its own time at risk. Neither is how IncidencePrevalence works: a
+# denominator is a cohort *set* produced by generateTargetDenominatorCohortSet(),
+# and timeAtRisk is one of that generator's arguments.
+#
+# So the missing denominator is synthesised here -- one per (target cohort, time
+# at risk) pair, since that is exactly what one generator call produces -- and the
+# analysis is repointed at it. Doing it in the template's flatten() is not
+# possible: an analysis can only rewrite itself, not add a cohort.
+#
+# The old {start_offset_days, start_anchor, end_offset_days, end_anchor} becomes
+# a single [[start, end]] interval. The anchors are dropped: the API has nowhere
+# to put them, because both bounds are relative to target cohort entry.
 migrate_sap <- function(sap) {
   analyses <- coalesce_key(sap, "proposed_analyses", "analyses")
-  cohorts  <- sap$cohorts %||% list()
-  if (!length(analyses) || !length(cohorts)) return(sap)
+  cohorts  <- lapply(sap$cohorts %||% list(), migrate_cohort)
+  if (!length(analyses)) {
+    sap$cohorts <- cohorts
+    return(sap)
+  }
 
-  cohort_names <- vapply(cohorts, function(x) as.character(x$name %||% ""), character(1))
+  index_of <- function(nm) match(as.character(nm), vapply(
+    cohorts, function(x) as.character(x$name %||% ""), character(1)))
 
-  for (a in analyses) {
-    p   <- if (is.null(a$parameters)) a else a$parameters
-    tar <- p$time_at_risk
-    if (is.null(tar)) next
+  for (k in seq_along(analyses)) {
+    a     <- analyses[[k]]
+    flat  <- is.null(a$parameters)
+    p     <- if (flat) a else a$parameters
     # Pre-0.3.0 the generic form called the denominator `target_cohort`.
-    nm <- p$denominator_cohort %||% p$target_cohort
+    nm    <- p$denominator_cohort %||% p$target_cohort
     if (is.null(nm) || !nzchar(as.character(nm))) next
-    i <- match(as.character(nm), cohort_names)
-    # An analysis may name a cohort that was never defined; nothing to move onto.
-    if (is.na(i)) next
-    # First analysis to claim the cohort wins. Two analyses on one denominator
-    # disagreeing about time at risk is exactly what this move exists to stop,
-    # and there is no way to pick a winner here -- validate() will flag it.
-    if (is.null(cohorts[[i]]$time_at_risk)) cohorts[[i]]$time_at_risk <- tar
+
+    i <- index_of(nm)
+    # Names a cohort nobody defined, or one that is already a denominator: leave it.
+    if (is.na(i) || is_denominator_kind(cohorts[[i]]$kind)) next
+
+    tar <- migrate_time_at_risk(p$time_at_risk)
+    den <- synthetic_denominator_name(as.character(nm), tar)
+
+    if (is.na(index_of(den))) {
+      cohorts[[length(cohorts) + 1]] <- list(
+        name                  = den,
+        kind                  = "target_denominator",
+        description           = sprintf(
+          "Denominator generated from '%s'. Added when this SAP was read: before 0.3.2 the time at risk lived on the analysis.", nm),
+        target_cohort         = as.character(nm),
+        time_at_risk          = tar,
+        requirements_at_entry = TRUE
+      )
+    }
+
+    p$denominator_cohort <- den
+    p$time_at_risk       <- NULL
+    if (flat) analyses[[k]] <- p else analyses[[k]]$parameters <- p
   }
 
   sap$cohorts <- cohorts
+  # coalesce_key() may have read these from the pre-0.2.0 `analyses` key.
+  sap$proposed_analyses <- analyses
+  sap$analyses <- NULL
   sap
+}
+
+# One generator call per (target, time at risk), so the name has to carry both.
+synthetic_denominator_name <- function(target, tar) {
+  win <- paste(format_bound_list(tar), collapse = "; ")
+  sprintf("%s denominator (%s days)", target, win)
+}
+
+# The anchored shape -> a list holding one [start, end] interval. Already-migrated
+# cohorts hold a list of pairs, which has no $start_offset_days and is left alone.
+migrate_time_at_risk <- function(tar) {
+  if (is.null(tar)) return(list(as_num_array(c(0, Inf))))   # the API's default
+  if (is.list(tar) && !is.null(tar$start_offset_days)) {
+    return(list(as_num_array(c(
+      as.numeric(tar$start_offset_days %||% 0),
+      as.numeric(tar$end_offset_days   %||% Inf)
+    ))))
+  }
+  tar
+}
+
+migrate_cohort <- function(ch) {
+  ch$kind <- canonical_cohort_kind(ch$kind %||% ch$role)
+  ch$role <- NULL
+
+  if (!is.null(ch$time_at_risk)) ch$time_at_risk <- migrate_time_at_risk(ch$time_at_risk)
+
+  # Age groups were free text ("18-64"); the API wants numeric pairs.
+  ages <- ch$age_groups
+  if (length(ages) && all(vapply(ages, function(a) length(a) == 1 && is.character(a[[1]]),
+                                 logical(1)))) {
+    ch$age_groups <- parse_bound_list(join_lines(ages))
+  }
+
+  # Neither generator takes a washout: it is estimateIncidence(outcomeWashout =),
+  # which the Incidence analysis now captures. There is nowhere to move a cohort
+  # washout to, so it is dropped rather than quietly misapplied.
+  ch$washout_days <- NULL
+
+  # 0.3.1 called the cohort date range the "study period".
+  if (is.null(ch$cohort_date_range_start)) ch$cohort_date_range_start <- ch$study_period_start
+  if (is.null(ch$cohort_date_range_end))   ch$cohort_date_range_end   <- ch$study_period_end
+  ch$study_period_start <- NULL
+  ch$study_period_end   <- NULL
+
+  # daysPriorObservation may be a vector; the old field was a single number.
+  if (is.null(ch$days_prior_observation) && !is.null(ch$prior_observation_days)) {
+    ch$days_prior_observation <- as_num_array(ch$prior_observation_days)
+  }
+  ch$prior_observation_days <- NULL
+
+  ch
 }

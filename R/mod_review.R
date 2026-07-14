@@ -42,7 +42,7 @@ review_server <- function(id, sap, output_dir, on_load,
       if (!length(found)) return(NULL)
       div(
         class = "alert alert-warning",
-        tags$strong(sprintf("%d analysis/analyses need attention before this SAP is complete:",
+        tags$strong(sprintf("%d item(s) need attention before this SAP is complete:",
                             length(found))),
         tags$ul(class = "mb-0 mt-2", lapply(found, function(p) {
           tags$li(tags$strong(p$name), tags$ul(lapply(p$messages, tags$li)))
@@ -69,7 +69,7 @@ review_server <- function(id, sap, output_dir, on_load,
       n <- length(problems())
       if (n > 0) {
         showNotification(
-          sprintf("Saved %s, but %d analysis/analyses still need attention.", basename(path), n),
+          sprintf("Saved %s, but %d item(s) still need attention.", basename(path), n),
           type = "warning", duration = 8
         )
       } else {

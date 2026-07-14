@@ -248,6 +248,14 @@ denominator_summary <- function(cohort) {
       "This cohort is not defined on the Cohorts tab, so nothing can be inherited from it."
     ))
   }
+  if (!is_denominator_kind(cohort$kind)) {
+    return(div(
+      class = "alert alert-warning py-2 small mb-3",
+      sprintf(paste("'%s' is not a denominator cohort, so it fixes no study period, age groups,",
+                    "sex or time at risk. Set its kind on the Cohorts tab."),
+              cohort$name %||% "This cohort")
+    ))
+  }
   fact <- function(label, value) {
     div(class = "col", tags$span(class = "text-muted", label), tags$br(), tags$strong(value))
   }
@@ -255,23 +263,27 @@ denominator_summary <- function(cohort) {
     x <- as.character(unlist(x %||% character(0)))
     if (!length(x) || !any(nzchar(x))) "—" else paste(x, collapse = ", ")
   }
-  tar <- cohort$time_at_risk
+  # Never unlist() a bound pair -- a JSON null upper bound would collapse.
+  bounds <- function(pairs, open = "Inf") {
+    if (!length(pairs)) return("—")
+    paste(format_bound_list(pairs, open = open), collapse = " | ")
+  }
   div(
     class = "border rounded bg-body-tertiary p-3 mb-3 small",
     div(class = "text-muted mb-2", "Inherited from this cohort — set it on the Cohorts tab:"),
     div(
       class = "row row-cols-auto gap-3",
-      fact("Study period", if (is.null(cohort$study_period_start) && is.null(cohort$study_period_end)) "—"
-           else paste(none(cohort$study_period_start), "to", none(cohort$study_period_end))),
-      fact("Age groups", none(cohort$age_groups)),
+      fact("Cohort date range",
+           if (is.null(cohort$cohort_date_range_start) && is.null(cohort$cohort_date_range_end)) "—"
+           else paste(none(cohort$cohort_date_range_start), "to",
+                      none(cohort$cohort_date_range_end))),
+      fact("Age groups", bounds(cohort$age_groups, open = AGE_MAX)),
       fact("Sex", none(cohort$sex)),
-      fact("Prior observation", if (is.null(cohort$prior_observation_days)) "—"
-           else paste(cohort$prior_observation_days, "days")),
-      fact("Time at risk", if (is.null(tar)) "—" else sprintf(
-        "%s from %s to %s from %s",
-        none(tar$start_offset_days), none(tar$start_anchor),
-        none(tar$end_offset_days), none(tar$end_anchor)
-      ))
+      fact("Prior observation", paste(none(cohort$days_prior_observation), "days")),
+      # Only a target denominator has one; a plain denominator contributes all
+      # observed time, so there is nothing to show.
+      if (identical(canonical_cohort_kind(cohort$kind), "target_denominator"))
+        fact("Time at risk (days from target entry)", bounds(cohort$time_at_risk))
     )
   )
 }
@@ -290,10 +302,10 @@ denominator_summary <- function(cohort) {
 # that is denominator_summary()'s problem to report, not this one's.
 validate_strata_against <- function(groups, cohort) {
   if (!length(groups) || is.null(cohort)) return(character(0))
-  errs      <- character(0)
-  declared  <- cohort_strata_variables(cohort)
-  sex       <- as.character(cohort$sex %||% "Both")
-  ages      <- as.character(unlist(cohort$age_groups %||% character(0)))
+  errs     <- character(0)
+  declared <- cohort_strata_variables(cohort)
+  sex      <- as.character(unlist(cohort$sex %||% "Both"))
+  n_ages   <- length(cohort$age_groups %||% list())
 
   for (v in unique(as.character(unlist(groups)))) {
     if (!v %in% declared) {
@@ -302,11 +314,15 @@ validate_strata_against <- function(groups, cohort) {
         v, if (length(declared)) paste(declared, collapse = ", ") else "none"))
       next
     }
-    if (identical(v, "sex") && !identical(sex, "Both")) {
+    # sex = "Both" generates one cohort holding both sexes, which can be split.
+    # sex = c("Male", "Female") generates two single-sex cohorts, neither of which
+    # has a sex left to vary.
+    if (identical(v, "sex") && !"Both" %in% sex) {
       errs <- c(errs, sprintf(
-        "Cannot stratify by sex: the denominator cohort is restricted to %s.", sex))
+        "Cannot stratify by sex: the denominator cohort is restricted to %s.",
+        paste(sex, collapse = " and ")))
     }
-    if (identical(v, "age_group") && length(ages) < 2) {
+    if (identical(v, "age_group") && n_ages < 2) {
       errs <- c(errs,
         "Cannot stratify by age_group: the denominator cohort defines fewer than two age groups.")
     }

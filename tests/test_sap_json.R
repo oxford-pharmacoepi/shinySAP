@@ -15,7 +15,7 @@ library(bslib)
 source("R/utils.R")
 source("R/dynamic_items.R")
 source("R/analysis_registry.R")
-source("R/mod_cohorts.R")     # cohort kinds and cohort_by_name(), which validators use
+source("R/cohort_kinds.R")    # cohort kind registry; the analysis validators read it
 for (f in sort(list.files("R", pattern = "^analysis_type_.*\\.R$", full.names = TRUE))) source(f)
 
 failures <- 0
@@ -280,10 +280,34 @@ check("prevalence: prefiller recovers the prevalence type",
       identical(prev$pf("prevalence_type"), "Point prevalence"))
 
 # Cohort kinds -----------------------------------------------------------------
-# 0.3.0 replaced `role` (Target / Comparator / ...) with `kind`.
+# 0.3.0 replaced `role` (Target / Comparator / ...) with `kind`. Each kind now
+# carries only the arguments its generator actually takes.
 
-check("cohort kind: an old role is aliased",
-      identical(canonical_cohort_kind("Target"), "target_denominator"))
+# The cohort index as cohorts$by_name() hands it to a validator: keyed by name,
+# with the JSON shapes (sex a vector, age_groups a list of numeric pairs).
+#
+# Note the target cohort and the target denominator are separate entries. They are
+# different objects: the first is defined by entry criteria, the second is
+# generated from it by generateTargetDenominatorCohortSet().
+cohorts_idx <- list(
+  "Metformin new users"   = list(kind = "target", entry_events = list("First dispensation")),
+  "Metformin denominator" = list(kind = "target_denominator",
+                                 target_cohort = "Metformin new users",
+                                 time_at_risk = list(c(0, Inf)), sex = list("Both"),
+                                 age_groups = list(c(0, 17), c(18, 64)),
+                                 strata_variables = list("age_group", "sex")),
+  "Men only"              = list(kind = "denominator", sex = list("Male"),
+                                 age_groups = list(c(18, 64)),
+                                 strata_variables = list("age_group", "sex")),
+  "Lactic acidosis"       = list(kind = "outcome", sex = list("Both"))
+)
+
+# An old Target cohort is a PLAIN cohort, not a generated denominator -- mapping it
+# to one would drop its entry events, which that kind's block does not carry.
+check("cohort kind: an old Target role becomes a plain target cohort",
+      identical(canonical_cohort_kind("Target"), "target"))
+check("cohort kind: a target cohort is not a denominator",
+      !is_denominator_kind("target") && is_denominator_kind("target_denominator"))
 check("cohort kind: a current kind is left alone",
       identical(canonical_cohort_kind("denominator"), "denominator"))
 check("cohort kind: NULL falls back", identical(canonical_cohort_kind(NULL), "denominator"))
@@ -293,20 +317,104 @@ check("cohort_by_name: a free-typed cohort nobody defined is NULL, not an error"
       is.null(cohort_by_name(list(A = list(kind = "outcome")), "Typed by hand")))
 check("cohort_by_name: an empty pick is NULL",
       is.null(cohort_by_name(list(A = list()), "")))
+check("cohort kind: an outcome falls back to the plain-cohort template",
+      identical(cohort_template("outcome"), COHORT_TEMPLATES[["other"]]))
+check("cohort kind: every registered key is an offered kind",
+      all(names(COHORT_TEMPLATES) %in% COHORT_KINDS))
+
+# Bounded intervals ------------------------------------------------------------
+# ageGroup = list(c(0,17), c(18,30)) and timeAtRisk = list(c(0,30), c(31,60)) are
+# both lists of numeric pairs, so they share one parser.
+
+check("bounds: a comma pair", identical(parse_bounds("0, 30"), c(0, 30)))
+check("bounds: a dash pair", identical(parse_bounds("18-64"), c(18, 64)))
+check("bounds: Inf as an upper bound", identical(parse_bounds("0, Inf"), c(0, Inf)))
+check("bounds: a trailing + is open-ended", identical(parse_bounds("65+"), c(65, Inf)))
+check("bounds: junk is dropped, not guessed at", is.null(parse_bounds("sometime")))
+check("bounds: a textarea becomes a list of pairs",
+      identical(lapply(parse_bound_list("0, 30\n31, 60"), as.numeric),
+                list(c(0, 30), c(31, 60))))
+
+# JSON has no Infinity. Under na = "null" jsonlite writes Inf as null, so an
+# unbounded upper bound is [0, null] -- and reading it back gives list(0, NULL).
+# unlist() would collapse that to a ONE-element pair, silently losing the bound.
+tar_json <- fromJSON(as.character(sap_json(list(t = parse_bound_list("0, Inf")))),
+                     simplifyVector = FALSE)$t
+check("bounds: an unbounded upper bound serialises as null",
+      grepl("[0, null]", as.character(sap_json(list(t = parse_bound_list("0, Inf")))),
+            fixed = TRUE))
+check("bounds: a null upper bound reads back as a two-element pair",
+      length(tar_json[[1]]) == 2 && is.null(tar_json[[1]][[2]]))
+check("bounds: bound_upper() resolves a null back to Inf",
+      is.infinite(bound_upper(tar_json[[1]])))
+check("bounds: an unbounded pair round-trips back to the textarea",
+      identical(format_bound_list(tar_json), "0, Inf"))
+check("bounds: a finite pair round-trips",
+      identical(format_bound_list(fromJSON(as.character(sap_json(
+        list(t = parse_bound_list("31, 60")))), simplifyVector = FALSE)$t), "31, 60"))
+
+# Cohort kind templates: mirror invariant, same as the analysis templates ------
+
+for (kind in names(COHORT_TEMPLATES)) {
+  tmpl <- COHORT_TEMPLATES[[kind]]
+  ids  <- template_field_ids(tmpl)
+  pk   <- unlist(tmpl$pickers, use.names = FALSE) %||% character(0)
+  check(sprintf("[cohort:%s] ui() renders at least one input", kind), length(ids) > 0)
+  check(sprintf("[cohort:%s] no id collides with a common field", kind),
+        length(intersect(ids, c(COHORT_COMMON_FIELDS, "remove", "box", "kind_fields"))) == 0)
+  check(sprintf("[cohort:%s] every declared picker is actually rendered", kind), all(pk %in% ids))
+
+  faked <- stats::setNames(lapply(ids, function(i) "1"), ids)
+  flat  <- tmpl$flatten(fromJSON(as.character(sap_json(tmpl$collect(faked))),
+                                 simplifyVector = FALSE))
+  missing <- setdiff(ids, names(flat))
+  check(sprintf("[cohort:%s] every rendered input survives collect -> JSON -> flatten%s", kind,
+                if (length(missing)) paste0(" (lost: ", paste(missing, collapse = ", "), ")") else ""),
+        length(missing) == 0)
+}
+
+# Neither generator takes a washout: it is estimateIncidence(outcomeWashout = ),
+# which the Incidence analysis captures. And a plain denominator has no
+# timeAtRisk -- only generateTargetDenominatorCohortSet() does.
+for (kind in names(COHORT_TEMPLATES)) {
+  keys <- names(COHORT_TEMPLATES[[kind]]$collect(list()))
+  check(sprintf("[cohort:%s] carries no washout", kind), !"washout_days" %in% keys)
+}
+check("cohort: a plain denominator has no time at risk",
+      !"time_at_risk" %in% names(COHORT_TEMPLATES[["denominator"]]$collect(list())))
+check("cohort: a target denominator does have a time at risk",
+      "time_at_risk" %in% names(COHORT_TEMPLATES[["target_denominator"]]$collect(list())))
+check("cohort: an outcome cohort carries none of the generator arguments",
+      length(intersect(names(COHORT_TEMPLATES[["other"]]$collect(list())),
+                       c("age_groups", "sex", "time_at_risk", "days_prior_observation"))) == 0)
+check("cohort: the target denominator's block is exactly the generator's extra args",
+      all(c("target_cohort", "time_at_risk", "requirements_at_entry") %in%
+            names(COHORT_TEMPLATES[["target_denominator"]]$collect(list()))))
+
+# Cohort validators -------------------------------------------------------------
+
+TD <- COHORT_TEMPLATES[["target_denominator"]]
+td_ok <- list(name = "TD", kind = "target_denominator", target_cohort = "Metformin new users",
+              time_at_risk = list(c(0, 30)), sex = list("Both"), age_groups = list(c(0, 150)))
+check("cohort validate: a well-formed target denominator has no problems",
+      length(TD$validate(td_ok, cohorts_idx)) == 0)
+check("cohort validate: a target denominator must name its target cohort",
+      any(grepl("must name the target cohort",
+                TD$validate(within(td_ok, target_cohort <- NA), cohorts_idx))))
+check("cohort validate: the target cannot be another denominator",
+      any(grepl("not another denominator",
+                TD$validate(within(td_ok, target_cohort <- "Men only"), cohorts_idx))))
+check("cohort validate: time at risk cannot end before it starts",
+      any(grepl("ends before it starts",
+                TD$validate(within(td_ok, time_at_risk <- list(c(30, 0))), cohorts_idx))))
+check("cohort validate: time at risk must have at least one interval",
+      any(grepl("at least one interval",
+                TD$validate(within(td_ok, time_at_risk <- list()), cohorts_idx))))
 
 # Template validators ----------------------------------------------------------
 
 INC <- ANALYSIS_TEMPLATES[["Incidence"]]
-cohorts_idx <- list(
-  "Metformin new users" = list(kind = "target_denominator", sex = "Both",
-                               age_groups = list("0-17", "18-64"),
-                               strata_variables = list("age_group", "sex")),
-  "Men only"            = list(kind = "denominator", sex = "Male",
-                               age_groups = list("18-64"),
-                               strata_variables = list("age_group", "sex")),
-  "Lactic acidosis"     = list(kind = "outcome", sex = "Both")
-)
-ok_params <- list(denominator_cohort = "Metformin new users",
+ok_params <- list(denominator_cohort = "Metformin denominator",
                   estimand = list(outcome_washout = 365, repeated_events = TRUE,
                                   strata = list(list("sex"))))
 
@@ -326,6 +434,11 @@ check("validate: a well-formed incidence analysis has no problems",
 check("validate: an outcome cohort cannot be the denominator",
       any(grepl("denominator or target-denominator",
                 problems(with_params(denominator_cohort = "Lactic acidosis")))))
+# The trap the migration exists to avoid: a target cohort is the thing a
+# denominator is generated FROM, not a denominator itself.
+check("validate: a target cohort cannot be the denominator either",
+      any(grepl("denominator or target-denominator",
+                problems(with_params(denominator_cohort = "Metformin new users")))))
 check("validate: an unset washout is reported",
       any(grepl("stated explicitly",
                 problems(with_params(estimand = list(repeated_events = FALSE))))))
@@ -386,38 +499,90 @@ check("migration never overwrites a denominator the file already has",
         ))("denominator_cohort"),
         "Real denominator"))
 
-# 0.3.0 moved time at risk from the analysis onto the cohort. A template cannot
-# do that (it can only rewrite its own analysis), so migrate_sap() does it before
-# any section loads.
+# Before 0.3.2 an analysis named a plain target cohort as its denominator and
+# carried its own time at risk. IncidencePrevalence has no such object: the
+# denominator is a cohort set generated FROM the target, with timeAtRisk as one of
+# the generator's arguments. migrate_sap() synthesises the missing denominator --
+# a template cannot, because an analysis can only rewrite itself, not add a cohort.
 old_sap <- list(
-  cohorts = list(list(name = "Metformin new users", role = "Target"),
-                 list(name = "Untouched", role = "Outcome")),
+  cohorts = list(
+    list(name = "Metformin new users", role = "Target",
+         entry_events = list("First metformin dispensation"), concept_set = "cs_metformin"),
+    list(name = "Lactic acidosis", role = "Outcome")
+  ),
   proposed_analyses = list(list(
     name = "Legacy incidence", analysis_type = "Incidence rate",
-    target_cohort = "Metformin new users",
-    time_at_risk = list(start_offset_days = 7, start_anchor = "cohort start")
+    target_cohort = "Metformin new users", outcome_cohort = "Lactic acidosis",
+    time_at_risk = list(start_offset_days = 7, start_anchor = "cohort start",
+                        end_offset_days = 30, end_anchor = "cohort end")
   ))
 )
 migrated <- migrate_sap(old_sap)
-check("migrate_sap: time at risk lands on the denominator cohort",
-      identical(migrated$cohorts[[1]]$time_at_risk$start_offset_days, 7))
-check("migrate_sap: other cohorts are untouched",
-      is.null(migrated$cohorts[[2]]$time_at_risk))
-check("migrate_sap: the incidence template then drops the analysis-level copy",
-      is.null(INC$flatten(migrated$proposed_analyses[[1]])$time_at_risk))
-check("migrate_sap: never overwrites a time at risk the cohort already has",
-      identical(
-        migrate_sap(list(
-          cohorts = list(list(name = "C", time_at_risk = list(start_offset_days = 99))),
-          proposed_analyses = list(list(denominator_cohort = "C",
-                                        time_at_risk = list(start_offset_days = 7)))
-        ))$cohorts[[1]]$time_at_risk$start_offset_days, 99))
+den <- migrated$cohorts[[3]]
+
+check("migrate_sap: an old Target stays a PLAIN cohort, keeping its definition",
+      identical(migrated$cohorts[[1]]$kind, "target") &&
+        identical(unlist(migrated$cohorts[[1]]$entry_events), "First metformin dispensation"))
+check("migrate_sap: the missing target denominator is synthesised",
+      identical(den$kind, "target_denominator") &&
+        identical(den$target_cohort, "Metformin new users"))
+check("migrate_sap: the anchored time at risk becomes one [start, end] interval",
+      identical(as.numeric(den$time_at_risk[[1]]), c(7, 30)))
+check("migrate_sap: the analysis is repointed at the synthesised denominator",
+      identical(migrated$proposed_analyses[[1]]$denominator_cohort, den$name))
+check("migrate_sap: the analysis no longer carries a time at risk",
+      is.null(migrated$proposed_analyses[[1]]$time_at_risk))
+check("migrate_sap: unrelated cohorts are untouched",
+      identical(migrated$cohorts[[2]]$kind, "outcome") &&
+        is.null(migrated$cohorts[[2]]$time_at_risk))
+
+# Two analyses on the same target and the same window are one generator call, so
+# they must share one denominator -- but a different window is a different call.
+two <- migrate_sap(list(
+  cohorts = list(list(name = "T", role = "Target")),
+  proposed_analyses = list(
+    list(name = "A", target_cohort = "T",
+         time_at_risk = list(start_offset_days = 0, end_offset_days = 30)),
+    list(name = "B", target_cohort = "T",
+         time_at_risk = list(start_offset_days = 0, end_offset_days = 30)),
+    list(name = "C", target_cohort = "T",
+         time_at_risk = list(start_offset_days = 31, end_offset_days = 60))
+  )
+))
+check("migrate_sap: analyses sharing a target and a window share one denominator",
+      identical(two$proposed_analyses[[1]]$denominator_cohort,
+                two$proposed_analyses[[2]]$denominator_cohort))
+check("migrate_sap: a different window gets its own denominator",
+      !identical(two$proposed_analyses[[1]]$denominator_cohort,
+                 two$proposed_analyses[[3]]$denominator_cohort))
+check("migrate_sap: one target, two windows, two synthesised denominators",
+      length(two$cohorts) == 3)
+
 check("migrate_sap: an analysis naming an undefined cohort is a no-op, not an error",
-      identical(migrate_sap(list(
-        cohorts = list(list(name = "C")),
+      length(migrate_sap(list(
+        cohorts = list(list(name = "C", role = "Outcome")),
         proposed_analyses = list(list(denominator_cohort = "Nope",
                                       time_at_risk = list(start_offset_days = 7)))
-      ))$cohorts[[1]]$time_at_risk, NULL))
+      ))$cohorts) == 1)
+check("migrate_sap: an analysis already on a real denominator is left alone",
+      identical(migrate_sap(list(
+        cohorts = list(list(name = "D", kind = "denominator")),
+        proposed_analyses = list(list(denominator_cohort = "D"))
+      ))$proposed_analyses[[1]]$denominator_cohort, "D"))
+
+# Neither generator takes a washout, and there is nowhere to move a cohort one to.
+check("migrate_sap: an old cohort washout is dropped, not misapplied",
+      is.null(migrate_sap(list(
+        cohorts = list(list(name = "D", kind = "denominator", washout_days = 365))
+      ))$cohorts[[1]]$washout_days))
+check("migrate_sap: old free-text age groups become numeric pairs",
+      identical(as.numeric(migrate_sap(list(cohorts = list(list(
+        name = "D", kind = "denominator", age_groups = list("18-64", "65+")
+      ))))$cohorts[[1]]$age_groups[[1]]), c(18, 64)))
+check("migrate_sap: the old study period becomes the cohort date range",
+      identical(migrate_sap(list(cohorts = list(list(
+        name = "D", kind = "denominator", study_period_start = "2015-01-01"
+      ))))$cohorts[[1]]$cohort_date_range_start, "2015-01-01"))
 
 # Nothing a template collects may collide with a common key, or c() in load()
 # would silently prefer the common one.
