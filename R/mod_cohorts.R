@@ -26,10 +26,6 @@ cohort_item_ui <- function(id, prefill = NULL) {
       numericInput(ns("cohort_id"), "Cohort ID", value = pf("cohort_id", NULL), width = "100%")
     ),
     textAreaInput(ns("description"), "Description", pf("description"), rows = 2, width = "100%"),
-    # Marks this cohort as a sub-cohort of another (e.g. an age band of a
-    # denominator population); analyses use it to offer a cohort set's IDs.
-    entity_picker(ns("parent_cohort"), "Part of cohort set", pf("parent_cohort"),
-                  placeholder = "Parent cohort (optional)"),
     tags$hr(class = "my-3"),
     uiOutput(ns("kind_fields"))
   )
@@ -84,18 +80,15 @@ cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # pickers on a cohort card are fed by the cohort list itself.
     sync_pickers(session, function() cohort_template(kind_r())$pickers$cohorts %||% character(0),
                  cohort_names, base_pf)
-    # The parent picker sits in the common half, so it is synced for every kind.
-    sync_pickers(session, "parent_cohort", cohort_names, base_pf)
 
     data_r <- reactive({
       tmpl <- cohort_template(kind_r())
       c(
         list(
-          name          = blank_to_na(input$name),
-          kind          = kind_r(),
-          cohort_id     = input$cohort_id %||% NA,
-          parent_cohort = blank_to_na(input$parent_cohort),
-          description   = blank_to_na(input$description)
+          name        = blank_to_na(input$name),
+          kind        = kind_r(),
+          cohort_id   = input$cohort_id %||% NA,
+          description = blank_to_na(input$description)
         ),
         # collect() reads only its own kind's input ids, so values stranded by a
         # previously selected kind never reach the JSON.

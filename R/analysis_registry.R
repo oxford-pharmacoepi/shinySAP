@@ -188,6 +188,10 @@ register_analysis_template <- function(type, hint = NULL, ui, collect,
 # every cohort that names it as parent, labelled for a picker. A cohort without
 # an ID contributes nothing -- there is no ID to reference. One ID is not a set:
 # callers treat length < 2 as "no sub-cohorts".
+#
+# `parent_cohort` is no longer captured on the cohort card, so only an older SAP
+# still carries it; a cohort built now matches solely by its own name. The read is
+# kept so those older files still resolve their sub-cohort selections.
 subcohort_choices <- function(parent_name, cohorts) {
   parent_name <- as.character(parent_name %||% "")
   if (!nzchar(parent_name)) return(numeric(0))
