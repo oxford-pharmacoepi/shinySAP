@@ -322,7 +322,8 @@ R/mod_cdm_changes.R       Section: CDM Changes
 R/mod_cohorts.R           Section: Cohorts
 R/mod_analyses.R          Section: Proposed Analyses
 R/mod_review.R            Review, save, download, load
-tests/test_sap_json.R     Round-trip check on the JSON contract
+tests/testthat/           testthat suite: JSON contract, templates, migrations
+tests/testthat.R          runner (Rscript tests/testthat.R)
 output/                   Saved SAPs
 ```
 
@@ -331,6 +332,8 @@ re-rendered block, so adding or removing one never resets its siblings.
 
 ## Tests
 
+The suite needs `testthat` (`install.packages("testthat")`). From the repo root:
+
 ```sh
-Rscript tests/test_sap_json.R
+Rscript tests/testthat.R
 ```

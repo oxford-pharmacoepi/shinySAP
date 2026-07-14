@@ -31,16 +31,17 @@ jobs:
             any::shiny
             any::bslib
             any::jsonlite
+            any::testthat
 
-      # The contract tests only source part of R/; this catches syntax errors
+      # The test suite only sources part of R/; this catches syntax errors
       # in the module files and app.R too.
       - name: Parse all R sources
         run: |
           Rscript -e 'invisible(lapply(c("app.R", list.files("R", full.names = TRUE)), parse))
                       cat("all files parse\n")'
 
-      - name: Run JSON contract tests
-        run: Rscript tests/test_sap_json.R
+      - name: Run testthat suite
+        run: Rscript tests/testthat.R
 
       - name: Smoke test — the app starts and serves HTTP 200
         run: |
