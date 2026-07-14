@@ -46,7 +46,7 @@ JSON arrays even when they hold a single entry.
 
 ```json
 {
-  "sap_schema_version": "0.4.2",
+  "sap_schema_version": "0.4.3",
   "generated_at": "2026-07-09T14:02:11+0100",
   "study": {
     "title": "Metformin and lactic acidosis",
@@ -117,17 +117,18 @@ JSON arrays even when they hold a single entry.
       "analysis_type": "Incidence",
       "data_sources": ["CPRD GOLD"],
       "parameters": {
-        "denominator_cohort": "Metformin denominator",
-        "outcome_cohort": "Lactic acidosis",
-        "censor_cohort": null,
-        "estimand": {
-          "interval": ["years"],
-          "complete_database_intervals": true,
-          "outcome_washout": [365],
-          "repeated_events": false,
-          "strata": [["sex"], ["sex", "age_group"]],
-          "include_overall_strata": true
-        }
+        "denominatorTable": "Metformin denominator",
+        "outcomeTable": "Lactic acidosis",
+        "censorTable": null,
+        "denominatorCohortId": null,
+        "outcomeCohortId": null,
+        "censorCohortId": null,
+        "interval": ["years"],
+        "completeDatabaseIntervals": true,
+        "outcomeWashout": [365],
+        "repeatedEvents": false,
+        "strata": [["sex"], ["sex", "age_group"]],
+        "includeOverallStrata": true
       }
     }
   ]
@@ -193,13 +194,15 @@ counted in days from *target cohort entry* — there is no anchoring on cohort e
 which is why the pre-0.3.2 anchors could not survive the migration.
 
 **The Incidence `parameters` map 1:1 onto
-`IncidencePrevalence::estimateIncidence()`.** If a field is not one of that
-function's arguments, it is not part of an Incidence analysis. So there is no
-"rate per 1,000" and no denominator unit — those are presentation choices made
+`IncidencePrevalence::estimateIncidence()`** — the keys *are* the argument names,
+flat and in the function's own order, with no wrapper object. If a field is not one
+of that function's arguments, it is not part of an Incidence analysis. So there is
+no "rate per 1,000" and no denominator unit — those are presentation choices made
 downstream when the result is tabled — and no sensitivity-analysis list, because
-"re-run with a 30-day washout" is a second call, not an argument to this one. The
-three `*CohortId` arguments are absent too: a cohort's id belongs to the cohort,
-and the Cohorts tab already carries it.
+"re-run with a 30-day washout" is a second call, not an argument to this one. `cdm`
+is a runtime database handle, so it is the only argument absent. The three
+`*CohortId` arguments select which cohorts of a set to use; `null` (the default)
+means all of them.
 
 **`strata` is a list of variable groups**, naming columns on the denominator
 cohort: `[["sex"], ["sex", "age_group"]]` means one stratification by sex and
@@ -211,10 +214,10 @@ field on the cohort: the generator makes those two columns and no others, so the
 is nothing for an author to decide, and the strata picker on an analysis offers
 exactly them.
 
-**`outcome_washout` is a number of days**, matching
+**`outcomeWashout` is a number of days**, matching
 `estimateIncidence(outcomeWashout =)`, which takes a number and defaults to `Inf`.
 It is written as a **one-element numeric array**, for the same reason
-`time_at_risk` is a list of pairs: JSON has no `Infinity`, so `Inf` travels as
+`timeAtRisk` is a list of pairs: JSON has no `Infinity`, so `Inf` travels as
 `null` *inside* an array, leaving a bare `null` to keep its schema-wide meaning of
 "absent".
 
@@ -304,6 +307,20 @@ generator's own order: `target_cohort` → `targetCohortTable`, `time_at_risk` �
 argument actually takes. The input ids are the argument names too, so a field and
 the key it produces cannot drift apart. Older files still load: `migrate_cohort()`
 renames the old keys and folds the two date keys into the pair.
+
+`0.4.3` finished aligning **Incidence** the same way. `0.3.1` had matched the *set*
+of fields to `estimateIncidence()` but still wrote them snake_case and wrapped in
+an `estimand` object the function has no concept of. Now the keys are the argument
+names, flat and in signature order — `denominator_cohort` → `denominatorTable`,
+`outcome_cohort` → `outcomeTable`, `censor_cohort` → `censorTable`,
+`complete_database_intervals` → `completeDatabaseIntervals`, `outcome_washout` →
+`outcomeWashout`, `repeated_events` → `repeatedEvents`, `include_overall_strata` →
+`includeOverallStrata`, and `interval` / `strata` unchanged. The `estimand` wrapper
+is gone, and the three `*CohortId` arguments (`denominatorCohortId`,
+`outcomeCohortId`, `censorCohortId`; `null` = all cohorts in the set) are now
+present, matching the signature and the Prevalence template. The Incidence
+`flatten()` un-nests any old `estimand` and renames every field, so a pre-0.4.3
+file loads unchanged.
 
 Older files still load, and `migrate_sap()` in `R/utils.R` runs before any
 section does. Beyond the aliasing above, it repairs two things it cannot leave

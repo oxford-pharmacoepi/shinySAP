@@ -21,7 +21,12 @@ library(jsonlite)
 #       age_group and sex and nothing else, so they are fixed, not authored.
 # 0.4.2 named every denominator key after the generator argument it feeds, and
 #       folded the two date keys into the one cohortDateRange pair it takes.
-SAP_SCHEMA_VERSION <- "0.4.2"
+# 0.4.3 did the same for Incidence: its parameters are now flat and named exactly
+#       for estimateIncidence() (denominatorTable, outcomeTable, censorTable,
+#       *CohortId, interval, completeDatabaseIntervals, outcomeWashout,
+#       repeatedEvents, strata, includeOverallStrata), dropping the `estimand`
+#       wrapper and the snake_case keys.
+SAP_SCHEMA_VERSION <- "0.4.3"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")

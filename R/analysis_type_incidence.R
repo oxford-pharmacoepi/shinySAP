@@ -1,25 +1,24 @@
 # Analysis template: Incidence ------------------------------------------------
 #
-# `parameters` maps 1:1 onto IncidencePrevalence::estimateIncidence(). Nothing
-# else belongs here -- if a field is not one of its arguments, it is not part of
-# this analysis:
+# `parameters` maps 1:1 onto IncidencePrevalence::estimateIncidence(), key for
+# key and in the signature's order. If a field is not one of its arguments it is
+# not part of this analysis. The keys ARE the argument names -- no wrapper object,
+# no snake_case -- so the JSON reads as the call it describes:
 #
-#   denominator_cohort  -> denominatorTable       outcome_cohort -> outcomeTable
-#   censor_cohort       -> censorTable
-#   estimand$interval                    -> interval
-#   estimand$complete_database_intervals -> completeDatabaseIntervals
-#   estimand$outcome_washout             -> outcomeWashout
-#   estimand$repeated_events             -> repeatedEvents
-#   estimand$strata                      -> strata
-#   estimand$include_overall_strata      -> includeOverallStrata
+#   estimateIncidence(cdm, denominatorTable, outcomeTable, censorTable,
+#     denominatorCohortId, outcomeCohortId, censorCohortId, interval,
+#     completeDatabaseIntervals, outcomeWashout, repeatedEvents, strata,
+#     includeOverallStrata)
 #
-# denominatorCohortId / outcomeCohortId / censorCohortId are deliberately absent:
-# a cohort's id is a property of the cohort, and the Cohorts tab already carries
-# it. Restating it per analysis would only let the two drift apart.
+# `cdm` is a runtime database handle, not a plan field, so it is the only argument
+# absent. The three *CohortId arguments select which cohorts of a denominator /
+# outcome / censor SET to use; null means "all", which is the estimator's own
+# default and the usual case. They are filled by the subcohort pickers (see
+# `subcohorts` below), exactly as the Prevalence template fills its own.
 #
-# Everything the cohort already fixes -- study period, age groups, sex, prior
-# observation, time at risk -- is inherited, not restated. denominator_summary_ui()
-# echoes it read-only.
+# Everything the denominator cohort already fixes -- date range, age groups, sex,
+# prior observation, time at risk -- is inherited, not restated here.
+# denominator_summary_ui() echoes it read-only, and lists the cohort set it spans.
 
 register_analysis_template(
   "Incidence",
@@ -29,16 +28,22 @@ register_analysis_template(
   ui = function(ns, pf) tagList(
     layout_columns(
       col_widths = c(6, 6),
-      entity_picker(ns("denominator_cohort"), "Denominator cohort", pf("denominator_cohort"),
+      entity_picker(ns("denominatorTable"), "Denominator cohort", pf("denominatorTable"),
                     placeholder = "Population at risk"),
-      entity_picker(ns("outcome_cohort"), "Outcome cohort", pf("outcome_cohort"),
+      entity_picker(ns("outcomeTable"), "Outcome cohort", pf("outcomeTable"),
                     placeholder = "Event being counted")
     ),
 
-    # Read-only echo of what the selected denominator already fixes.
+    # Read-only echo of what the selected denominator already fixes, and of the
+    # cohorts its cohort set generates -- the incidence runs on every one of them.
     denominator_summary_ui(ns, pf),
 
-    # --- Risk set definition (the estimand) ---
+    # Filled by the analyses module (see `subcohorts` below) only when the picked
+    # cohort spans a set; all of the set's IDs selected by default.
+    uiOutput(ns("denominatorCohortId_ui")),
+    uiOutput(ns("outcomeCohortId_ui")),
+
+    # --- Risk set definition ---
     layout_columns(
       col_widths = c(4, 4, 4),
       # outcomeWashout is a number of days, so it is typed rather than picked from
@@ -50,110 +55,148 @@ register_analysis_template(
       # stated", so unbounded is a checkbox. See parse_washout() for the three
       # states the pair encodes.
       div(
-        numericInput(ns("outcome_washout"), "Outcome washout (days)",
-                     value = washout_days_value(pf("outcome_washout", NULL)),
+        numericInput(ns("outcomeWashout"), "Outcome washout (days)",
+                     value = washout_days_value(pf("outcomeWashout", NULL)),
                      min = 0, step = 1, width = "100%"),
-        checkboxInput(ns("outcome_washout_unbounded"), "Unbounded (one event per person)",
-                      value = isTRUE(pf("outcome_washout_unbounded", FALSE))),
+        checkboxInput(ns("outcomeWashout_unbounded"), "Unbounded (one event per person)",
+                      value = isTRUE(pf("outcomeWashout_unbounded", FALSE))),
         div(class = "form-text", "Leave both blank and the SAP is incomplete.")
       ),
-      checkboxInput(ns("repeated_events"), "Count repeated events",
-                    value = isTRUE(pf("repeated_events", FALSE))),
-      entity_picker(ns("censor_cohort"), "Censoring cohort", pf("censor_cohort"),
+      checkboxInput(ns("repeatedEvents"), "Count repeated events",
+                    value = isTRUE(pf("repeatedEvents", FALSE))),
+      entity_picker(ns("censorTable"), "Censoring cohort", pf("censorTable"),
                     placeholder = "None (optional)")
     ),
+    uiOutput(ns("censorCohortId_ui")),
 
     # --- Time granularity ---
     layout_columns(
       col_widths = c(6, 6),
       selectizeInput(ns("interval"), "Interval", INTERVALS, multiple = TRUE,
                      selected = pf("interval", "years"), width = "100%"),
-      checkboxInput(ns("complete_database_intervals"), "Require complete intervals",
-                    value = isTRUE(pf("complete_database_intervals", TRUE)))
+      checkboxInput(ns("completeDatabaseIntervals"), "Require complete intervals",
+                    value = isTRUE(pf("completeDatabaseIntervals", TRUE)))
     ),
 
     # --- Stratification (columns on the denominator cohort) ---
     strata_ui(ns, pf)
   ),
 
-  collect = function(input) list(
-    denominator_cohort = blank_to_na(input$denominator_cohort),
-    outcome_cohort     = blank_to_na(input$outcome_cohort),
-    censor_cohort      = blank_to_na(input$censor_cohort),
-
-    estimand = c(
-      list(
-        interval                    = as_array(input$interval),
-        complete_database_intervals = isTRUE(input$complete_database_intervals),
-        outcome_washout             = parse_washout(input$outcome_washout,
-                                                    input$outcome_washout_unbounded),
-        repeated_events             = isTRUE(input$repeated_events)
-      ),
-      strata_collect(input)
+  # Key order follows estimateIncidence()'s signature. An unset *CohortId is NA --
+  # which serialises to null, the argument's own default of "all cohorts".
+  collect = function(input) {
+    denominator_ids <- as.numeric(unlist(input$denominatorCohortId))
+    outcome_ids     <- as.numeric(unlist(input$outcomeCohortId))
+    censor_ids      <- as.numeric(unlist(input$censorCohortId))
+    list(
+      denominatorTable          = blank_to_na(input$denominatorTable),
+      outcomeTable              = blank_to_na(input$outcomeTable),
+      censorTable               = blank_to_na(input$censorTable),
+      denominatorCohortId       = if (length(denominator_ids)) I(denominator_ids) else NA,
+      outcomeCohortId           = if (length(outcome_ids)) I(outcome_ids) else NA,
+      censorCohortId            = if (length(censor_ids)) I(censor_ids) else NA,
+      interval                  = as_array(input$interval),
+      completeDatabaseIntervals = isTRUE(input$completeDatabaseIntervals),
+      outcomeWashout            = parse_washout(input$outcomeWashout,
+                                                input$outcomeWashout_unbounded),
+      repeatedEvents            = isTRUE(input$repeatedEvents),
+      strata                    = parse_strata(input$strata),
+      # TRUE until the checkbox reports otherwise -- the estimator's own default,
+      # and inert anyway while strata are empty. The camelCase key is the JSON
+      # convention; the input id is the shared strata block's.
+      includeOverallStrata      = isTRUE(input$include_overall_strata %||% TRUE)
     )
-  ),
+  },
 
   pickers = list(
-    cohorts = c("denominator_cohort", "outcome_cohort", "censor_cohort"),
+    cohorts = c("denominatorTable", "outcomeTable", "censorTable"),
     # Choices are the columns the selected denominator carries (STRATA_VARIABLES),
     # not the cohort list -- see analysis_item_server().
     strata  = "strata"
   ),
 
+  denominator = "denominatorTable",
+
+  subcohorts = list(
+    denominatorCohortId = list(from = "denominatorTable", label = "Denominator cohort IDs"),
+    outcomeCohortId     = list(from = "outcomeTable",     label = "Outcome cohort IDs"),
+    censorCohortId      = list(from = "censorTable",      label = "Censor cohort IDs")
+  ),
+
   validate = function(p, cohorts) {
     errs <- character()
     # The pickers take free text, so the denominator may name a cohort nobody has
-    # written down -- cohorts[[name]] would error on that. NULL is a normal answer
-    # here, and denominator_summary() already flags it on the card.
-    d <- cohort_by_name(cohorts, p$denominator_cohort)
+    # written down -- cohort_by_name() returns NULL for that, which is normal here,
+    # and denominator_summary() already flags it on the card.
+    d <- cohort_by_name(cohorts, p$denominatorTable)
 
     if (!is.null(d) && !d$kind %in% c("denominator", "target_denominator"))
       errs <- c(errs, "Denominator must be a denominator or target-denominator cohort.")
 
     # Order matters: an unset washout is not a *finite* one, so check it first or
     # an unset washout would also trip the repeated-events rule.
-    w <- washout_days(p$estimand$outcome_washout)
+    w <- washout_days(p$outcomeWashout)
     if (is.null(w)) {
       errs <- c(errs, "Outcome washout must be stated explicitly; there is no safe default.")
-    } else if (isTRUE(p$estimand$repeated_events) && is.infinite(w)) {
+    } else if (isTRUE(p$repeatedEvents) && is.infinite(w)) {
       errs <- c(errs, "Repeated events requires a finite outcome washout.")
     }
 
-    errs <- c(errs, validate_strata_against(p$estimand$strata, d))
+    errs <- c(errs, validate_strata_against(p$strata, d))
     errs
   },
 
-  # flatten() undoes collect()'s nesting so pf() can find each input again, and
-  # migrates an older file onto the current inputs. Every key collect() nests MUST
-  # be unpacked here or it silently comes back blank on load -- the mirror check
-  # in tests/test_sap_json.R fails if one is missed.
+  # flatten() carries an older file onto the current inputs. Before 0.4.3 the
+  # Incidence parameters were snake_case and nested under an `estimand` object that
+  # estimateIncidence() has no concept of; before that the generic form called the
+  # denominator `target_cohort` and the analysis carried its own time at risk. Old
+  # keys are read with [[, never $: on a file that lacks one, $ would partial-match
+  # a longer name and migrate the wrong value.
   flatten = function(p) {
-    p <- c(p, p$estimand %||% list())
-    p$estimand <- NULL
+    # Un-nest the pre-0.4.3 `estimand` wrapper: its fields sat one level down.
+    est <- p[["estimand"]]
+    if (!is.null(est)) {
+      for (k in names(est)) if (is.null(p[[k]])) p[[k]] <- est[[k]]
+      p$estimand <- NULL
+    }
 
-    # The JSON holds ONE value; the form holds TWO inputs, because a number field
-    # cannot show Inf and the checkbox carries it instead. Read the flag off the
-    # JSON first -- overwriting outcome_washout would destroy the Inf we need it
-    # for. washout_days() also reads the pre-0.3.2 shapes here: the "unbounded"
-    # sentinel string, and a bare number rather than an array.
-    w <- p$outcome_washout
-    p$outcome_washout_unbounded <- washout_is_unbounded(w)
+    # Rename the pre-0.4.3 snake_case keys onto the input ids, which for every
+    # field but the overall-strata checkbox are the argument names themselves.
+    ren <- c(denominator_cohort = "denominatorTable", target_cohort = "denominatorTable",
+             outcome_cohort = "outcomeTable", censor_cohort = "censorTable",
+             complete_database_intervals = "completeDatabaseIntervals",
+             outcome_washout = "outcomeWashout", repeated_events = "repeatedEvents")
+    for (old in names(ren)) {
+      new <- ren[[old]]
+      if (is.null(p[[new]]) && !is.null(p[[old]])) p[[new]] <- p[[old]]
+      p[[old]] <- NULL
+    }
+
+    # The overall-strata checkbox is the shared block's input, whose id stays
+    # snake_case; the JSON key is camelCase. A new file carries includeOverallStrata
+    # and needs it copied onto the input id; an old file already used the input id.
+    if (is.null(p$include_overall_strata))
+      p$include_overall_strata <- p[["includeOverallStrata"]]
+    if (is.null(p$include_overall_strata)) p$include_overall_strata <- TRUE
+
+    # The JSON holds ONE washout value; the form holds TWO inputs, because a number
+    # field cannot show Inf and the checkbox carries it instead. Read the flag off
+    # the value first -- overwriting it would destroy the Inf we need it for.
+    # washout_days() also reads the pre-0.3.2 shapes: the "unbounded" sentinel
+    # string, and a bare number rather than a one-element array.
+    w <- p$outcomeWashout
+    p$outcomeWashout_unbounded <- washout_is_unbounded(w)
     # p[...] <- list(NULL) keeps the key with a NULL value; p$x <- NULL would DELETE
-    # it. That matters because `$` partial-matches on lists: with outcome_washout
-    # gone, p$outcome_washout would silently resolve to outcome_washout_unbounded
-    # and hand the number field a TRUE.
-    p["outcome_washout"] <- list(washout_days_value(w))
+    # it, and `$` partial matching would then resolve p$outcomeWashout to
+    # outcomeWashout_unbounded and hand the number field a TRUE.
+    p["outcomeWashout"] <- list(washout_days_value(w))
 
     # The strata multi-select holds one token per group, crossed vars comma-joined.
-    p$strata <- strata_tokens(p$strata)
+    # strata_tokens() also reads the legacy `stratifications` shape.
+    p$strata <- strata_tokens(p[["strata"]] %||% p[["stratifications"]])
 
-    # Before 0.3.0 the generic form called the denominator `target_cohort`.
-    if (is.null(p$denominator_cohort)) p$denominator_cohort <- p$target_cohort
-
-    # 0.3.0 moved time at risk from the analysis onto the cohort. It cannot be
-    # promoted from here -- an analysis prefill cannot write to a cohort -- so
-    # migrate_sap() in R/utils.R does it before any section loads, and by the time
-    # we get here there is nothing left to carry.
+    # 0.3.0 moved time at risk onto the denominator cohort; migrate_sap() does that
+    # before any section loads, so by here there is nothing left to carry.
     p$time_at_risk <- NULL
 
     # 0.3.1 dropped these: rate-per-N and the denominator unit are presentation

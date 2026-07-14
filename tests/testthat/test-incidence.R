@@ -2,59 +2,82 @@
 # strata encoding, and the outcome washout in all its states.
 
 inc <- round_trip(ANALYSIS_TEMPLATES[["Incidence"]], list(
-  denominator_cohort          = "Metformin new users",
-  outcome_cohort              = "Lactic acidosis",
-  censor_cohort               = "",
-  outcome_washout             = 365,
-  outcome_washout_unbounded   = FALSE,
-  repeated_events             = TRUE,
-  interval                    = c("years", "overall"),
-  complete_database_intervals = TRUE,
-  strata                      = c("sex", "sex, age_group"),
-  include_overall_strata      = TRUE
+  denominatorTable          = "Metformin new users",
+  outcomeTable              = "Lactic acidosis",
+  censorTable               = "",
+  outcomeWashout            = 365,
+  outcomeWashout_unbounded  = FALSE,
+  repeatedEvents            = TRUE,
+  interval                  = c("years", "overall"),
+  completeDatabaseIntervals = TRUE,
+  strata                    = c("sex", "sex, age_group"),
+  include_overall_strata    = TRUE
 ))
 
-test_that("incidence: the estimand nests",
-          expect_identical(washout_days(inc$json$estimand$outcome_washout), 365))
+# `parameters` maps 1:1 onto estimateIncidence(): the keys ARE the argument names,
+# flat and in signature order, with no `estimand` wrapper the function has no
+# concept of. cdm is a runtime handle, so it is the only argument absent.
+test_that("incidence: parameters are exactly estimateIncidence()'s arguments, in order",
+          expect_identical(
+            names(inc$json),
+            c("denominatorTable", "outcomeTable", "censorTable",
+              "denominatorCohortId", "outcomeCohortId", "censorCohortId",
+              "interval", "completeDatabaseIntervals", "outcomeWashout",
+              "repeatedEvents", "strata", "includeOverallStrata")))
+test_that("incidence: nothing is nested under an estimand wrapper", {
+  expect_null(inc$json$estimand)
+  expect_false("estimand" %in% names(inc$json))
+})
+test_that("incidence: no snake_case parameter survives",
+          expect_false(any(grepl("_", setdiff(names(inc$json), "")))))
+test_that("incidence: the washout is a flat outcomeWashout, read back to the field", {
+  expect_identical(washout_days(inc$json$outcomeWashout), 365)
+  expect_identical(inc$pf("outcomeWashout"), 365)
+})
 test_that("incidence: a ticked checkbox is true, not null",
-          expect_identical(inc$json$estimand$repeated_events, TRUE))
-test_that("incidence: flatten un-nests the estimand back onto the inputs",
-          expect_identical(inc$pf("outcome_washout"), 365))
-test_that("incidence: flatten leaves no nested blocks in the prefill",
-          expect_null(inc$flat$estimand))
+          expect_identical(inc$json$repeatedEvents, TRUE))
 test_that("incidence: a multi-select interval stays an array",
-          expect_identical(unlist(inc$json$estimand$interval), c("years", "overall")))
+          expect_identical(unlist(inc$json$interval), c("years", "overall")))
 test_that("incidence: prefiller recovers a picker value",
-          expect_identical(inc$pf("denominator_cohort"), "Metformin new users"))
+          expect_identical(inc$pf("denominatorTable"), "Metformin new users"))
 
-# `parameters` maps 1:1 onto estimateIncidence(). Anything the function does not
-# take is not part of this analysis: rate-per-N and the denominator unit are
-# presentation choices made downstream, and a sensitivity analysis is a second
-# call, not an argument to this one.
+# The three *CohortId arguments select which cohorts of a set to use; null is the
+# estimator's own default of "all". Unset, they serialise as null -- present and
+# faithful, not omitted.
+test_that("incidence: the three cohort-id arguments are present and null by default", {
+  for (k in c("denominatorCohortId", "outcomeCohortId", "censorCohortId")) {
+    expect_true(k %in% names(inc$json), info = k)
+    expect_null(inc$json[[k]], info = k)
+  }
+})
+test_that("incidence: explicit cohort ids serialise as a numeric array", {
+  ids <- round_trip(ANALYSIS_TEMPLATES[["Incidence"]],
+                    list(denominatorTable = "D", denominatorCohortId = c("1", "2")))
+  expect_identical(as.numeric(unlist(ids$json$denominatorCohortId)), c(1, 2))
+})
+
+# `parameters` takes nothing estimateIncidence() does not: rate-per-N and the
+# denominator unit are presentation choices made downstream, and a sensitivity
+# analysis is a second call, not an argument to this one.
 test_that("incidence: no reporting-only fields leak into parameters",
           expect_false(any(c("reporting", "denominator_unit", "rate_multiplier",
                              "sensitivity_analyses", "stratifications",
                              "time_at_risk") %in% names(inc$json))))
-test_that("incidence: the estimand is exactly estimateIncidence()'s arguments",
-          expect_true(setequal(names(inc$json$estimand),
-                               c("interval", "complete_database_intervals", "outcome_washout",
-                                 "repeated_events", "strata", "include_overall_strata"))))
-test_that("incidence: names exactly the three cohort tables the function takes",
-          expect_true(setequal(setdiff(names(inc$json), "estimand"),
-                               c("denominator_cohort", "outcome_cohort", "censor_cohort"))))
 
 # strata is a list of variable GROUPS: list("sex", c("sex","age_group")) means one
 # stratification by sex and another by the cross of the two. A comma in a token
 # crosses its variables.
-test_that("strata: each token is one group", expect_length(inc$json$estimand$strata, 2))
+test_that("strata: each token is one group", expect_length(inc$json$strata, 2))
 test_that("strata: a plain token is a one-variable group",
-          expect_identical(unlist(inc$json$estimand$strata[[1]]), "sex"))
+          expect_identical(unlist(inc$json$strata[[1]]), "sex"))
 test_that("strata: a comma crosses the variables in one group",
-          expect_identical(unlist(inc$json$estimand$strata[[2]]), c("sex", "age_group")))
+          expect_identical(unlist(inc$json$strata[[2]]), c("sex", "age_group")))
 test_that("strata: a single group still serialises as a list of arrays",
           expect_true(is.list(parse_strata("sex")[[1]]) || length(parse_strata("sex")[[1]]) == 1))
 test_that("strata: tokens round-trip back into the multi-select",
           expect_identical(inc$pf("strata"), c("sex", "sex, age_group")))
+test_that("strata: includeOverallStrata round-trips back to the checkbox input",
+          expect_true(inc$pf("include_overall_strata")))
 test_that("strata: no strata is an empty list, which is estimateIncidence()'s default",
           expect_identical(parse_strata(character(0)), list()))
 
@@ -112,42 +135,64 @@ test_that("washout: unset stays distinguishable from unbounded after a round tri
 INC_T <- ANALYSIS_TEMPLATES[["Incidence"]]
 
 test_that("washout: unbounded survives the full round trip", {
-  unb <- round_trip(INC_T, list(outcome_washout = NA, outcome_washout_unbounded = TRUE))
-  expect_true(washout_is_unbounded(unb$json$estimand$outcome_washout))
+  unb <- round_trip(INC_T, list(outcomeWashout = NA, outcomeWashout_unbounded = TRUE))
+  expect_true(washout_is_unbounded(unb$json$outcomeWashout))
   # A number field cannot show Inf, so it comes back blank with the box ticked.
-  expect_null(unb$pf("outcome_washout", NULL))
-  expect_true(unb$pf("outcome_washout_unbounded"))
+  expect_null(unb$pf("outcomeWashout", NULL))
+  expect_true(unb$pf("outcomeWashout_unbounded"))
 })
 test_that("washout: a finite washout round-trips back into the number field", {
-  fin <- round_trip(INC_T, list(outcome_washout = 365, outcome_washout_unbounded = FALSE))
-  expect_identical(fin$pf("outcome_washout"), 365)
-  expect_false(fin$pf("outcome_washout_unbounded"))
+  fin <- round_trip(INC_T, list(outcomeWashout = 365, outcomeWashout_unbounded = FALSE))
+  expect_identical(fin$pf("outcomeWashout"), 365)
+  expect_false(fin$pf("outcomeWashout_unbounded"))
 })
 test_that("washout: a 0-day washout round-trips and does not become 'unset'", {
-  zero <- round_trip(INC_T, list(outcome_washout = 0, outcome_washout_unbounded = FALSE))
-  expect_identical(zero$pf("outcome_washout"), 0)
-  expect_identical(washout_days(zero$json$estimand$outcome_washout), 0)
+  zero <- round_trip(INC_T, list(outcomeWashout = 0, outcomeWashout_unbounded = FALSE))
+  expect_identical(zero$pf("outcomeWashout"), 0)
+  expect_identical(washout_days(zero$json$outcomeWashout), 0)
 })
 test_that("washout: an unset washout leaves both inputs blank and stays null", {
-  none <- round_trip(INC_T, list(outcome_washout = NA, outcome_washout_unbounded = FALSE))
-  expect_null(none$json$estimand$outcome_washout)
-  expect_null(none$pf("outcome_washout", NULL))
-  expect_false(none$pf("outcome_washout_unbounded"))
+  none <- round_trip(INC_T, list(outcomeWashout = NA, outcomeWashout_unbounded = FALSE))
+  expect_null(none$json$outcomeWashout)
+  expect_null(none$pf("outcomeWashout", NULL))
+  expect_false(none$pf("outcomeWashout_unbounded"))
 })
 
 # Pre-0.3.2 files: the "unbounded" sentinel string, and a bare number rather than
-# a one-element array. Both have to reach the two inputs correctly.
+# a one-element array. Pre-0.4.3 files also nest it under `estimand`. All have to
+# reach the two inputs correctly.
 test_that("washout: the pre-0.3.2 'unbounded' sentinel still reads as Inf",
           expect_true(is.infinite(washout_days("unbounded"))))
 test_that("washout: a pre-0.3.2 bare number still reads",
           expect_identical(washout_days(365), 365))
-test_that("washout: an old sentinel ticks the checkbox and leaves the field blank", {
+test_that("washout: an old estimand-nested sentinel ticks the box, leaves the field blank", {
   old <- INC_T$flatten(list(estimand = list(outcome_washout = "unbounded")))
-  expect_true(old$outcome_washout_unbounded)
-  expect_null(old$outcome_washout)
+  expect_true(old$outcomeWashout_unbounded)
+  expect_null(old$outcomeWashout)
 })
-test_that("washout: an old bare number lands in the field with the box clear", {
+test_that("washout: an old estimand-nested number lands in the field with the box clear", {
   old <- INC_T$flatten(list(estimand = list(outcome_washout = 365)))
-  expect_identical(old$outcome_washout, 365)
-  expect_false(old$outcome_washout_unbounded)
+  expect_identical(old$outcomeWashout, 365)
+  expect_false(old$outcomeWashout_unbounded)
+})
+
+# A whole pre-0.4.3 analysis: snake_case keys nested under an `estimand` wrapper.
+# flatten() un-nests and renames every field onto the current flat camelCase
+# inputs, so a saved file from before the alignment loads without losing anything.
+test_that("incidence: a pre-0.4.3 estimand-nested analysis migrates onto the flat inputs", {
+  old <- list(
+    denominator_cohort = "Adults denom", outcome_cohort = "MI", censor_cohort = NA,
+    estimand = list(interval = I("years"), complete_database_intervals = TRUE,
+                    outcome_washout = parse_washout("365"), repeated_events = FALSE,
+                    strata = list(list("sex")), include_overall_strata = TRUE))
+  pf <- prefiller(INC_T$flatten(old))
+  expect_identical(pf("denominatorTable"), "Adults denom")
+  expect_identical(pf("outcomeTable"), "MI")
+  expect_identical(pf("outcomeWashout"), 365)
+  expect_identical(pf("strata"), "sex")
+  expect_true(pf("include_overall_strata"))
+  # The wrapper and the old snake_case keys are gone, not just shadowed.
+  flat <- INC_T$flatten(old)
+  expect_null(flat$estimand)
+  expect_null(flat$denominator_cohort)
 })

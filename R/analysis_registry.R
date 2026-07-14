@@ -56,7 +56,8 @@ PREVALENCE_LEVELS           <- c("person", "record")
 # Ids a template renders that are outputs, not inputs: they hold no value, so
 # they are exempt from the collect/flatten round-trip check in the tests. The
 # *_ui ids are the subcohort placeholders (see `subcohorts` below).
-DISPLAY_ONLY_IDS <- c("denominator_summary", "denominatorCohortId_ui", "outcomeCohortId_ui")
+DISPLAY_ONLY_IDS <- c("denominator_summary", "denominatorCohortId_ui", "outcomeCohortId_ui",
+                      "censorCohortId_ui")
 
 # IncidencePrevalence::estimateIncidence(interval =): more than one may be given,
 # and results are estimated for each.
@@ -319,11 +320,6 @@ strata_tokens <- function(groups) {
   if (!length(groups)) return(character(0))
   vapply(groups, function(g) paste(as.character(unlist(g)), collapse = ", "), character(1))
 }
-
-strata_collect <- function(input) list(
-  strata                 = parse_strata(input$strata),
-  include_overall_strata = isTRUE(input$include_overall_strata)
-)
 
 # The columns a denominator cohort actually carries, which is what an analysis
 # built on it may stratify by.

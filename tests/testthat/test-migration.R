@@ -15,14 +15,14 @@ legacy_pf   <- prefiller(legacy_tmpl$flatten(legacy))   # no `parameters` -> rea
 test_that("legacy: the old type name resolves to the Incidence template",
           expect_identical(legacy_tmpl, ANALYSIS_TEMPLATES[["Incidence"]]))
 test_that("legacy: target_cohort migrates to the denominator",
-          expect_identical(legacy_pf("denominator_cohort"), "Metformin new users"))
+          expect_identical(legacy_pf("denominatorTable"), "Metformin new users"))
 test_that("legacy: outcome_cohort survives",
-          expect_identical(legacy_pf("outcome_cohort"), "Lactic acidosis"))
+          expect_identical(legacy_pf("outcomeTable"), "Lactic acidosis"))
 test_that("migration never overwrites a denominator the file already has",
           expect_identical(
             prefiller(ANALYSIS_TEMPLATES[["Incidence"]]$flatten(
               list(denominator_cohort = "Real denominator", target_cohort = "Stale target")
-            ))("denominator_cohort"),
+            ))("denominatorTable"),
             "Real denominator"))
 
 # Before 0.3.2 an analysis named a plain target cohort as its denominator and
