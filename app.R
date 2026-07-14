@@ -19,7 +19,9 @@ library(jsonlite)
 #       (estimatePointPrevalence / estimatePeriodPrevalence).
 # 0.4.1 dropped the denominator's declared strata_variables: the generator makes
 #       age_group and sex and nothing else, so they are fixed, not authored.
-SAP_SCHEMA_VERSION <- "0.4.1"
+# 0.4.2 named every denominator key after the generator argument it feeds, and
+#       folded the two date keys into the one cohortDateRange pair it takes.
+SAP_SCHEMA_VERSION <- "0.4.2"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")

@@ -41,10 +41,10 @@ round_trip <- function(tmpl, input) {
 cohorts_idx <- list(
   "Metformin new users"   = list(kind = "target", entry_events = list("First dispensation")),
   "Metformin denominator" = list(kind = "target_denominator",
-                                 target_cohort = "Metformin new users",
-                                 time_at_risk = list(c(0, Inf)), sex = list("Both"),
-                                 age_groups = list(c(0, 17), c(18, 64))),
+                                 targetCohortTable = "Metformin new users",
+                                 timeAtRisk = list(c(0, Inf)), sex = list("Both"),
+                                 ageGroup = list(c(0, 17), c(18, 64))),
   "Men only"              = list(kind = "denominator", sex = list("Male"),
-                                 age_groups = list(c(18, 64))),
+                                 ageGroup = list(c(18, 64))),
   "Lactic acidosis"       = list(kind = "outcome", sex = list("Both"))
 )

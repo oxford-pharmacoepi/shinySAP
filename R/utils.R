@@ -159,14 +159,14 @@ migrate_sap <- function(sap) {
 
     if (is.na(index_of(den))) {
       cohorts[[length(cohorts) + 1]] <- list(
-        name                  = den,
-        kind                  = "target_denominator",
-        description           = sprintf(
+        name                = den,
+        kind                = "target_denominator",
+        description         = sprintf(
           paste0("Denominator generated from '%s'. Added when this SAP was read: ",
                  "before 0.3.2 the time at risk lived on the analysis."), nm),
-        target_cohort         = as.character(nm),
-        time_at_risk          = tar,
-        requirements_at_entry = TRUE
+        targetCohortTable   = as.character(nm),
+        timeAtRisk          = tar,
+        requirementsAtEntry = TRUE
       )
     }
 
@@ -201,17 +201,40 @@ migrate_time_at_risk <- function(tar) {
   tar
 }
 
+# Every key a denominator kind carries is now the generator argument's own name, so
+# a cohort read from an older file has to be renamed onto them here -- before
+# cohorts$load(), which builds the cards from these keys.
+#
+# Old keys are read with [[, never $: on a file that lacks one, $ partial-matches a
+# longer name (`cohort_date_range` would find `cohort_date_range_start`, and
+# `requirement` is a prefix of two different arguments) and would migrate the wrong
+# value.
 migrate_cohort <- function(ch) {
   ch$kind <- canonical_cohort_kind(ch$kind %||% ch$role)
   ch$role <- NULL
 
-  if (!is.null(ch$time_at_risk)) ch$time_at_risk <- migrate_time_at_risk(ch$time_at_risk)
+  # 0.4.2 renamed these onto generate(Target)DenominatorCohortSet()'s argument names.
+  renames <- c(
+    target_cohort            = "targetCohortTable",
+    time_at_risk             = "timeAtRisk",
+    requirements_at_entry    = "requirementsAtEntry",
+    age_groups               = "ageGroup",
+    days_prior_observation   = "daysPriorObservation",
+    requirement_interactions = "requirementInteractions"
+  )
+  for (old in names(renames)) {
+    new <- renames[[old]]
+    if (is.null(ch[[new]]) && !is.null(ch[[old]])) ch[[new]] <- ch[[old]]
+    ch[[old]] <- NULL
+  }
+
+  if (!is.null(ch$timeAtRisk)) ch$timeAtRisk <- migrate_time_at_risk(ch$timeAtRisk)
 
   # Age groups were free text ("18-64"); the API wants numeric pairs.
-  ages <- ch$age_groups
+  ages <- ch$ageGroup
   if (length(ages) && all(vapply(ages, function(a) length(a) == 1 && is.character(a[[1]]),
                                  logical(1)))) {
-    ch$age_groups <- parse_bound_list(join_lines(ages))
+    ch$ageGroup <- parse_bound_list(join_lines(ages))
   }
 
   # Neither generator takes a washout: it is estimateIncidence(outcomeWashout =),
@@ -219,15 +242,21 @@ migrate_cohort <- function(ch) {
   # washout to, so it is dropped rather than quietly misapplied.
   ch$washout_days <- NULL
 
-  # 0.3.1 called the cohort date range the "study period".
-  if (is.null(ch$cohort_date_range_start)) ch$cohort_date_range_start <- ch$study_period_start
-  if (is.null(ch$cohort_date_range_end))   ch$cohort_date_range_end   <- ch$study_period_end
-  ch$study_period_start <- NULL
-  ch$study_period_end   <- NULL
+  # cohortDateRange is ONE argument taking two dates. 0.3.1 called it the "study
+  # period" and 0.3.2 split it across two keys; both become the pair.
+  if (is.null(ch[["cohortDateRange"]])) {
+    start <- ch[["cohort_date_range_start"]] %||% ch[["study_period_start"]]
+    end   <- ch[["cohort_date_range_end"]]   %||% ch[["study_period_end"]]
+    if (!is.null(start) || !is.null(end)) ch$cohortDateRange <- cohort_date_range(start, end)
+  }
+  ch$cohort_date_range_start <- NULL
+  ch$cohort_date_range_end   <- NULL
+  ch$study_period_start      <- NULL
+  ch$study_period_end        <- NULL
 
   # daysPriorObservation may be a vector; the old field was a single number.
-  if (is.null(ch$days_prior_observation) && !is.null(ch$prior_observation_days)) {
-    ch$days_prior_observation <- as_num_array(ch$prior_observation_days)
+  if (is.null(ch$daysPriorObservation) && !is.null(ch[["prior_observation_days"]])) {
+    ch$daysPriorObservation <- as_num_array(ch[["prior_observation_days"]])
   }
   ch$prior_observation_days <- NULL
 

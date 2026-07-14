@@ -52,10 +52,10 @@ test_that("migrate_sap: an old Target stays a PLAIN cohort, keeping its definiti
 })
 test_that("migrate_sap: the missing target denominator is synthesised", {
   expect_identical(den$kind, "target_denominator")
-  expect_identical(den$target_cohort, "Metformin new users")
+  expect_identical(den$targetCohortTable, "Metformin new users")
 })
 test_that("migrate_sap: the anchored time at risk becomes one [start, end] interval",
-          expect_identical(as.numeric(den$time_at_risk[[1]]), c(7, 30)))
+          expect_identical(as.numeric(den$timeAtRisk[[1]]), c(7, 30)))
 test_that("migrate_sap: the analysis is repointed at the synthesised denominator",
           expect_identical(migrated$proposed_analyses[[1]]$denominator_cohort, den$name))
 test_that("migrate_sap: the analysis no longer carries a time at risk",
@@ -108,8 +108,42 @@ test_that("migrate_sap: an old cohort washout is dropped, not misapplied",
 test_that("migrate_sap: old free-text age groups become numeric pairs",
           expect_identical(as.numeric(migrate_sap(list(cohorts = list(list(
             name = "D", kind = "denominator", age_groups = list("18-64", "65+")
-          ))))$cohorts[[1]]$age_groups[[1]]), c(18, 64)))
-test_that("migrate_sap: the old study period becomes the cohort date range",
-          expect_identical(migrate_sap(list(cohorts = list(list(
-            name = "D", kind = "denominator", study_period_start = "2015-01-01"
-          ))))$cohorts[[1]]$cohort_date_range_start, "2015-01-01"))
+          ))))$cohorts[[1]]$ageGroup[[1]]), c(18, 64)))
+
+# 0.4.2 renamed every denominator key onto the generator's own argument names, and
+# folded the two date keys into the single cohortDateRange pair the argument takes.
+test_that("migrate_sap: the old study period becomes one cohortDateRange pair", {
+  ch <- migrate_sap(list(cohorts = list(list(
+    name = "D", kind = "denominator",
+    study_period_start = "2015-01-01", study_period_end = "2024-12-31"
+  ))))$cohorts[[1]]
+  expect_identical(as.character(ch$cohortDateRange), c("2015-01-01", "2024-12-31"))
+  expect_null(ch$study_period_start)
+})
+test_that("migrate_sap: the 0.3.2 split date keys also fold into the pair", {
+  ch <- migrate_sap(list(cohorts = list(list(
+    name = "D", kind = "denominator", cohort_date_range_start = "2015-01-01"
+  ))))$cohorts[[1]]
+  expect_identical(date_bound(ch$cohortDateRange, 1), "2015-01-01")
+  expect_null(date_bound(ch$cohortDateRange, 2))
+  expect_null(ch[["cohort_date_range_start"]])
+})
+test_that("migrate_sap: old snake_case denominator keys are renamed onto the arguments", {
+  ch <- migrate_sap(list(cohorts = list(list(
+    name = "TD", kind = "target_denominator",
+    target_cohort = "T", time_at_risk = list(c(0, 30)), requirements_at_entry = FALSE,
+    age_groups = list(c(18, 64)), days_prior_observation = 365,
+    requirement_interactions = FALSE
+  ))))$cohorts[[1]]
+  expect_identical(ch$targetCohortTable, "T")
+  expect_identical(as.numeric(ch$timeAtRisk[[1]]), c(0, 30))
+  expect_false(ch$requirementsAtEntry)
+  expect_identical(as.numeric(ch$ageGroup[[1]]), c(18, 64))
+  expect_identical(as.numeric(ch$daysPriorObservation), 365)
+  expect_false(ch$requirementInteractions)
+  # The old names must be gone, or `$` partial matching could still find them.
+  for (old in c("target_cohort", "time_at_risk", "requirements_at_entry",
+                "age_groups", "days_prior_observation", "requirement_interactions")) {
+    expect_null(ch[[old]], info = old)
+  }
+})

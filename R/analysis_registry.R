@@ -377,17 +377,22 @@ denominator_summary <- function(cohort) {
     div(class = "text-muted mb-2", "Inherited from this cohort — set it on the Cohorts tab:"),
     div(
       class = "row row-cols-auto gap-3",
-      fact("Cohort date range",
-           if (is.null(cohort$cohort_date_range_start) && is.null(cohort$cohort_date_range_end)) "—"
-           else paste(none(cohort$cohort_date_range_start), "to",
-                      none(cohort$cohort_date_range_end))),
-      fact("Age groups", bounds(cohort$age_groups, open = AGE_MAX)),
+      # cohortDateRange is one key holding two dates, either of which may be null.
+      # date_bound() indexes it; unlist() would collapse a null and shift the pair.
+      fact("Cohort date range", {
+        dr    <- cohort[["cohortDateRange"]]
+        start <- date_bound(dr, 1)
+        end   <- date_bound(dr, 2)
+        if (is.null(start) && is.null(end)) "—"
+        else paste(none(start), "to", none(end))
+      }),
+      fact("Age groups", bounds(cohort$ageGroup, open = AGE_MAX)),
       fact("Sex", none(cohort$sex)),
-      fact("Prior observation", paste(none(cohort$days_prior_observation), "days")),
+      fact("Prior observation", paste(none(cohort$daysPriorObservation), "days")),
       # Only a target denominator has one; a plain denominator contributes all
       # observed time, so there is nothing to show.
       if (identical(canonical_cohort_kind(cohort$kind), "target_denominator"))
-        fact("Time at risk (days from target entry)", bounds(cohort$time_at_risk))
+        fact("Time at risk (days from target entry)", bounds(cohort$timeAtRisk))
     )
   )
 }
@@ -409,7 +414,7 @@ validate_strata_against <- function(groups, cohort) {
   errs     <- character(0)
   declared <- cohort_strata_variables(cohort)
   sex      <- as.character(unlist(cohort$sex %||% "Both"))
-  n_ages   <- length(cohort$age_groups %||% list())
+  n_ages   <- length(cohort$ageGroup %||% list())
 
   for (v in unique(as.character(unlist(groups)))) {
     if (!v %in% declared) {

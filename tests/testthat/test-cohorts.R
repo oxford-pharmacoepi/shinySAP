@@ -88,42 +88,102 @@ for (kind in names(COHORT_TEMPLATES)) {
             expect_false("washout_days" %in% names(COHORT_TEMPLATES[[kind]]$collect(list()))))
 }
 test_that("cohort: a plain denominator has no time at risk",
-          expect_false("time_at_risk" %in%
+          expect_false("timeAtRisk" %in%
                          names(COHORT_TEMPLATES[["denominator"]]$collect(list()))))
 test_that("cohort: a target denominator does have a time at risk",
-          expect_true("time_at_risk" %in%
+          expect_true("timeAtRisk" %in%
                         names(COHORT_TEMPLATES[["target_denominator"]]$collect(list()))))
 test_that("cohort: an outcome cohort carries none of the generator arguments",
           expect_length(intersect(names(COHORT_TEMPLATES[["other"]]$collect(list())),
-                                  c("age_groups", "sex", "time_at_risk",
-                                    "days_prior_observation")), 0))
-test_that("cohort: the target denominator's block is exactly the generator's extra args",
-          expect_true(all(c("target_cohort", "time_at_risk", "requirements_at_entry") %in%
-                            names(COHORT_TEMPLATES[["target_denominator"]]$collect(list())))))
+                                  c("ageGroup", "sex", "timeAtRisk",
+                                    "daysPriorObservation")), 0))
+
+# The whole point: the JSON keys ARE generateTargetDenominatorCohortSet()'s
+# argument names, in its own order. `cdm` is a live database handle and `name` is
+# the cohort's own name, so neither is in the kind's block. targetCohortId is not
+# captured yet -- the ids are handled internally for now.
+test_that("cohort: the target denominator's keys are exactly the generator's arguments", {
+  expect_identical(
+    names(COHORT_TEMPLATES[["target_denominator"]]$collect(list())),
+    c("targetCohortTable", "cohortDateRange", "timeAtRisk", "ageGroup", "sex",
+      "daysPriorObservation", "requirementsAtEntry", "requirementInteractions"))
+})
+test_that("cohort: the plain denominator's keys are exactly its generator's arguments", {
+  expect_identical(
+    names(COHORT_TEMPLATES[["denominator"]]$collect(list())),
+    c("cohortDateRange", "ageGroup", "sex", "daysPriorObservation",
+      "requirementInteractions"))
+})
+test_that("cohort: no denominator key is snake_case any more", {
+  for (kind in c("denominator", "target_denominator")) {
+    keys <- names(COHORT_TEMPLATES[[kind]]$collect(list()))
+    expect_false(any(grepl("_", keys)), info = kind)
+  }
+})
+
+# cohortDateRange is ONE argument taking TWO dates -- as.Date(c(NA, NA)) -- so it
+# is one key holding a pair, not two keys, and a missing bound is null.
+test_that("cohort: cohortDateRange is a two-element array, not two keys", {
+  den  <- COHORT_TEMPLATES[["denominator"]]
+  both <- den$collect(list(cohortDateRangeStart = "2015-01-01",
+                           cohortDateRangeEnd = "2024-12-31"))$cohortDateRange
+  expect_identical(as.character(both), c("2015-01-01", "2024-12-31"))
+  expect_match(as.character(sap_json(list(r = both))),
+               '"r": ["2015-01-01", "2024-12-31"]', fixed = TRUE)
+})
+test_that("cohort: an unset cohortDateRange is [null, null], the argument's own default", {
+  den <- COHORT_TEMPLATES[["denominator"]]
+  dr  <- den$collect(list())$cohortDateRange
+  expect_match(as.character(sap_json(list(r = dr))), '"r": [null, null]', fixed = TRUE)
+})
+test_that("cohort: a null bound survives the round trip without collapsing the pair", {
+  den <- COHORT_TEMPLATES[["denominator"]]
+  dr  <- den$collect(list(cohortDateRangeStart = "2015-01-01"))$cohortDateRange
+  rt  <- fromJSON(as.character(sap_json(list(r = dr))), simplifyVector = FALSE)$r
+  expect_length(rt, 2)                          # unlist() would make this 1
+  expect_identical(date_bound(rt, 1), "2015-01-01")
+  expect_null(date_bound(rt, 2))
+})
+test_that("cohort: flatten splits cohortDateRange back onto the two date fields", {
+  flat <- COHORT_TEMPLATES[["denominator"]]$flatten(
+    list(cohortDateRange = list("2015-01-01", NULL)))
+  expect_identical(flat$cohortDateRangeStart, "2015-01-01")
+  expect_null(flat$cohortDateRangeEnd)
+})
 
 # Cohort validators -------------------------------------------------------------
 
 TD <- COHORT_TEMPLATES[["target_denominator"]]
-td_ok <- list(name = "TD", kind = "target_denominator", target_cohort = "Metformin new users",
-              time_at_risk = list(c(0, 30)), sex = list("Both"), age_groups = list(c(0, 150)))
+td_ok <- list(name = "TD", kind = "target_denominator",
+              targetCohortTable = "Metformin new users",
+              timeAtRisk = list(c(0, 30)), sex = list("Both"), ageGroup = list(c(0, 150)))
+
+# A copy of td_ok with one key changed. NOT within(): its `targetCohortTable <- x`
+# reads as a camelCase *variable* assignment, which the linter rejects. These are
+# list keys, and they are camelCase on purpose -- they are the generator's own
+# argument names.
+td_but <- function(key, value) {
+  x <- td_ok
+  x[[key]] <- value
+  x
+}
 
 test_that("cohort validate: a well-formed target denominator has no problems",
           expect_length(TD$validate(td_ok, cohorts_idx), 0))
 test_that("cohort validate: a target denominator must name its target cohort",
           expect_true(any(grepl("must name the target cohort",
-                                TD$validate(within(td_ok, target_cohort <- NA), cohorts_idx)))))
+                                TD$validate(td_but("targetCohortTable", NA), cohorts_idx)))))
 test_that("cohort validate: the target cannot be another denominator",
           expect_true(any(grepl("not another denominator",
-                                TD$validate(within(td_ok, target_cohort <- "Men only"),
+                                TD$validate(td_but("targetCohortTable", "Men only"),
                                             cohorts_idx)))))
 test_that("cohort validate: time at risk cannot end before it starts",
           expect_true(any(grepl("ends before it starts",
-                                TD$validate(within(td_ok, time_at_risk <- list(c(30, 0))),
+                                TD$validate(td_but("timeAtRisk", list(c(30, 0))),
                                             cohorts_idx)))))
 test_that("cohort validate: time at risk must have at least one interval",
           expect_true(any(grepl("at least one interval",
-                                TD$validate(within(td_ok, time_at_risk <- list()),
-                                            cohorts_idx)))))
+                                TD$validate(td_but("timeAtRisk", list()), cohorts_idx)))))
 
 # Strata columns are NOT a cohort field ----------------------------------------
 #

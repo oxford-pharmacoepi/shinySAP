@@ -46,7 +46,7 @@ JSON arrays even when they hold a single entry.
 
 ```json
 {
-  "sap_schema_version": "0.4.0",
+  "sap_schema_version": "0.4.2",
   "generated_at": "2026-07-09T14:02:11+0100",
   "study": {
     "title": "Metformin and lactic acidosis",
@@ -101,15 +101,14 @@ JSON arrays even when they hold a single entry.
       "kind": "target_denominator",
       "cohort_id": 1002,
       "description": "...",
-      "target_cohort": "Metformin new users",
-      "time_at_risk": [[0, 30], [31, null]],
-      "requirements_at_entry": true,
-      "cohort_date_range_start": "2015-01-01",
-      "cohort_date_range_end": "2024-12-31",
-      "age_groups": [[0, 17], [18, 64], [65, 150]],
+      "targetCohortTable": "Metformin new users",
+      "cohortDateRange": ["2015-01-01", "2024-12-31"],
+      "timeAtRisk": [[0, 30], [31, null]],
+      "ageGroup": [[0, 17], [18, 64], [65, 150]],
       "sex": ["Both"],
-      "days_prior_observation": [365],
-      "requirement_interactions": true
+      "daysPriorObservation": [365],
+      "requirementsAtEntry": true,
+      "requirementInteractions": true
     }
   ],
   "proposed_analyses": [
@@ -142,15 +141,29 @@ is an incidence analysis" from "the comparator was left blank".
 
 **A cohort's `kind` decides what it carries**, because the kinds are not the same
 object. A denominator is a cohort *set* produced by
-`generateDenominatorCohortSet()`, so it carries that function's arguments —
-`cohort_date_range`, `age_groups`, `sex`, `days_prior_observation`,
-`requirement_interactions` — and no entry criteria, because nothing about it is
-defined by them. A `target_denominator` is produced by
-`generateTargetDenominatorCohortSet()`, so it carries the same arguments plus the
-`target_cohort` it is generated from, the `time_at_risk`, and
-`requirements_at_entry`. Every other kind — `target`, `outcome`, `comparator`,
-`censor`, `strata` — is a plain cohort *definition*: entry events, inclusion and
-exit criteria, a concept set, and none of the generator arguments.
+`generateDenominatorCohortSet()`; a `target_denominator` is produced by
+`generateTargetDenominatorCohortSet()`. **A denominator kind's keys are its
+generator's argument names, in the generator's own order** — so the JSON reads as
+the call it describes, and nothing can drift:
+
+| `denominator` | `target_denominator` |
+| --- | --- |
+| | `targetCohortTable` |
+| `cohortDateRange` | `cohortDateRange` |
+| | `timeAtRisk` |
+| `ageGroup` | `ageGroup` |
+| `sex` | `sex` |
+| `daysPriorObservation` | `daysPriorObservation` |
+| | `requirementsAtEntry` |
+| `requirementInteractions` | `requirementInteractions` |
+
+`cdm` is a live database handle, not a plan field, and `name` is the cohort's own
+name in the common half of the card, so neither is repeated in the block.
+`targetCohortId` is not captured yet — cohort IDs are handled internally for now.
+Neither kind carries entry criteria: a denominator cohort set is *generated*, not
+defined by them. Every other kind — `target`, `outcome`, `comparator`, `censor`,
+`strata` — is a plain cohort *definition*: entry events, inclusion and exit
+criteria, a concept set, and none of the generator arguments.
 
 The distinction that matters most is between a **target** and a **target
 denominator**. A target cohort is defined by entry criteria ("first metformin
@@ -164,7 +177,14 @@ denominator cannot disagree about them, and an analysis inherits them rather tha
 restating them — the Analyses tab shows a read-only echo of what the chosen
 denominator already fixes.
 
-**`age_groups` and `time_at_risk` are lists of numeric pairs** — `[[0, 17], [18,
+**`cohortDateRange` is ONE key holding TWO dates**, because that is what the
+argument takes — its default is literally `as.Date(c(NA, NA))`. A missing bound is
+`null`, meaning exactly what `NA` means to the generator: use the earliest (or
+latest) observation period in the database. So `["2015-01-01", null]` is
+"from 2015 to the end of the data", and `[null, null]` is the argument's own
+default.
+
+**`ageGroup` and `timeAtRisk` are lists of numeric pairs** — `[[0, 17], [18,
 64]]` and `[[0, 30], [31, null]]` — matching `ageGroup = list(c(0, 17), c(18,
 64))` and `timeAtRisk = list(c(0, 30), c(31, Inf))`. Each interval generates its
 own cohort. JSON has no `Infinity`, so an unbounded upper bound is written
@@ -272,6 +292,18 @@ would never satisfy. The columns are now fixed (`STRATA_VARIABLES` in
 `R/cohort_kinds.R`). An older file's declared columns are dropped on load, and an
 analysis stratified by a column beyond those two now fails validation — which is
 the honest outcome, since it was never going to run.
+
+`0.4.2` **aligned the denominator kinds with their generators**, the way `0.3.1`
+aligned Incidence with `estimateIncidence()` and `0.4.0` aligned Prevalence with
+the prevalence estimators. Every key is now the argument name it feeds, in the
+generator's own order: `target_cohort` → `targetCohortTable`, `time_at_risk` →
+`timeAtRisk`, `age_groups` → `ageGroup`, `days_prior_observation` →
+`daysPriorObservation`, `requirements_at_entry` → `requirementsAtEntry`,
+`requirement_interactions` → `requirementInteractions`. The two keys
+`cohort_date_range_start` / `_end` became the single `cohortDateRange` pair the
+argument actually takes. The input ids are the argument names too, so a field and
+the key it produces cannot drift apart. Older files still load: `migrate_cohort()`
+renames the old keys and folds the two date keys into the pair.
 
 Older files still load, and `migrate_sap()` in `R/utils.R` runs before any
 section does. Beyond the aliasing above, it repairs two things it cannot leave

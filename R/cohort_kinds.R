@@ -165,9 +165,38 @@ cohort_template <- function(kind) {
   if (is.null(tmpl)) COHORT_TEMPLATES[["other"]] else tmpl
 }
 
+# cohortDateRange ---------------------------------------------------------------
+#
+# The argument takes TWO dates -- its default is literally as.Date(c(NA, NA)) --
+# so it is ONE key holding a two-element array, not two keys. A missing bound is
+# null, which is what the argument itself means by NA: "use the earliest (or
+# latest) observation period in the database".
+#
+#   ["2015-01-01", "2024-12-31"]   both bounds given
+#   ["2015-01-01", null]           open-ended at the top
+#   [null, null]                   the argument's own default
+#
+# Never unlist() it, for the same reason as ageGroup and timeAtRisk: a null bound
+# would collapse and the pair would silently become length 1.
+cohort_date_range <- function(start, end) as_array(c(blank_to_na(start), blank_to_na(end)))
+
+# One bound of a cohortDateRange, as the date field wants it. NULL when unset.
+date_bound <- function(range, i) {
+  if (is.null(range) || length(range) < i) return(NULL)
+  v <- range[[i]]
+  if (is.null(v) || (length(v) == 1 && is.na(v))) return(NULL)
+  as.character(v)
+}
+
 # Shared blocks ---------------------------------------------------------------
+#
+# Input ids ARE the generator's argument names, so the JSON key and the field that
+# produced it cannot drift apart -- the same convention the Prevalence template
+# uses for the estimators. cohortDateRange is the one exception: one argument, two
+# date fields, so the ids carry a Start/End suffix and collect() pairs them up.
 
 # The requirements every denominator cohort set is generated with, target or not.
+# Both generators take these under exactly these names.
 denominator_requirements_ui <- function(ns, pf) tagList(
   # cohortDateRange takes Dates, so these are pickers rather than free text.
   # dateInput() has no placeholder, and blank is a meaningful value here, so what
@@ -175,21 +204,21 @@ denominator_requirements_ui <- function(ns, pf) tagList(
   layout_columns(
     col_widths = c(6, 6),
     div(
-      date_input(ns("cohort_date_range_start"), "Cohort date range: earliest start",
-                 pf("cohort_date_range_start")),
+      date_input(ns("cohortDateRangeStart"), "Cohort date range: earliest start",
+                 pf("cohortDateRangeStart")),
       div(class = "form-text", "Blank = the earliest observation period in the database.")
     ),
     div(
-      date_input(ns("cohort_date_range_end"), "Cohort date range: latest end",
-                 pf("cohort_date_range_end")),
+      date_input(ns("cohortDateRangeEnd"), "Cohort date range: latest end",
+                 pf("cohortDateRangeEnd")),
       div(class = "form-text", "Blank = the latest observation period in the database.")
     )
   ),
   layout_columns(
     col_widths = c(6, 6),
     # ageGroup = list(c(0, 17), c(18, 30)): numeric pairs, one cohort each.
-    textAreaInput(ns("age_groups"), "Age groups (one per line, as lower, upper)",
-                  join_lines(format_bound_list(pf("age_groups", list()), open = AGE_MAX)),
+    textAreaInput(ns("ageGroup"), "Age groups (one per line, as lower, upper)",
+                  join_lines(format_bound_list(pf("ageGroup", list()), open = AGE_MAX)),
                   rows = 3, width = "100%", placeholder = "0, 17\n18, 64\n65, 150"),
     selectizeInput(ns("sex"), "Sex", COHORT_SEXES, multiple = TRUE, width = "100%",
                    selected = pf("sex", "Both"),
@@ -197,13 +226,13 @@ denominator_requirements_ui <- function(ns, pf) tagList(
   ),
   layout_columns(
     col_widths = c(6, 6),
-    selectizeInput(ns("days_prior_observation"), "Days of prior observation required",
+    selectizeInput(ns("daysPriorObservation"), "Days of prior observation required",
                    choices = character(0), multiple = TRUE, width = "100%",
-                   selected = as.character(unlist(pf("days_prior_observation", 0))),
+                   selected = as.character(unlist(pf("daysPriorObservation", 0))),
                    options = list(create = TRUE, placeholder = "0 (type more to vary it)")),
-    checkboxInput(ns("requirement_interactions"),
+    checkboxInput(ns("requirementInteractions"),
                   "Generate a cohort for every combination of age group, sex and prior observation",
-                  value = isTRUE(pf("requirement_interactions", TRUE)))
+                  value = isTRUE(pf("requirementInteractions", TRUE)))
   )
   # No strata input: the columns a denominator carries are not the author's to
   # choose. generateDenominatorCohortSet() produces age_group and sex, and nothing
@@ -211,16 +240,23 @@ denominator_requirements_ui <- function(ns, pf) tagList(
 )
 
 denominator_requirements_collect <- function(input) list(
-  cohort_date_range_start  = blank_to_na(input$cohort_date_range_start),
-  cohort_date_range_end    = blank_to_na(input$cohort_date_range_end),
-  age_groups               = parse_bound_list(input$age_groups),
-  sex                      = as_array(input$sex %||% "Both"),
-  days_prior_observation   = as_num_array(input$days_prior_observation %||% 0),
-  requirement_interactions = isTRUE(input$requirement_interactions)
+  cohortDateRange         = cohort_date_range(input$cohortDateRangeStart,
+                                              input$cohortDateRangeEnd),
+  ageGroup                = parse_bound_list(input$ageGroup),
+  sex                     = as_array(input$sex %||% "Both"),
+  daysPriorObservation    = as_num_array(input$daysPriorObservation %||% 0),
+  requirementInteractions = isTRUE(input$requirementInteractions)
 )
 
-# Nothing nested beyond the pair lists, which pf() re-formats in the UI.
-denominator_requirements_flatten <- function(p) p
+# One cohortDateRange key becomes the two date fields that produced it. Read with
+# [[, never $: on a cohort that lacks the key, $ would partial-match
+# cohortDateRangeStart and hand back a single date where a pair belongs.
+denominator_requirements_flatten <- function(p) {
+  dr <- p[["cohortDateRange"]]
+  p$cohortDateRangeStart <- date_bound(dr, 1)
+  p$cohortDateRangeEnd   <- date_bound(dr, 2)
+  p
+}
 
 # The plain cohort definition: what a source cohort actually is.
 cohort_definition_ui <- function(ns, pf) tagList(
@@ -250,7 +286,7 @@ cohort_definition_collect <- function(input) list(
 
 validate_denominator_requirements <- function(p) {
   errs <- character(0)
-  for (g in p$age_groups %||% list()) {
+  for (g in p$ageGroup %||% list()) {
     if (bound_upper(g) < as.numeric(g[[1]])) {
       errs <- c(errs, sprintf("Age group '%s' has an upper bound below its lower bound.",
                               format_bound_list(list(g), open = AGE_MAX)))
@@ -279,49 +315,58 @@ register_cohort_kind(
   hint = paste("Generated with generateTargetDenominatorCohortSet(): the same requirements,",
                "restricted to the time a person spends in a target cohort."),
   ui = function(ns, pf) tagList(
-    entity_picker(ns("target_cohort"), "Target cohort to build the denominator from",
-                  pf("target_cohort"),
+    entity_picker(ns("targetCohortTable"), "Target cohort to build the denominator from",
+                  pf("targetCohortTable"),
                   placeholder = "Another cohort defined on this tab (targetCohortTable)"),
     # timeAtRisk = list(c(0, 30), c(31, 60)): lower and upper bounds in days,
     # BOTH relative to target cohort entry. There is no anchoring on cohort end --
     # if time at risk runs past cohort exit or the observation period, only the
     # time up to those is contributed. Each interval generates its own cohort set.
-    textAreaInput(ns("time_at_risk"),
+    textAreaInput(ns("timeAtRisk"),
                   "Time at risk (one interval per line, days from target cohort entry)",
-                  join_lines(format_bound_list(pf("time_at_risk", list(I(c(0, Inf)))))),
+                  join_lines(format_bound_list(pf("timeAtRisk", list(I(c(0, Inf)))))),
                   rows = 3, width = "100%", placeholder = "0, Inf\n0, 30\n31, 60"),
     denominator_requirements_ui(ns, pf),
-    checkboxInput(ns("requirements_at_entry"),
+    checkboxInput(ns("requirementsAtEntry"),
                   "Requirements must be met on the target cohort start date",
-                  value = isTRUE(pf("requirements_at_entry", TRUE)))
+                  value = isTRUE(pf("requirementsAtEntry", TRUE)))
   ),
-  collect = function(input) c(
+  # Keys, and their order, are generateTargetDenominatorCohortSet()'s own. `cdm` is
+  # a live database handle, not a plan field; `name` is the cohort's own name, in
+  # the common half of the card. targetCohortId is not captured yet -- the cohort
+  # ids are handled internally for now.
+  collect = function(input) {
+    req <- denominator_requirements_collect(input)
     list(
-      target_cohort         = blank_to_na(input$target_cohort),
-      time_at_risk          = parse_bound_list(input$time_at_risk),
-      requirements_at_entry = isTRUE(input$requirements_at_entry)
-    ),
-    denominator_requirements_collect(input)
-  ),
-  pickers = list(cohorts = "target_cohort"),
+      targetCohortTable       = blank_to_na(input$targetCohortTable),
+      cohortDateRange         = req$cohortDateRange,
+      timeAtRisk              = parse_bound_list(input$timeAtRisk),
+      ageGroup                = req$ageGroup,
+      sex                     = req$sex,
+      daysPriorObservation    = req$daysPriorObservation,
+      requirementsAtEntry     = isTRUE(input$requirementsAtEntry),
+      requirementInteractions = req$requirementInteractions
+    )
+  },
+  pickers = list(cohorts = "targetCohortTable"),
   flatten = denominator_requirements_flatten,
   validate = function(cohort, cohorts) {
     errs <- validate_denominator_requirements(cohort)
-    if (is.na(cohort$target_cohort %||% NA)) {
+    if (is.na(cohort$targetCohortTable %||% NA)) {
       errs <- c(errs, "A target denominator must name the target cohort it is built from.")
     } else {
-      t <- cohort_by_name(cohorts, cohort$target_cohort)
+      t <- cohort_by_name(cohorts, cohort$targetCohortTable)
       if (!is.null(t) && is_denominator_kind(t$kind)) {
         errs <- c(errs, "The target cohort must be a plain cohort, not another denominator.")
       }
-      if (identical(cohort$target_cohort, cohort$name)) {
+      if (identical(cohort$targetCohortTable, cohort$name)) {
         errs <- c(errs, "A target denominator cannot be built from itself.")
       }
     }
-    if (!length(cohort$time_at_risk %||% list())) {
+    if (!length(cohort$timeAtRisk %||% list())) {
       errs <- c(errs, "Time at risk must have at least one interval (the default is 0, Inf).")
     }
-    for (w in cohort$time_at_risk %||% list()) {
+    for (w in cohort$timeAtRisk %||% list()) {
       if (bound_upper(w) < as.numeric(w[[1]])) {
         errs <- c(errs, sprintf("Time at risk '%s' ends before it starts.",
                                 format_bound_list(list(w))))
