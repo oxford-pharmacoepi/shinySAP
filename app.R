@@ -10,7 +10,13 @@ library(jsonlite)
 
 # 0.2.0 added cdm_sources and renamed analyses -> proposed_analyses.
 # 0.3.0 moved the type-specific analysis fields under `parameters`.
-SAP_SCHEMA_VERSION <- "0.3.0"
+# 0.4.0 added cohort sets: cohorts gained parent_cohort, and prevalence
+#       parameters gained denominatorCohortId / outcomeCohortId (null = all).
+# 0.5.0 dropped the prevalence_type parameter: a prevalence analysis_type now
+#       names the estimator (estimatePointPrevalence / estimatePeriodPrevalence).
+# 0.6.0 prevalence: stratifications renamed to strata, sensitivity_analyses
+#       removed (other analysis types keep both).
+SAP_SCHEMA_VERSION <- "0.6.0"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")
@@ -35,7 +41,8 @@ server <- function(input, output, session) {
   cohorts  <- cohorts_server("cohorts")
   analyses <- analyses_server("analyses",
                               cohort_names = cohorts$names,
-                              source_names = sources$names)
+                              source_names = sources$names,
+                              cohort_details = cohorts$data)
 
   # The single source of truth for what gets serialised.
   sap <- reactive(list(

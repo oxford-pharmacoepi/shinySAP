@@ -34,23 +34,32 @@ cohort_item_ui <- function(id, prefill = NULL) {
       placeholder = "Aged 18 or over at index\nNo prior insulin exposure"
     ),
     layout_columns(
-      col_widths = c(4, 4, 4),
+      col_widths = c(3, 3, 3, 3),
       numericInput(ns("prior_observation_days"), "Prior observation (days)",
                    value = pf("prior_observation_days", NULL), width = "100%"),
       numericInput(ns("washout_days"), "Washout (days)",
                    value = pf("washout_days", NULL), width = "100%"),
-      textInput(ns("concept_set"), "Concept set / codelist", pf("concept_set"), width = "100%")
+      textInput(ns("concept_set"), "Concept set / codelist", pf("concept_set"), width = "100%"),
+      # Marks this cohort as a sub-cohort of another (e.g. an age band of a
+      # denominator population). Analyses use it to offer a cohort set's IDs.
+      entity_picker(ns("parent_cohort"), "Part of cohort set", pf("parent_cohort"),
+                    placeholder = "Parent cohort (optional)")
     )
   )
 }
 
-cohort_item_server <- function(id, prefill = NULL, on_remove = function() {}) {
+cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
+                               cohort_names = reactive(character(0))) {
   moduleServer(id, function(input, output, session) {
     observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
+    # Safe from a feedback loop: the parent picker's choices come from every
+    # card's name, but updating choices never changes this card's values.
+    sync_pickers(session, "parent_cohort", cohort_names, prefiller(prefill))
     reactive(list(
       name                   = blank_to_na(input$name),
       role                   = input$role,
       cohort_id              = input$cohort_id %||% NA,
+      parent_cohort          = blank_to_na(input$parent_cohort),
       description            = blank_to_na(input$description),
       entry_events           = as_array(split_lines(input$entry_events)),
       inclusion_criteria     = as_array(split_lines(input$inclusion_criteria)),
@@ -83,7 +92,12 @@ cohorts_ui <- function(id) {
 
 cohorts_server <- function(id) {
   moduleServer(id, function(input, output, session) {
-    items <- dynamic_items("cohort", "items", cohort_item_ui, cohort_item_server)
+    # settled_names is defined below items -- R only resolves it when a card is
+    # actually added, long after this module body has run.
+    item_server <- function(iid, prefill, on_remove) {
+      cohort_item_server(iid, prefill, on_remove, settled_names)
+    }
+    items <- dynamic_items("cohort", "items", cohort_item_ui, item_server)
 
     observeEvent(input$add, items$add())
 
@@ -95,11 +109,13 @@ cohorts_server <- function(id) {
       for (ch in cohorts) items$add(ch)
     }
 
-    # Feeds the cohort pickers in the Analyses section.
+    # Feeds the cohort pickers in the Analyses section and, debounced, each
+    # card's own parent picker.
     names_r <- reactive({
       nms <- vapply(items$data(), function(x) as.character(x$name %||% ""), character(1))
       sort(unique(nms[nzchar(nms)]))
     })
+    settled_names <- debounce(names_r, 600)
 
     list(data = items$data, load = load, names = names_r)
   })

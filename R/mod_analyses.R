@@ -28,7 +28,8 @@ analysis_item_ui <- function(id, prefill = NULL) {
 
 analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
                                  cohort_names = reactive(character(0)),
-                                 source_names = reactive(character(0))) {
+                                 source_names = reactive(character(0)),
+                                 cohort_details = reactive(list())) {
   moduleServer(id, function(input, output, session) {
     observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
 
@@ -84,6 +85,47 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
                  source_names, base_pf)
     sync_pickers(session, "data_sources", source_names, base_pf)
 
+    # Sub-cohort ID pickers (template$subcohorts). Each maps a multi-select of
+    # cohort IDs onto one of the template's cohort pickers: when the picked
+    # cohort spans a set -- its own ID plus every cohort naming it as parent --
+    # the multi-select renders with the whole set selected. One ID is not a
+    # set, so nothing visible renders; the hidden empty picker is load-bearing,
+    # though: it re-registers the input as empty, or IDs from a previously
+    # picked set would linger in the input store and reach collect().
+    subcohort_parent <- new.env(parent = emptyenv())
+    subcohort_selected <- function(field, from, parent, values) {
+      prev <- mget(field, envir = subcohort_parent, ifnotfound = list(NA))[[1]]
+      assign(field, parent, envir = subcohort_parent)
+      if (identical(prev, parent)) {
+        current <- isolate(input[[field]])
+        if (!is.null(current)) return(intersect(as.character(current), values))
+      }
+      # A saved selection only applies to the denominator it was saved with;
+      # picking a different cohort resets to the full set.
+      saved <- as.character(unlist(base_pf(field, NULL)))
+      if (identical(parent, as.character(base_pf(from, ""))) && length(saved))
+        return(intersect(saved, values))
+      values
+    }
+    observe({
+      specs <- analysis_template(type_r())$subcohorts
+      for (field in names(specs)) local({
+        f <- field; spec <- specs[[f]]
+        output[[paste0(f, "_ui")]] <- renderUI({
+          choices <- subcohort_choices(input[[spec$from]], cohort_details())
+          if (length(choices) < 2)
+            return(div(style = "display: none;",
+                       selectizeInput(ns(f), spec$label, choices = character(0),
+                                      multiple = TRUE)))
+          selectizeInput(ns(f), spec$label, choices = choices,
+                         selected = subcohort_selected(f, spec$from, input[[spec$from]],
+                                                       as.character(choices)),
+                         multiple = TRUE, width = "100%")
+        })
+        outputOptions(output, paste0(f, "_ui"), suspendWhenHidden = FALSE)
+      })
+    })
+
     # For one round-trip after a type switch the new block's inputs have not
     # reported yet, so parameters briefly reads as nulls. Harmless while the only
     # consumers are the Review tab (suspended while the user is on Analyses) and
@@ -94,8 +136,11 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
       list(
         name          = blank_to_na(input$name),
         # type_r(), not input$analysis_type: the type we emit and the collector
-        # that produced `parameters` must never disagree.
-        analysis_type = type_r(),
+        # that produced `parameters` must never disagree. serialised_type may
+        # refine the label (Prevalence -> estimatePointPrevalence), but the
+        # aliases map it back to the same template on load.
+        analysis_type = if (is.null(tmpl$serialised_type)) type_r()
+                        else tmpl$serialised_type(input),
         description   = blank_to_na(input$description),
         data_sources  = as_array(input$data_sources %||% character(0)),
         # collect() reads only its own template's input ids, so values stranded
@@ -126,15 +171,18 @@ analyses_ui <- function(id) {
 }
 
 analyses_server <- function(id, cohort_names = reactive(character(0)),
-                            source_names = reactive(character(0))) {
+                            source_names = reactive(character(0)),
+                            cohort_details = reactive(list())) {
   moduleServer(id, function(input, output, session) {
     # Names change on every keystroke in the section that owns them; settle
     # first so the pickers are not rebuilt mid-word.
     settled_cohorts <- debounce(cohort_names, 600)
     settled_sources <- debounce(source_names, 600)
+    settled_details <- debounce(cohort_details, 600)
 
     item_server <- function(iid, prefill, on_remove) {
-      analysis_item_server(iid, prefill, on_remove, settled_cohorts, settled_sources)
+      analysis_item_server(iid, prefill, on_remove, settled_cohorts, settled_sources,
+                           settled_details)
     }
     items <- dynamic_items("analysis", "items", analysis_item_ui, item_server)
 
@@ -146,13 +194,18 @@ analyses_server <- function(id, cohort_names = reactive(character(0)),
     load <- function(analyses) {
       items$clear()
       for (a in analyses) {
-        a$analysis_type <- canonical_analysis_type(a$analysis_type)
+        raw_type <- a$analysis_type
+        a$analysis_type <- canonical_analysis_type(raw_type)
         tmpl <- analysis_template(a$analysis_type)
         # Pre-0.3.0 files kept the type-specific fields at the top level, so they
         # load with no migration step. is.null(), not %||%: an empty parameters
         # object reads back as a zero-length list, which %||% would take for
         # absent and then mistake a 0.3.0 file for an old one.
         params <- if (is.null(a$parameters)) a else a$parameters
+        # A serialised_type template splits its type across two levels of the
+        # file; hand flatten() the raw label so it can recover its inputs. The
+        # canonical type in the common half shadows this key in the prefill.
+        params$analysis_type <- raw_type
         flat   <- tmpl$flatten(params)
         if (!is.list(flat)) flat <- list()
         # c(), not modifyList(): modifyList merges nested lists instead of
