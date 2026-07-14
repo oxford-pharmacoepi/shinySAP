@@ -71,3 +71,39 @@ save_sap <- function(sap, dir = "output") {
 read_sap <- function(path) {
   jsonlite::fromJSON(path, simplifyVector = FALSE)
 }
+
+# Cross-section migrations, run once on a loaded SAP before any section sees it.
+#
+# A template's flatten() can only rewrite its own analysis, so anything that has
+# to move *between* sections has to happen here -- and before cohorts$load(), or
+# the cohort cards are already built by the time the analysis is read.
+#
+# 0.3.0 moved time at risk from each analysis onto the cohort it runs on, so two
+# analyses sharing a denominator can no longer disagree about it. An older file
+# holds it on the analysis; copy it across or it is silently lost.
+migrate_sap <- function(sap) {
+  analyses <- coalesce_key(sap, "proposed_analyses", "analyses")
+  cohorts  <- sap$cohorts %||% list()
+  if (!length(analyses) || !length(cohorts)) return(sap)
+
+  cohort_names <- vapply(cohorts, function(x) as.character(x$name %||% ""), character(1))
+
+  for (a in analyses) {
+    p   <- if (is.null(a$parameters)) a else a$parameters
+    tar <- p$time_at_risk
+    if (is.null(tar)) next
+    # Pre-0.3.0 the generic form called the denominator `target_cohort`.
+    nm <- p$denominator_cohort %||% p$target_cohort
+    if (is.null(nm) || !nzchar(as.character(nm))) next
+    i <- match(as.character(nm), cohort_names)
+    # An analysis may name a cohort that was never defined; nothing to move onto.
+    if (is.na(i)) next
+    # First analysis to claim the cohort wins. Two analyses on one denominator
+    # disagreeing about time at risk is exactly what this move exists to stop,
+    # and there is no way to pick a winner here -- validate() will flag it.
+    if (is.null(cohorts[[i]]$time_at_risk)) cohorts[[i]]$time_at_risk <- tar
+  }
+
+  sap$cohorts <- cohorts
+  sap
+}

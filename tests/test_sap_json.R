@@ -15,6 +15,7 @@ library(bslib)
 source("R/utils.R")
 source("R/dynamic_items.R")
 source("R/analysis_registry.R")
+source("R/mod_cohorts.R")     # cohort kinds and cohort_by_name(), which validators use
 for (f in sort(list.files("R", pattern = "^analysis_type_.*\\.R$", full.names = TRUE))) source(f)
 
 failures <- 0
@@ -46,7 +47,7 @@ sap <- list(
   cdm_changes = list(),
   cohorts = list(list(
     name = "Metformin new users",
-    role = "Target",
+    kind = "target_denominator",
     cohort_id = 1001,
     entry_events = as_array(split_lines("First metformin dispensation")),
     inclusion_criteria = as_array(character(0)),
@@ -165,34 +166,100 @@ for (type in names(ANALYSIS_TEMPLATES)) {
 round_trip <- function(tmpl, input) {
   params <- tmpl$collect(input)
   rt     <- fromJSON(as.character(sap_json(params)), simplifyVector = FALSE)
-  list(json = rt, pf = prefiller(tmpl$flatten(rt)))
+  list(json = rt, flat = tmpl$flatten(rt), pf = prefiller(tmpl$flatten(rt)))
+}
+
+# THE MIRROR INVARIANT. Every input a template renders has to survive
+# collect() -> JSON -> flatten() and be findable again by pf(), or it silently
+# comes back blank when a saved SAP is loaded. This is what catches a collect()
+# that nests a block into `estimand` or `reporting` and a flatten() that forgets
+# to unpack it -- a bug no amount of reading the template will show you.
+for (type in names(ANALYSIS_TEMPLATES)) {
+  tmpl <- ANALYSIS_TEMPLATES[[type]]
+  ids  <- setdiff(template_field_ids(tmpl), DISPLAY_ONLY_IDS)
+  # A plausible non-empty value for every input; only presence is under test.
+  faked <- stats::setNames(lapply(ids, function(i) "1"), ids)
+  flat  <- round_trip(tmpl, faked)$flat
+  missing <- setdiff(ids, names(flat))
+  check(sprintf("[%s] every rendered input survives collect -> JSON -> flatten%s", type,
+                if (length(missing)) paste0(" (lost: ", paste(missing, collapse = ", "), ")") else ""),
+        length(missing) == 0)
 }
 
 inc <- round_trip(ANALYSIS_TEMPLATES[["Incidence"]], list(
-  denominator_cohort = "Metformin new users",
-  outcome_cohort     = "Lactic acidosis",
-  denominator_unit   = "person-years",
-  rate_multiplier    = 1000,
-  repeated_events    = FALSE,
-  calendar_intervals = "2015-2019\n2020-2024",
-  tar_start_offset   = 1, tar_start_anchor = "cohort start",
-  tar_end_offset     = 0, tar_end_anchor   = "cohort end",
-  stratifications    = "Sex",
-  sensitivity_analyses = ""
+  denominator_cohort          = "Metformin new users",
+  outcome_cohort              = "Lactic acidosis",
+  censor_cohort               = "",
+  outcome_washout             = "365",
+  repeated_events             = TRUE,
+  interval                    = c("years", "overall"),
+  complete_database_intervals = TRUE,
+  strata                      = c("sex", "sex, age_group"),
+  include_overall_strata      = TRUE
 ))
-check("incidence: time_at_risk nests", inc$json$time_at_risk$start_offset_days == 1)
-check("incidence: rate multiplier survives", inc$json$rate_multiplier == 1000)
-check("incidence: an unticked checkbox is false, not null", identical(inc$json$repeated_events, FALSE))
-check("incidence: an empty textarea is an array", identical(inc$json$sensitivity_analyses, list()))
-# == not identical(): a whole number comes back from JSON as an integer, and
-# numericInput() is happy with either.
-check("incidence: flatten feeds the time-at-risk inputs", inc$pf("tar_start_offset") == 1)
-check("incidence: flatten feeds the time-at-risk anchors",
-      identical(inc$pf("tar_end_anchor"), "cohort end"))
+check("incidence: the estimand nests", identical(inc$json$estimand$outcome_washout, 365L))
+check("incidence: a ticked checkbox is true, not null",
+      identical(inc$json$estimand$repeated_events, TRUE))
+check("incidence: flatten un-nests the estimand back onto the inputs",
+      inc$pf("outcome_washout") == "365")
+check("incidence: flatten leaves no nested blocks in the prefill",
+      is.null(inc$flat$estimand))
+check("incidence: a multi-select interval stays an array",
+      identical(unlist(inc$json$estimand$interval), c("years", "overall")))
 check("incidence: prefiller recovers a picker value",
       identical(inc$pf("denominator_cohort"), "Metformin new users"))
-check("incidence: prefiller recovers a textarea",
-      identical(unlist(inc$pf("calendar_intervals")), c("2015-2019", "2020-2024")))
+
+# `parameters` maps 1:1 onto estimateIncidence(). Anything the function does not
+# take is not part of this analysis: rate-per-N and the denominator unit are
+# presentation choices made downstream, and a sensitivity analysis is a second
+# call, not an argument to this one.
+inc_keys  <- names(inc$json)
+inc_estim <- names(inc$json$estimand)
+check("incidence: no reporting-only fields leak into parameters",
+      !any(c("reporting", "denominator_unit", "rate_multiplier",
+             "sensitivity_analyses", "stratifications", "time_at_risk") %in% inc_keys))
+check("incidence: the estimand is exactly estimateIncidence()'s arguments",
+      setequal(inc_estim, c("interval", "complete_database_intervals", "outcome_washout",
+                            "repeated_events", "strata", "include_overall_strata")))
+check("incidence: names exactly the three cohort tables the function takes",
+      setequal(setdiff(inc_keys, "estimand"),
+               c("denominator_cohort", "outcome_cohort", "censor_cohort")))
+
+# strata is a list of variable GROUPS: list("sex", c("sex","age_group")) means one
+# stratification by sex and another by the cross of the two. A comma in a token
+# crosses its variables.
+check("strata: each token is one group",  length(inc$json$estimand$strata) == 2)
+check("strata: a plain token is a one-variable group",
+      identical(unlist(inc$json$estimand$strata[[1]]), "sex"))
+check("strata: a comma crosses the variables in one group",
+      identical(unlist(inc$json$estimand$strata[[2]]), c("sex", "age_group")))
+check("strata: a single group still serialises as a list of arrays",
+      is.list(parse_strata("sex")[[1]]) || length(parse_strata("sex")[[1]]) == 1)
+check("strata: tokens round-trip back into the multi-select",
+      identical(inc$pf("strata"), c("sex", "sex, age_group")))
+check("strata: no strata is an empty list, which is estimateIncidence()'s default",
+      identical(parse_strata(character(0)), list()))
+
+# The washout has three distinct states, and JSON has no Infinity: a bare Inf
+# would serialise to null under na = "null" and become indistinguishable from
+# "never stated", which is the one thing validate() must be able to tell apart.
+# A 0-day washout is a different analysis from an unstated one. The select must
+# therefore offer an empty choice, or the browser silently picks the first option
+# and validate()'s "no safe default" rule can never fire.
+check("washout: the select can be genuinely unset", "" %in% OUTCOME_WASHOUT_CHOICES)
+check("washout: unset parses to NULL", is.null(parse_washout("")))
+check("washout: a number parses to a number", identical(parse_washout("365"), 365))
+check("washout: the unbounded sentinel parses to itself",
+      identical(parse_washout(WASHOUT_UNBOUNDED), WASHOUT_UNBOUNDED))
+check("washout: a legacy Inf parses to the sentinel",
+      identical(parse_washout("Inf"), WASHOUT_UNBOUNDED))
+check("washout: bare Inf would be lost by the JSON contract, the sentinel is not",
+      is.null(fromJSON(as.character(sap_json(list(w = Inf))), simplifyVector = FALSE)$w) &&
+        identical(fromJSON(as.character(sap_json(list(w = WASHOUT_UNBOUNDED))),
+                           simplifyVector = FALSE)$w, WASHOUT_UNBOUNDED))
+unb <- round_trip(ANALYSIS_TEMPLATES[["Incidence"]], list(outcome_washout = WASHOUT_UNBOUNDED))
+check("washout: unbounded survives the full round trip",
+      washout_is_unbounded(unb$json$estimand$outcome_washout))
 
 prev <- round_trip(ANALYSIS_TEMPLATES[["Prevalence"]], list(
   denominator_cohort   = "Metformin new users",
@@ -212,6 +279,91 @@ check("prevalence: a single time point stays an array",
 check("prevalence: prefiller recovers the prevalence type",
       identical(prev$pf("prevalence_type"), "Point prevalence"))
 
+# Cohort kinds -----------------------------------------------------------------
+# 0.3.0 replaced `role` (Target / Comparator / ...) with `kind`.
+
+check("cohort kind: an old role is aliased",
+      identical(canonical_cohort_kind("Target"), "target_denominator"))
+check("cohort kind: a current kind is left alone",
+      identical(canonical_cohort_kind("denominator"), "denominator"))
+check("cohort kind: NULL falls back", identical(canonical_cohort_kind(NULL), "denominator"))
+check("cohort_by_name: a known cohort",
+      identical(cohort_by_name(list(A = list(kind = "outcome")), "A")$kind, "outcome"))
+check("cohort_by_name: a free-typed cohort nobody defined is NULL, not an error",
+      is.null(cohort_by_name(list(A = list(kind = "outcome")), "Typed by hand")))
+check("cohort_by_name: an empty pick is NULL",
+      is.null(cohort_by_name(list(A = list()), "")))
+
+# Template validators ----------------------------------------------------------
+
+INC <- ANALYSIS_TEMPLATES[["Incidence"]]
+cohorts_idx <- list(
+  "Metformin new users" = list(kind = "target_denominator", sex = "Both",
+                               age_groups = list("0-17", "18-64"),
+                               strata_variables = list("age_group", "sex")),
+  "Men only"            = list(kind = "denominator", sex = "Male",
+                               age_groups = list("18-64"),
+                               strata_variables = list("age_group", "sex")),
+  "Lactic acidosis"     = list(kind = "outcome", sex = "Both")
+)
+ok_params <- list(denominator_cohort = "Metformin new users",
+                  estimand = list(outcome_washout = 365, repeated_events = TRUE,
+                                  strata = list(list("sex"))))
+
+# NOT modifyList(): it recurses into nested lists and merges them, so replacing
+# `stratifications` with list("Age group") would silently keep list("Sex").
+# Whole-key replacement is what we want. (Same trap that load() avoids.)
+with_params <- function(...) {
+  p <- ok_params
+  new <- list(...)
+  p[names(new)] <- new
+  p
+}
+problems <- function(p) INC$validate(p, cohorts_idx)
+
+check("validate: a well-formed incidence analysis has no problems",
+      length(problems(ok_params)) == 0)
+check("validate: an outcome cohort cannot be the denominator",
+      any(grepl("denominator or target-denominator",
+                problems(with_params(denominator_cohort = "Lactic acidosis")))))
+check("validate: an unset washout is reported",
+      any(grepl("stated explicitly",
+                problems(with_params(estimand = list(repeated_events = FALSE))))))
+check("validate: repeated events with an unbounded washout is reported",
+      any(grepl("finite outcome washout",
+                problems(with_params(estimand = list(outcome_washout = WASHOUT_UNBOUNDED,
+                                                     repeated_events = TRUE))))))
+check("validate: an unset washout does not ALSO trip the repeated-events rule",
+      !any(grepl("finite outcome washout",
+                 problems(with_params(estimand = list(repeated_events = TRUE))))))
+
+# Strata are columns on the denominator cohort table. Two distinct failures:
+# a column the cohort does not carry (estimateIncidence would error), and a
+# column it carries but has already collapsed (it would succeed, uselessly).
+check("validate: cannot stratify by a column the denominator does not carry",
+      any(grepl("does not carry that column",
+                problems(with_params(estimand = list(outcome_washout = 365,
+                                                     strata = list(list("region"))))))))
+check("validate: a crossed group checks every variable in it",
+      any(grepl("'region'",
+                problems(with_params(estimand = list(outcome_washout = 365,
+                                                     strata = list(list("sex", "region"))))))))
+check("validate: cannot stratify by sex on a male-only denominator",
+      any(grepl("stratify by sex", problems(with_params(denominator_cohort = "Men only")))))
+check("validate: cannot stratify by age_group when the denominator has one age group",
+      any(grepl("stratify by age_group",
+                problems(with_params(denominator_cohort = "Men only",
+                                     estimand = list(outcome_washout = 365,
+                                                     strata = list(list("age_group"))))))))
+check("validate: an unstratified analysis raises no strata problems",
+      length(problems(with_params(estimand = list(outcome_washout = 365,
+                                                  strata = list())))) == 0)
+check("validate: a cohort nobody defined does not error and is not called wrong-kind",
+      !any(grepl("denominator or target-denominator",
+                 problems(with_params(denominator_cohort = "Typed by hand")))))
+check("validate: templates with no validator report nothing",
+      length(ANALYSIS_TEMPLATES[["Other"]]$validate(list(), cohorts_idx)) == 0)
+
 # Loading a pre-0.3.0 analysis: flat top-level keys, the old type name, and the
 # generic form's `target_cohort` where the template now wants a denominator.
 legacy <- list(
@@ -224,16 +376,48 @@ legacy_tmpl <- analysis_template(legacy$analysis_type)
 legacy_pf   <- prefiller(legacy_tmpl$flatten(legacy))   # no `parameters` -> read flat
 check("legacy: the old type name resolves to the Incidence template",
       identical(legacy_tmpl, ANALYSIS_TEMPLATES[["Incidence"]]))
-check("legacy: time_at_risk flattens onto the inputs", legacy_pf("tar_start_offset") == 7)
 check("legacy: target_cohort migrates to the denominator",
       identical(legacy_pf("denominator_cohort"), "Metformin new users"))
 check("legacy: outcome_cohort survives", identical(legacy_pf("outcome_cohort"), "Lactic acidosis"))
 check("migration never overwrites a denominator the file already has",
       identical(
-        prefiller(ANALYSIS_TEMPLATES[["Incidence"]]$flatten(
+        prefiller(INC$flatten(
           list(denominator_cohort = "Real denominator", target_cohort = "Stale target")
         ))("denominator_cohort"),
         "Real denominator"))
+
+# 0.3.0 moved time at risk from the analysis onto the cohort. A template cannot
+# do that (it can only rewrite its own analysis), so migrate_sap() does it before
+# any section loads.
+old_sap <- list(
+  cohorts = list(list(name = "Metformin new users", role = "Target"),
+                 list(name = "Untouched", role = "Outcome")),
+  proposed_analyses = list(list(
+    name = "Legacy incidence", analysis_type = "Incidence rate",
+    target_cohort = "Metformin new users",
+    time_at_risk = list(start_offset_days = 7, start_anchor = "cohort start")
+  ))
+)
+migrated <- migrate_sap(old_sap)
+check("migrate_sap: time at risk lands on the denominator cohort",
+      identical(migrated$cohorts[[1]]$time_at_risk$start_offset_days, 7))
+check("migrate_sap: other cohorts are untouched",
+      is.null(migrated$cohorts[[2]]$time_at_risk))
+check("migrate_sap: the incidence template then drops the analysis-level copy",
+      is.null(INC$flatten(migrated$proposed_analyses[[1]])$time_at_risk))
+check("migrate_sap: never overwrites a time at risk the cohort already has",
+      identical(
+        migrate_sap(list(
+          cohorts = list(list(name = "C", time_at_risk = list(start_offset_days = 99))),
+          proposed_analyses = list(list(denominator_cohort = "C",
+                                        time_at_risk = list(start_offset_days = 7)))
+        ))$cohorts[[1]]$time_at_risk$start_offset_days, 99))
+check("migrate_sap: an analysis naming an undefined cohort is a no-op, not an error",
+      identical(migrate_sap(list(
+        cohorts = list(list(name = "C")),
+        proposed_analyses = list(list(denominator_cohort = "Nope",
+                                      time_at_risk = list(start_offset_days = 7)))
+      ))$cohorts[[1]]$time_at_risk, NULL))
 
 # Nothing a template collects may collide with a common key, or c() in load()
 # would silently prefer the common one.

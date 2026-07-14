@@ -11,8 +11,8 @@ backend as a single JSON dictionary and written to `output/`.
 | **Study** | Title, acronym, authors, SAP version, date, background, objectives |
 | **CDM Sources** | The databases the study runs against — name, short key, data type, country, custodian, population size, CDM & vocabulary version, snapshot/release, data lock point, observation period, description |
 | **CDM Changes** | Changes to the common data model the study depends on — table, field, change type, CDM version, data source, description, rationale |
-| **Cohorts** | Name, role (target / comparator / outcome / strata), cohort ID, entry events, inclusion & exclusion criteria, exit criteria, prior observation, washout, concept set |
-| **Proposed Analyses** | Name, analysis type, description, CDM sources it runs on — plus a set of inputs that **depends on the analysis type** (an incidence rate asks for a denominator and a time at risk; a prevalence asks for time points and no time at risk) |
+| **Cohorts** | Name, kind (denominator / target denominator / outcome / comparator / censoring / strata), cohort ID, entry events, inclusion & exclusion criteria, exit criteria — plus **what the cohort fixes** for every analysis built on it: study period, age groups, sex, prior observation, time at risk, washout, concept set |
+| **Proposed Analyses** | Name, analysis type, CDM sources it runs on — plus a set of inputs that **depends on the analysis type** (an incidence asks for a denominator, a washout and an interval; a prevalence asks for time points instead) |
 | **Review & Save** | Live JSON preview, save to `output/`, download, and reload a saved SAP |
 
 CDM sources, CDM changes, cohorts and analyses are repeating sections — use
@@ -88,13 +88,23 @@ JSON arrays even when they hold a single entry.
   "cohorts": [
     {
       "name": "Metformin new users",
-      "role": "Target",
+      "kind": "target_denominator",
       "cohort_id": 1001,
       "description": "...",
       "entry_events": ["First metformin dispensation"],
       "inclusion_criteria": ["Aged 18 or over at index"],
       "exit_criteria": ["End of continuous observation"],
+      "study_period_start": "2015-01-01",
+      "study_period_end": "2024-12-31",
+      "sex": "Both",
+      "age_groups": ["0-17", "18-64", "65-150"],
       "prior_observation_days": 365,
+      "time_at_risk": {
+        "start_offset_days": 1,
+        "start_anchor": "cohort start",
+        "end_offset_days": 0,
+        "end_anchor": "cohort end"
+      },
       "washout_days": 365,
       "concept_set": "cs_metformin"
     }
@@ -103,34 +113,58 @@ JSON arrays even when they hold a single entry.
     {
       "name": "Incidence of lactic acidosis",
       "analysis_type": "Incidence",
-      "description": "...",
       "data_sources": ["CPRD GOLD"],
       "parameters": {
         "denominator_cohort": "Metformin new users",
         "outcome_cohort": "Lactic acidosis",
-        "denominator_unit": "person-years",
-        "rate_multiplier": 1000,
-        "repeated_events": false,
-        "calendar_intervals": ["2015-2019", "2020-2024"],
-        "time_at_risk": {
-          "start_offset_days": 1,
-          "start_anchor": "cohort start",
-          "end_offset_days": 0,
-          "end_anchor": "cohort end"
-        },
-        "stratifications": ["Sex"],
-        "sensitivity_analyses": ["30-day washout"]
+        "censor_cohort": null,
+        "estimand": {
+          "interval": ["years"],
+          "complete_database_intervals": true,
+          "outcome_washout": 365,
+          "repeated_events": false,
+          "strata": [["sex"], ["sex", "age_group"]],
+          "include_overall_strata": true
+        }
       }
     }
   ]
 }
 ```
 
-An analysis carries four keys of its own — `name`, `analysis_type`, `description`
-and `data_sources` — and everything else under `parameters`. Which keys appear
-there is decided by `analysis_type`, so a reader can tell "no comparator, because
-this is an incidence analysis" from "the comparator was left blank". A prevalence
-analysis, for instance, has no `time_at_risk` at all.
+An analysis carries three keys of its own — `name`, `analysis_type` and
+`data_sources` — and everything else under `parameters`. Which keys appear there
+is decided by `analysis_type`, so a reader can tell "no comparator, because this
+is an incidence analysis" from "the comparator was left blank".
+
+**Time at risk belongs to the cohort, not the analysis.** So do the study period,
+the age groups and the sex. Two analyses on the same denominator cannot disagree
+about them, and an analysis inherits them rather than restating them — the
+Analyses tab shows a read-only echo of what the chosen denominator already fixes.
+
+**The Incidence `parameters` map 1:1 onto
+`IncidencePrevalence::estimateIncidence()`.** If a field is not one of that
+function's arguments, it is not part of an Incidence analysis. So there is no
+"rate per 1,000" and no denominator unit — those are presentation choices made
+downstream when the result is tabled — and no sensitivity-analysis list, because
+"re-run with a 30-day washout" is a second call, not an argument to this one. The
+three `*CohortId` arguments are absent too: a cohort's id belongs to the cohort,
+and the Cohorts tab already carries it.
+
+**`strata` is a list of variable groups**, naming columns on the denominator
+cohort: `[["sex"], ["sex", "age_group"]]` means one stratification by sex and
+another by the cross of sex and age group — exactly
+`strata = list("sex", c("sex", "age_group"))`. A cohort declares which columns it
+carries (`strata_variables`, defaulting to `age_group` and `sex`, which
+`generateDenominatorCohortSet()` always produces), and an analysis may only
+stratify by those.
+
+**`outcome_washout` is a number of days, or the string `"unbounded"`.** JSON has
+no `Infinity`, and this app writes `null` for anything absent, so an infinite
+washout could not be told apart from one the author never stated — which is
+precisely the distinction the incidence validator has to make. Hence the sentinel.
+Note `estimateIncidence()` itself defaults to `Inf`; the SAP deliberately refuses
+to inherit that silently and makes the author choose.
 
 Loading a saved file back into the form (**Review & Save → Load a SAP...**)
 repopulates every section, so a SAP can be revised and re-saved.
@@ -142,9 +176,30 @@ Loading a `0.1.0` file still works — its `analyses` are read into Proposed
 Analyses.
 
 `0.3.0` gave each analysis type its own set of inputs and moved the
-type-specific fields under `parameters`. Older files still load: an analysis
-with no `parameters` is read from its top-level keys, and `"Incidence rate"` —
-the pre-`0.3.0` name — is read as `"Incidence"`. Saving writes `0.3.0` back out.
+type-specific fields under `parameters`. It also replaced a cohort's `role`
+(Target / Comparator / …) with `kind` (`denominator`, `target_denominator`, …),
+and moved `time_at_risk` from the analysis onto the cohort.
+
+Older files still load. `migrate_sap()` in `R/utils.R` runs first and copies each
+analysis's `time_at_risk` onto its denominator cohort; a cohort's old `role` is
+aliased to a `kind`; an analysis with no `parameters` is read from its top-level
+keys; `"Incidence rate"` is read as `"Incidence"`; and the generic form's
+`target_cohort` is read as the incidence `denominator_cohort`.
+
+`0.3.1` made the Incidence `parameters` map 1:1 onto `estimateIncidence()`: it
+added `strata` (as variable groups) and `include_overall_strata`, and dropped
+`reporting` (`denominator_unit`, `rate_multiplier`) and `sensitivity_analyses`,
+none of which are arguments to that function. A `0.3.0` file still loads — those
+fields are simply discarded. Saving writes `0.3.1` back out.
+
+### Validation
+
+A template may declare a `validate(params, cohorts)` that returns a character
+vector of problems — for instance, that an incidence analysis's denominator is
+not actually a denominator cohort, or that it stratifies by sex on a male-only
+cohort. Problems are listed on **Review & Save**. They do **not** block saving: a
+SAP is drafted over many sittings and an incomplete one still has to be
+checkpointed, so saving with outstanding problems warns rather than refuses.
 
 ### Adding an analysis type's form
 
