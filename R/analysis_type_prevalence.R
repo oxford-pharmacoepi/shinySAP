@@ -19,7 +19,8 @@
 register_analysis_template(
   "Prevalence",
 
-  hint = "Proportion of a denominator population with the condition, at a point (point prevalence) or across an interval (period prevalence).",
+  hint = paste0("Proportion of a denominator population with the condition, at a point ",
+                "(point prevalence) or across an interval (period prevalence)."),
 
   ui = function(ns, pf) tagList(
     layout_columns(

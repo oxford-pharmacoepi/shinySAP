@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        r-version: ['oldrel', 'release']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: ${{ matrix.r-version }}
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: |
+            any::shiny
+            any::bslib
+            any::jsonlite
+
+      # The contract tests only source part of R/; this catches syntax errors
+      # in the module files and app.R too.
+      - name: Parse all R sources
+        run: |
+          Rscript -e 'invisible(lapply(c("app.R", list.files("R", full.names = TRUE)), parse))
+                      cat("all files parse\n")'
+
+      - name: Run JSON contract tests
+        run: Rscript tests/test_sap_json.R
+
+      - name: Smoke test — the app starts and serves HTTP 200
+        run: |
+          Rscript -e 'shiny::runApp(".", port = 8123)' > shiny.log 2>&1 &
+          app_pid=$!
+          for i in $(seq 1 30); do
+            if curl -sf -o /dev/null http://127.0.0.1:8123; then
+              echo "app is up"
+              kill "$app_pid"
+              exit 0
+            fi
+            kill -0 "$app_pid" 2>/dev/null || break
+            sleep 1
+          done
+          echo "app did not come up; log follows"
+          cat shiny.log
+          exit 1
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          packages: any::lintr
+
+      - name: Lint (config in .lintr)
+        run: |
+          Rscript -e 'lints <- lintr::lint_dir(".")
+                      print(lints)
+                      quit(status = if (length(lints) > 0) 1 else 0)'
+
+      - name: README documents the current schema version
+        run: |
+          version=$(sed -nE 's/^SAP_SCHEMA_VERSION <- "([0-9.]+)"/\1/p' app.R)
+          echo "app.R schema version: ${version:?not found in app.R}"
+          if ! grep -qF "\"sap_schema_version\": \"$version\"" README.md; then
+            echo "README.md example JSON does not carry sap_schema_version $version"
+            exit 1
+          fi
