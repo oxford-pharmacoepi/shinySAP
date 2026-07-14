@@ -225,3 +225,67 @@ test_that("migrate_sap: an old file's declared strata columns are dropped", {
   ))))
   expect_null(m$cohorts[[1]]$strata_variables)
 })
+
+# What the cohort set actually generates ---------------------------------------
+#
+# A denominator is a cohort SET: the arguments are axes it is crossed over, and an
+# analysis runs on every cohort in it. The Analyses tab spells them out, so the
+# enumeration has to match what generate*DenominatorCohortSet() would really make.
+
+den_set <- function(...) denominator_cohort_set(list(kind = "denominator", ...))
+
+test_that("cohort set: interactions cross ageGroup x sex x daysPriorObservation", {
+  # 3 age groups x 3 sexes = 9 cohorts, not 1.
+  s <- den_set(ageGroup = list(c(0, 17), c(18, 45), c(46, 64)),
+               sex = list("Both", "Female", "Male"), daysPriorObservation = list(0))
+  expect_length(s, 9)
+  expect_length(den_set(ageGroup = list(c(0, 17), c(18, 64)),
+                        sex = list("Male", "Female"),
+                        daysPriorObservation = list(0, 365)), 8)   # 2 x 2 x 2
+})
+test_that("cohort set: each generated cohort is one distinct combination", {
+  s <- den_set(ageGroup = list(c(0, 17), c(18, 64)), sex = list("Male", "Female"))
+  lines <- vapply(s, format_denominator_cohort, character(1))
+  expect_length(unique(lines), 4)
+  expect_true(any(grepl("^Age 18, 64 . Female", lines)))
+})
+
+# requirementInteractions = FALSE: "only the first value specified for the other
+# factors will be used" -- so each factor varies alone against the baseline. That
+# is why the docs say order matters when it is off.
+test_that("cohort set: without interactions each factor varies alone", {
+  s <- denominator_cohort_set(list(
+    kind = "denominator", requirementInteractions = FALSE,
+    ageGroup = list(c(0, 17), c(18, 45), c(46, 64)),
+    sex = list("Both", "Female", "Male"), daysPriorObservation = list(0)))
+  expect_length(s, 5)                       # baseline + 2 extra ages + 2 extra sexes
+  lines <- vapply(s, format_denominator_cohort, character(1))
+  # Every non-baseline cohort holds the FIRST value of the factors it does not vary.
+  expect_true(all(grepl("Both", lines[2:3])))          # the extra ages keep sex[1]
+  expect_true(all(grepl("^Age 0, 17", lines[4:5])))    # the extra sexes keep age[1]
+})
+test_that("cohort set: without interactions, order decides the baseline", {
+  s <- denominator_cohort_set(list(
+    kind = "denominator", requirementInteractions = FALSE,
+    ageGroup = list(c(18, 64), c(0, 17)), sex = list("Male", "Female")))
+  expect_match(format_denominator_cohort(s[[1]]), "^Age 18, 64 . Male")
+})
+
+# timeAtRisk is NOT one of the interacting factors: each interval generates its own
+# SET, so it multiplies whatever the requirements produce.
+test_that("cohort set: each time-at-risk interval multiplies the set", {
+  s <- denominator_cohort_set(list(
+    kind = "target_denominator", targetCohortTable = "T",
+    ageGroup = list(c(0, 17), c(18, 64)), sex = list("Male", "Female"),
+    timeAtRisk = list(c(0, 30), c(31, NULL))))
+  expect_length(s, 8)                                  # 2 x 2 x 2 windows
+  expect_match(format_denominator_cohort(s[[1]]), "time at risk 0, 30")
+})
+test_that("cohort set: a plain denominator has no time at risk in its lines", {
+  expect_no_match(format_denominator_cohort(den_set()[[1]]), "time at risk")
+})
+test_that("cohort set: an empty denominator is the generator's own defaults", {
+  s <- den_set()
+  expect_length(s, 1)
+  expect_match(format_denominator_cohort(s[[1]]), "Age 0, 150 . Both . 0 days")
+})

@@ -30,6 +30,11 @@ register_analysis_template(
       entity_picker(ns("outcomeTable"), "Outcome cohort", pf("outcomeTable"),
                     placeholder = "Cohort counted as prevalent cases")
     ),
+    # Read-only echo of what the selected denominator already fixes, and of the
+    # cohorts its cohort set actually generates -- a prevalence runs on every one
+    # of them, exactly as an incidence does.
+    denominator_summary_ui(ns, pf),
+
     # Filled by the analyses module (see `subcohorts` below) only when the
     # picked cohort spans a set; all of the set's IDs selected by default.
     uiOutput(ns("denominatorCohortId_ui")),

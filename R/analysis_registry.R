@@ -393,7 +393,36 @@ denominator_summary <- function(cohort) {
       # observed time, so there is nothing to show.
       if (identical(canonical_cohort_kind(cohort$kind), "target_denominator"))
         fact("Time at risk (days from target entry)", bounds(cohort$timeAtRisk))
-    )
+    ),
+    denominator_cohort_set_ui(cohort)
+  )
+}
+
+# The axes above are a cohort SET, and the analysis runs on every cohort in it --
+# three age groups and two sexes is six cohorts, not one. Spelling them out is the
+# point: it is the only place the author sees what the arguments they typed will
+# actually generate, and how fast it multiplies.
+DENOMINATOR_SET_SHOWN <- 100
+
+denominator_cohort_set_ui <- function(cohort) {
+  set <- denominator_cohort_set(cohort)
+  n   <- length(set)
+  # Never silently truncate: say what was dropped. Only a pathological cohort gets
+  # near this, but a 500-line card would be unreadable and unscrollable.
+  shown  <- utils::head(set, DENOMINATOR_SET_SHOWN)
+  hidden <- n - length(shown)
+  div(
+    class = "mt-3",
+    div(class = "text-muted mb-1",
+        sprintf("This cohort set generates %d cohort%s, and the analysis runs on %s:",
+                n, if (n == 1) "" else "s", if (n == 1) "it" else "all of them")),
+    tags$ol(
+      class = "mb-0 ps-3 font-monospace",
+      lapply(shown, function(x) tags$li(format_denominator_cohort(x)))
+    ),
+    if (hidden > 0)
+      div(class = "text-muted fst-italic mt-1",
+          sprintf("… and %d more not listed here.", hidden))
   )
 }
 

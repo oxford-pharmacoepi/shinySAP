@@ -258,6 +258,82 @@ denominator_requirements_flatten <- function(p) {
   p
 }
 
+# What the generator actually produces ------------------------------------------
+#
+# A denominator cohort is not ONE cohort -- it is a cohort SET, and the arguments
+# on the card are the axes it is crossed over. Three age groups and two sexes is
+# six cohorts, and an analysis run on it is run on all six. The Analyses tab shows
+# this back, so an author can see the six rather than infer them.
+#
+# requirementInteractions decides how the axes combine, and the two cases are very
+# different:
+#
+#   TRUE (the default)  every combination of ageGroup x sex x daysPriorObservation.
+#   FALSE               "only the first value specified for the other factors will
+#                       be used" -- so each factor varies alone against the first
+#                       value of the others. That is why the docs warn that ORDER
+#                       MATTERS when it is FALSE: the first value of each is the
+#                       baseline everything else is measured against.
+#
+# timeAtRisk is deliberately NOT one of those factors -- requirementInteractions
+# does not mention it. Each interval "creates one set of denominator cohorts", so
+# it multiplies whatever the requirements produce, interactions or not.
+denominator_cohort_set <- function(cohort) {
+  first_or <- function(x, default) if (length(x)) x else default
+  ages  <- first_or(cohort$ageGroup %||% list(), list(as_num_array(c(0, AGE_MAX))))
+  sexes <- first_or(as.character(unlist(cohort$sex %||% character(0))), "Both")
+  prior <- first_or(as.numeric(unlist(cohort$daysPriorObservation %||% numeric(0))), 0)
+
+  req <- function(a, s, d) list(ageGroup = ages[[a]], sex = sexes[[s]],
+                                daysPriorObservation = prior[[d]])
+  combos <- list()
+  if (isTRUE(cohort$requirementInteractions %||% TRUE)) {
+    for (a in seq_along(ages)) {
+      for (s in seq_along(sexes)) {
+        for (d in seq_along(prior)) combos[[length(combos) + 1]] <- req(a, s, d)
+      }
+    }
+  } else {
+    # The baseline -- the first value of every factor -- then each further level of
+    # each factor against it. Hence "order matters" when interactions are off.
+    combos[[1]] <- req(1, 1, 1)
+    for (a in seq_along(ages)[-1])  combos[[length(combos) + 1]] <- req(a, 1, 1)
+    for (s in seq_along(sexes)[-1]) combos[[length(combos) + 1]] <- req(1, s, 1)
+    for (d in seq_along(prior)[-1]) combos[[length(combos) + 1]] <- req(1, 1, d)
+  }
+
+  # Only a target denominator has a time at risk; a plain one contributes all
+  # observed time, so there is a single implicit set.
+  windows <- if (identical(canonical_cohort_kind(cohort$kind), "target_denominator")) {
+    first_or(cohort$timeAtRisk %||% list(), list(as_num_array(c(0, Inf))))
+  } else {
+    list(NULL)
+  }
+
+  out <- list()
+  for (w in windows) {
+    for (cmb in combos) {
+      cmb$timeAtRisk <- w
+      out[[length(out) + 1]] <- cmb
+    }
+  }
+  out
+}
+
+# One generated cohort as a single line, e.g.
+#   "Age 18, 64 · Female · 365 days prior observation · time at risk 0, 30"
+format_denominator_cohort <- function(x) {
+  parts <- c(
+    sprintf("Age %s", format_bound_list(list(x$ageGroup), open = AGE_MAX)),
+    x$sex,
+    sprintf("%s days prior observation", format(x$daysPriorObservation))
+  )
+  if (!is.null(x$timeAtRisk)) {
+    parts <- c(parts, sprintf("time at risk %s", format_bound_list(list(x$timeAtRisk))))
+  }
+  paste(parts, collapse = " · ")
+}
+
 # The plain cohort definition: what a source cohort actually is.
 cohort_definition_ui <- function(ns, pf) tagList(
   layout_columns(
