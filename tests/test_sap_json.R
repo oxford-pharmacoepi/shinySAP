@@ -197,7 +197,8 @@ inc <- round_trip(ANALYSIS_TEMPLATES[["Incidence"]], list(
   strata                      = c("sex", "sex, age_group"),
   include_overall_strata      = TRUE
 ))
-check("incidence: the estimand nests", identical(inc$json$estimand$outcome_washout, 365L))
+check("incidence: the estimand nests",
+      identical(washout_days(inc$json$estimand$outcome_washout), 365))
 check("incidence: a ticked checkbox is true, not null",
       identical(inc$json$estimand$repeated_events, TRUE))
 check("incidence: flatten un-nests the estimand back onto the inputs",
@@ -240,26 +241,61 @@ check("strata: tokens round-trip back into the multi-select",
 check("strata: no strata is an empty list, which is estimateIncidence()'s default",
       identical(parse_strata(character(0)), list()))
 
-# The washout has three distinct states, and JSON has no Infinity: a bare Inf
-# would serialise to null under na = "null" and become indistinguishable from
-# "never stated", which is the one thing validate() must be able to tell apart.
-# A 0-day washout is a different analysis from an unstated one. The select must
-# therefore offer an empty choice, or the browser silently picks the first option
-# and validate()'s "no safe default" rule can never fire.
+# estimateIncidence(outcomeWashout =) is a NUMBER of days, defaulting to Inf. But
+# JSON has no Infinity, and three states have to stay apart: unset, a number of
+# days (including 0, a substantively different analysis from an unstated one), and
+# Inf. So the washout is a one-element numeric array -- [365], [0], [null] for Inf
+# -- while a bare null keeps its schema-wide meaning of "the author never said".
+# The select must offer an empty choice, or the browser silently picks the first
+# option and validate()'s "no safe default" rule can never fire.
 check("washout: the select can be genuinely unset", "" %in% OUTCOME_WASHOUT_CHOICES)
 check("washout: unset parses to NULL", is.null(parse_washout("")))
-check("washout: a number parses to a number", identical(parse_washout("365"), 365))
-check("washout: the unbounded sentinel parses to itself",
-      identical(parse_washout(WASHOUT_UNBOUNDED), WASHOUT_UNBOUNDED))
-check("washout: a legacy Inf parses to the sentinel",
-      identical(parse_washout("Inf"), WASHOUT_UNBOUNDED))
-check("washout: bare Inf would be lost by the JSON contract, the sentinel is not",
-      is.null(fromJSON(as.character(sap_json(list(w = Inf))), simplifyVector = FALSE)$w) &&
-        identical(fromJSON(as.character(sap_json(list(w = WASHOUT_UNBOUNDED))),
-                           simplifyVector = FALSE)$w, WASHOUT_UNBOUNDED))
-unb <- round_trip(ANALYSIS_TEMPLATES[["Incidence"]], list(outcome_washout = WASHOUT_UNBOUNDED))
+check("washout: a number of days parses to a numeric array",
+      identical(as.numeric(parse_washout("365")), 365))
+check("washout: 0 days is a value, not an absence",
+      identical(washout_days(parse_washout("0")), 0))
+check("washout: Inf parses to a numeric array holding Inf",
+      is.infinite(washout_days(parse_washout("Inf"))))
+check("washout: junk is not guessed at", is.null(parse_washout("about a year")))
+check("washout: a negative washout is rejected", is.null(parse_washout("-30")))
+
+# The encoding, end to end. A bare Inf really would be lost -- that is why the
+# value is wrapped in an array, where a null means Inf rather than "absent".
+check("washout: a bare Inf WOULD be lost by the JSON contract",
+      is.null(fromJSON(as.character(sap_json(list(w = Inf))), simplifyVector = FALSE)$w))
+check("washout: unbounded serialises as [null], not null",
+      grepl('"w": [null]', as.character(sap_json(list(w = parse_washout("Inf")))), fixed = TRUE))
+check("washout: a finite washout serialises as a one-element numeric array",
+      grepl('"w": [365]', as.character(sap_json(list(w = parse_washout("365")))), fixed = TRUE))
+w_json <- fromJSON(as.character(sap_json(list(w = parse_washout("Inf")))),
+                   simplifyVector = FALSE)$w
+check("washout: [null] reads back as a length-1 list, not an empty one",
+      length(w_json) == 1 && is.null(w_json[[1]]))
+check("washout: washout_days() resolves the null back to Inf",
+      is.infinite(washout_days(w_json)))
+check("washout: unset stays distinguishable from unbounded after a round trip",
+      is.null(washout_days(NULL)) && !is.null(washout_days(w_json)))
+
+unb <- round_trip(ANALYSIS_TEMPLATES[["Incidence"]], list(outcome_washout = "Inf"))
 check("washout: unbounded survives the full round trip",
       washout_is_unbounded(unb$json$estimand$outcome_washout))
+check("washout: unbounded round-trips back into the select as Inf",
+      identical(unb$pf("outcome_washout"), "Inf"))
+fin <- round_trip(ANALYSIS_TEMPLATES[["Incidence"]], list(outcome_washout = "365"))
+check("washout: a finite washout round-trips back into the select",
+      identical(fin$pf("outcome_washout"), "365"))
+zero <- round_trip(ANALYSIS_TEMPLATES[["Incidence"]], list(outcome_washout = "0"))
+check("washout: a 0-day washout round-trips and does not become 'unset'",
+      identical(zero$pf("outcome_washout"), "0") &&
+        identical(washout_days(zero$json$estimand$outcome_washout), 0))
+
+# Pre-0.3.2 files: the string sentinel, and a bare number for a finite washout.
+check("washout: the pre-0.3.2 'unbounded' sentinel still loads",
+      identical(washout_select_value("unbounded"), "Inf"))
+check("washout: a pre-0.3.2 bare number still loads",
+      identical(washout_select_value(365), "365"))
+check("washout: a pre-0.3.2 sentinel migrates to a numeric array on the way out",
+      is.infinite(washout_days(parse_washout(washout_select_value("unbounded")))))
 
 prev <- round_trip(ANALYSIS_TEMPLATES[["Prevalence"]], list(
   denominator_cohort   = "Metformin new users",
@@ -414,8 +450,11 @@ check("cohort validate: time at risk must have at least one interval",
 # Template validators ----------------------------------------------------------
 
 INC <- ANALYSIS_TEMPLATES[["Incidence"]]
+# outcome_washout in its real on-disk shape: a one-element numeric array. The bare
+# 365 used in the strata checks below is the pre-0.3.2 shape, which still reads.
 ok_params <- list(denominator_cohort = "Metformin denominator",
-                  estimand = list(outcome_washout = 365, repeated_events = TRUE,
+                  estimand = list(outcome_washout = parse_washout("365"),
+                                  repeated_events = TRUE,
                                   strata = list(list("sex"))))
 
 # NOT modifyList(): it recurses into nested lists and merges them, so replacing
@@ -444,8 +483,17 @@ check("validate: an unset washout is reported",
                 problems(with_params(estimand = list(repeated_events = FALSE))))))
 check("validate: repeated events with an unbounded washout is reported",
       any(grepl("finite outcome washout",
-                problems(with_params(estimand = list(outcome_washout = WASHOUT_UNBOUNDED,
+                problems(with_params(estimand = list(outcome_washout = parse_washout("Inf"),
                                                      repeated_events = TRUE))))))
+# The unbounded washout as it actually comes back off disk: [null] -> list(NULL).
+check("validate: repeated events is reported for an unbounded washout read from JSON",
+      any(grepl("finite outcome washout",
+                problems(with_params(estimand = list(outcome_washout = list(NULL),
+                                                     repeated_events = TRUE))))))
+check("validate: a 0-day washout is a stated washout, not an unset one",
+      !any(grepl("stated explicitly",
+                 problems(with_params(estimand = list(outcome_washout = parse_washout("0"),
+                                                      repeated_events = TRUE))))))
 check("validate: an unset washout does not ALSO trip the repeated-events rule",
       !any(grepl("finite outcome washout",
                  problems(with_params(estimand = list(repeated_events = TRUE))))))

@@ -46,11 +46,23 @@ PREVALENCE_TYPES <- c("Point prevalence", "Period prevalence")
 # and results are estimated for each.
 INTERVALS <- c("weeks", "months", "quarters", "years", "overall")
 
-# JSON has no Infinity, and sap_json() writes na = "null", so a bare Inf would
-# serialise as null -- indistinguishable from "the user never said". Three states
-# have to stay apart (unset / a number of days / never repeat), so an unbounded
-# washout travels as this sentinel string instead.
-WASHOUT_UNBOUNDED <- "unbounded"
+# estimateIncidence(outcomeWashout =) is a NUMBER of days, defaulting to Inf. So
+# the SAP holds a number -- but three states have to stay apart:
+#
+#   unset            the author never said. The validator objects; see below.
+#   a number of days including 0, which is a substantively different analysis.
+#   Inf              the API's own default: one event per person, ever.
+#
+# JSON has no Infinity, so the washout travels as a ONE-ELEMENT NUMERIC ARRAY,
+# exactly the convention age_groups and time_at_risk already use (R/cohort_kinds.R):
+# Inf is null *inside* an array, while a bare null keeps its schema-wide meaning of
+# "absent".
+#
+#   [365]   365 days        [0]  no washout
+#   [null]  Inf, unbounded  null the author never said
+#
+# So never unlist() a washout either -- [null] would collapse to length 0. Read it
+# with washout_days(), which resolves the null back to Inf.
 
 # The empty first choice is load-bearing. A washout of 0 days is a substantively
 # different analysis from an unstated one, so the select must be able to be
@@ -63,25 +75,52 @@ OUTCOME_WASHOUT_CHOICES <- c(
   "30 days"                          = "30",
   "90 days"                          = "90",
   "365 days"                         = "365",
-  "Unbounded (one event per person)" = WASHOUT_UNBOUNDED
+  "Unbounded (one event per person)" = "Inf"
 )
 
 # The select's value -> what goes in the JSON. NULL means the user has not said,
 # which a validator can then object to; there is deliberately no default.
+# "unbounded" is the pre-0.3.2 sentinel, still accepted so an old file loads.
 parse_washout <- function(x) {
   x <- trimws(as.character(x %||% ""))
   if (!nzchar(x)) return(NULL)
-  if (x %in% c(WASHOUT_UNBOUNDED, "Inf", "inf")) return(WASHOUT_UNBOUNDED)
+  if (tolower(x) %in% c("inf", "infinity", "unbounded")) return(as_num_array(Inf))
   n <- suppressWarnings(as.numeric(x))
+  if (is.na(n) || n < 0) NULL else as_num_array(n)
+}
+
+# The washout as a number, resolving a JSON null back to Inf. NULL means unset --
+# the one state that is not a number.
+washout_days <- function(w) {
+  if (is.null(w) || !length(w)) return(NULL)
+  v <- w[[1]]
+  if (is.null(v)) return(Inf)                     # [null] -- an unbounded washout
+  n <- suppressWarnings(as.numeric(v))
   if (is.na(n)) NULL else n
 }
 
-washout_is_unbounded <- function(w) identical(as.character(w), WASHOUT_UNBOUNDED)
+washout_is_unbounded <- function(w) {
+  d <- washout_days(w)
+  !is.null(d) && is.infinite(d)
+}
+
+# The JSON value -> the select's string value, for pf() on the way back in. Also
+# the migration: before 0.3.2 an unbounded washout was the string "unbounded" and
+# a finite one a bare number, neither of which is an array.
+washout_select_value <- function(w) {
+  if (is.null(w) || !length(w)) return(NULL)
+  v <- w[[1]]
+  if (is.null(v)) return("Inf")
+  if (is.character(v) && tolower(v) %in% c("unbounded", "inf", "infinity")) return("Inf")
+  d <- suppressWarnings(as.numeric(v))
+  if (is.na(d)) NULL else if (is.infinite(d)) "Inf" else format(d)
+}
 
 format_washout <- function(w) {
-  if (is.null(w)) return("not stated")
-  if (washout_is_unbounded(w)) return("unbounded")
-  paste(w, "days")
+  d <- washout_days(w)
+  if (is.null(d)) return("not stated")
+  if (is.infinite(d)) return("unbounded")
+  paste(d, "days")
 }
 
 # The registry ----------------------------------------------------------------

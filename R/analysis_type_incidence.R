@@ -44,8 +44,9 @@ register_analysis_template(
       # No default: "" so it starts unset and validate() can insist on a choice.
       # estimateIncidence() itself defaults to Inf, but a washout is too
       # consequential to inherit silently -- a SAP has to say it out loud.
-      # (Inf cannot be a value here; JSON has no Infinity. See WASHOUT_UNBOUNDED.)
-      selectInput(ns("outcome_washout"), "Outcome washout", OUTCOME_WASHOUT_CHOICES,
+      # The value is a number of days, or Inf; see OUTCOME_WASHOUT_CHOICES for how
+      # Inf reaches the JSON, since JSON has no Infinity.
+      selectInput(ns("outcome_washout"), "Outcome washout (days)", OUTCOME_WASHOUT_CHOICES,
                   selected = pf("outcome_washout", ""), width = "100%"),
       checkboxInput(ns("repeated_events"), "Count repeated events",
                     value = isTRUE(pf("repeated_events", FALSE))),
@@ -101,10 +102,10 @@ register_analysis_template(
 
     # Order matters: an unset washout is not a *finite* one, so check it first or
     # an unset washout would also trip the repeated-events rule.
-    if (is.null(p$estimand$outcome_washout)) {
+    w <- washout_days(p$estimand$outcome_washout)
+    if (is.null(w)) {
       errs <- c(errs, "Outcome washout must be stated explicitly; there is no safe default.")
-    } else if (isTRUE(p$estimand$repeated_events) &&
-               washout_is_unbounded(p$estimand$outcome_washout)) {
+    } else if (isTRUE(p$estimand$repeated_events) && is.infinite(w)) {
       errs <- c(errs, "Repeated events requires a finite outcome washout.")
     }
 
@@ -120,8 +121,10 @@ register_analysis_template(
     p <- c(p, p$estimand %||% list())
     p$estimand <- NULL
 
-    # The select holds the raw string; parse_washout() turns it back into a value.
-    if (!is.null(p$outcome_washout)) p$outcome_washout <- as.character(p$outcome_washout)
+    # The select holds a string; the JSON holds a one-element numeric array (with
+    # Inf as [null]). This also reads the pre-0.3.2 shapes -- the "unbounded"
+    # sentinel string, and a bare number for a finite washout.
+    p$outcome_washout <- washout_select_value(p$outcome_washout)
 
     # The strata multi-select holds one token per group, crossed vars comma-joined.
     p$strata <- strata_tokens(p$strata)

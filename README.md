@@ -125,7 +125,7 @@ JSON arrays even when they hold a single entry.
         "estimand": {
           "interval": ["years"],
           "complete_database_intervals": true,
-          "outcome_washout": 365,
+          "outcome_washout": [365],
           "repeated_events": false,
           "strata": [["sex"], ["sex", "age_group"]],
           "include_overall_strata": true
@@ -190,11 +190,24 @@ carries (`strata_variables`, defaulting to `age_group` and `sex`, which
 `generateDenominatorCohortSet()` always produces), and an analysis may only
 stratify by those.
 
-**`outcome_washout` is a number of days, or the string `"unbounded"`.** JSON has
-no `Infinity`, and this app writes `null` for anything absent, so an infinite
-washout could not be told apart from one the author never stated — which is
-precisely the distinction the incidence validator has to make. Hence the sentinel.
-Note `estimateIncidence()` itself defaults to `Inf`; the SAP deliberately refuses
+**`outcome_washout` is a number of days**, matching
+`estimateIncidence(outcomeWashout =)`, which takes a number and defaults to `Inf`.
+It is written as a **one-element numeric array**, for the same reason
+`time_at_risk` is a list of pairs: JSON has no `Infinity`, so `Inf` travels as
+`null` *inside* an array, leaving a bare `null` to keep its schema-wide meaning of
+"absent".
+
+| JSON | Means |
+| --- | --- |
+| `[365]` | a 365-day washout |
+| `[0]` | no washout |
+| `[null]` | `Inf` — unbounded, one event per person |
+| `null` | the author never said |
+
+All three of the first rows are numbers, and all four states are distinct — which
+is what the incidence validator needs. A 0-day washout is a substantively
+different analysis from an unstated one, and an unbounded washout is different
+again. `estimateIncidence()` defaults to `Inf`, but the SAP deliberately refuses
 to inherit that silently and makes the author choose.
 
 Loading a saved file back into the form (**Review & Save → Load a SAP...**)
@@ -233,6 +246,12 @@ carries, and each denominator kind carries exactly its generator's arguments.
 added. `washout_days` was **dropped** — neither generator takes a washout, it is
 `estimateIncidence(outcomeWashout =)`, which the Incidence analysis already
 captures.
+
+`0.3.2` also made the Incidence `outcome_washout` **numeric**, matching
+`estimateIncidence(outcomeWashout =)`. It was the string `"unbounded"` (or a bare
+number); it is now a one-element numeric array, with `Inf` as `[null]` — the same
+Inf-as-null-inside-an-array rule the cohort's `age_groups` and `time_at_risk` use.
+Both older shapes still load.
 
 Older files still load, and `migrate_sap()` in `R/utils.R` runs before any
 section does. Beyond the aliasing above, it repairs two things it cannot leave
