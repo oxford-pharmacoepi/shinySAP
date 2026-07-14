@@ -29,10 +29,43 @@ as_array <- function(x) I(as.character(x))
 # and a two-element pair silently becomes one.
 as_num_array <- function(x) I(as.numeric(x))
 
-# Blank text becomes null rather than "" so consumers can test for absence.
+# Blank text becomes null rather than "" so consumers can test for absence. A
+# cleared dateInput sends NA rather than "", and lands here too -- same answer.
 blank_to_na <- function(x) {
   x <- trimws(x %||% "")
   if (!nzchar(x)) NA_character_ else x
+}
+
+# A dateInput's `value`: a Date, or NULL to start the field genuinely blank.
+#
+# These fields used to be free-text, so an older file may hold something a
+# calendar cannot show ("Q1 2024", "unknown"). dateInput() would warn and render
+# blank anyway; doing the coercion here makes that explicit and keeps the console
+# quiet. A date the picker cannot represent is not one this app can capture.
+as_date_value <- function(x) {
+  x <- trimws(as.character(x %||% "")[1])
+  if (is.na(x) || !nzchar(x)) return(NULL)
+  d <- suppressWarnings(as.Date(x, format = "%Y-%m-%d"))
+  if (is.na(d)) NULL else d
+}
+
+# A dateInput that genuinely starts blank -- which shiny::dateInput() will not do.
+#
+# Its JS binding substitutes TODAY whenever the field has no `data-initial-date`:
+#
+#   let date = $input.data("initial-date");
+#   if (date === void 0 || date === null) date = ...new Date();   -- shiny.js
+#
+# Blank is a *meaningful* value here: an unset cohort date range means "the whole
+# observation period", and an unset data lock point means the author has not said.
+# A silently pre-filled today would decide both on their behalf -- the same trap
+# the outcome washout's empty first choice exists to avoid. An empty string is
+# neither undefined nor null, so the picker starts empty and stays that way.
+date_input <- function(inputId, label, value = NULL, ...) {
+  value <- as_date_value(value)
+  di <- dateInput(inputId, label, value = value, width = "100%", ...)
+  if (!is.null(value)) return(di)
+  htmltools::tagQuery(di)$find("input")$addAttrs("data-initial-date" = "")$allTags()
 }
 
 slugify <- function(x) {

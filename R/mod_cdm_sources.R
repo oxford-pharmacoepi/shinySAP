@@ -28,17 +28,15 @@ source_item_ui <- function(id, prefill = NULL) {
       col_widths = c(3, 3, 3, 3),
       textInput(ns("cdm_version"), "CDM version", pf("cdm_version"), width = "100%"),
       textInput(ns("vocabulary_version"), "Vocabulary version", pf("vocabulary_version"), width = "100%"),
-      textInput(ns("release_date"), "Snapshot / release", pf("release_date"),
-                width = "100%", placeholder = "YYYY-MM-DD"),
-      textInput(ns("data_lock"), "Data lock point", pf("data_lock"),
-                width = "100%", placeholder = "YYYY-MM-DD")
+      date_input(ns("release_date"), "Snapshot / release", pf("release_date")),
+      date_input(ns("data_lock"), "Data lock point", pf("data_lock"))
     ),
     layout_columns(
       col_widths = c(6, 6),
-      textInput(ns("observation_period_start"), "Observation period start",
-                pf("observation_period_start"), width = "100%", placeholder = "YYYY-MM-DD"),
-      textInput(ns("observation_period_end"), "Observation period end",
-                pf("observation_period_end"), width = "100%", placeholder = "YYYY-MM-DD")
+      date_input(ns("observation_period_start"), "Observation period start",
+                 pf("observation_period_start")),
+      date_input(ns("observation_period_end"), "Observation period end",
+                 pf("observation_period_end"))
     ),
     textAreaInput(ns("description"), "Description", pf("description"), rows = 2, width = "100%")
   )

@@ -166,14 +166,21 @@ cohort_template <- function(kind) {
 
 # The requirements every denominator cohort set is generated with, target or not.
 denominator_requirements_ui <- function(ns, pf) tagList(
+  # cohortDateRange takes Dates, so these are pickers rather than free text.
+  # dateInput() has no placeholder, and blank is a meaningful value here, so what
+  # blank *means* moves into help text under each field.
   layout_columns(
     col_widths = c(6, 6),
-    textInput(ns("cohort_date_range_start"), "Cohort date range: earliest start",
-              pf("cohort_date_range_start"), width = "100%",
-              placeholder = "YYYY-MM-DD (blank = earliest observation period)"),
-    textInput(ns("cohort_date_range_end"), "Cohort date range: latest end",
-              pf("cohort_date_range_end"), width = "100%",
-              placeholder = "YYYY-MM-DD (blank = latest observation period)")
+    div(
+      date_input(ns("cohort_date_range_start"), "Cohort date range: earliest start",
+                 pf("cohort_date_range_start")),
+      div(class = "form-text", "Blank = the earliest observation period in the database.")
+    ),
+    div(
+      date_input(ns("cohort_date_range_end"), "Cohort date range: latest end",
+                 pf("cohort_date_range_end")),
+      div(class = "form-text", "Blank = the latest observation period in the database.")
+    )
   ),
   layout_columns(
     col_widths = c(6, 6),
