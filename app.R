@@ -31,6 +31,13 @@ ui <- page_navbar(
   id = "nav",
   theme = bs_theme(version = 5, preset = "shiny"),
   window_title = "shinySAP",
+  header = tags$head(tags$style(HTML("
+    /* item_card(): the header toggles the body. The chevron points down when the
+       card is open and right when it is shut; Bootstrap flips aria-expanded. */
+    .item-card-toggle .item-card-chevron { transition: transform .15s ease-in-out; }
+    .item-card-toggle[aria-expanded='false'] .item-card-chevron { transform: rotate(-90deg); }
+    .item-card-toggle:focus { box-shadow: none; }
+  "))),
   nav_panel("Study", div(class = "container-fluid py-3", study_ui("study"))),
   nav_panel("CDM Sources", div(class = "container-fluid py-3", cdm_sources_ui("sources"))),
   nav_panel("CDM Changes", div(class = "container-fluid py-3", cdm_changes_ui("cdm"))),

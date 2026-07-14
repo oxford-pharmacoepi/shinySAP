@@ -53,17 +53,70 @@ dynamic_items <- function(prefix, container, item_ui, item_server,
   )
 }
 
-# Shared chrome for one item card.
+# Shared chrome for one item card: every repeating section (CDM sources, CDM
+# changes, cohorts, analyses) is built from this, so they all collapse the same way.
+#
+# The body collapses because a SAP with a dozen cohorts is otherwise a very long
+# scroll. A collapsed card still has to say WHICH cohort it is, or collapsing makes
+# navigation worse rather than better -- hence `card_label`, which each item server
+# fills with the item's own name (item_card_label()).
+#
+# Collapsing hides the body with display: none, and a hidden output does not
+# render. Every uiOutput inside a card body that *contains inputs* already sets
+# suspendWhenHidden = FALSE -- it had to, because the tab pane itself is hidden
+# until selected -- so a collapsed card keeps building and reporting its inputs and
+# still saves. Adding a new one without that flag would silently save it empty.
 item_card <- function(id, title, ...) {
-  ns <- NS(id)
+  ns   <- NS(id)
+  body <- ns("body")
   div(
     id = ns("box"), class = "card mb-3",
     div(
       class = "card-header d-flex justify-content-between align-items-center py-2",
-      tags$strong(title),
+      tags$button(
+        class = paste("btn btn-sm btn-link text-body text-decoration-none p-0",
+                      "d-flex align-items-center gap-2 item-card-toggle"),
+        type = "button",
+        `data-bs-toggle` = "collapse",
+        `data-bs-target` = paste0("#", body),
+        `aria-expanded` = "true",
+        `aria-controls` = body,
+        icon("chevron-down", class = "item-card-chevron small"),
+        tags$strong(title),
+        # The item's own name, so a collapsed card is still identifiable.
+        tags$span(class = "text-muted fw-normal",
+                  textOutput(ns("card_label"), inline = TRUE))
+      ),
       actionButton(ns("remove"), "Remove", class = "btn btn-sm btn-outline-danger")
     ),
-    div(class = "card-body", ...)
+    div(id = body, class = "collapse show", div(class = "card-body", ...))
+  )
+}
+
+# Fills the header label of an item_card(). `label` is a reactive giving the text.
+#
+# suspendWhenHidden = FALSE for the same reason as everywhere else here: the tab
+# pane is hidden until it is first selected, and a suspended output would leave
+# every card in a freshly loaded SAP labelled blank until you clicked into the tab.
+item_card_label <- function(output, label) {
+  output$card_label <- renderText(label())
+  outputOptions(output, "card_label", suspendWhenHidden = FALSE)
+}
+
+# Collapse / expand every card in a section at once. The real navigation win when a
+# SAP has a dozen cohorts: `selector` is the container the cards were inserted into.
+collapse_all_button <- function(container_selector) {
+  tags$button(
+    class = "btn btn-sm btn-outline-secondary", type = "button",
+    onclick = sprintf(
+      paste0("var b=document.querySelectorAll('%s > .card > .collapse');",
+             "var anyOpen=Array.prototype.some.call(b,function(e){",
+             "return e.classList.contains('show')});",
+             "Array.prototype.forEach.call(b,function(e){",
+             "bootstrap.Collapse.getOrCreateInstance(e,{toggle:false})[",
+             "anyOpen?'hide':'show']()});"),
+      container_selector),
+    "Collapse / expand all"
   )
 }
 

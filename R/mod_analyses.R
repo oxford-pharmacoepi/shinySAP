@@ -38,6 +38,12 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     ns      <- session$ns
     base_pf <- prefiller(prefill)
 
+    # What a collapsed card says it is: the analysis's name and type.
+    item_card_label(output, reactive({
+      nm <- trimws(input$name %||% "")
+      paste0(if (nzchar(nm)) nm else "Untitled", " — ", type_r())
+    }))
+
     # Shiny keeps an input's last reported value after its node leaves the DOM,
     # so a template block rebuilt after a type switch can read back what the user
     # typed into it. NULL means the input has never been rendered -- fall back to
@@ -196,7 +202,11 @@ analyses_ui <- function(id) {
         h3("Proposed analyses", class = "mb-1"),
         p(class = "text-muted mb-0", "What is estimated, on which cohorts and sources, and how.")
       ),
-      actionButton(ns("add"), "Add analysis", class = "btn btn-primary", icon = icon("plus"))
+      div(
+        class = "d-flex gap-2",
+        collapse_all_button(paste0("#", ns("items"))),
+        actionButton(ns("add"), "Add analysis", class = "btn btn-primary", icon = icon("plus"))
+      )
     ),
     conditionalPanel(
       condition = sprintf("output['%s'] == 0", ns("n")),

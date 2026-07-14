@@ -45,6 +45,13 @@ source_item_ui <- function(id, prefill = NULL) {
 source_item_server <- function(id, prefill = NULL, on_remove = function() {}) {
   moduleServer(id, function(input, output, session) {
     observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
+
+    # What a collapsed card says it is: the source's name.
+    item_card_label(output, reactive({
+      nm <- trimws(input$name %||% "")
+      if (nzchar(nm)) nm else "Untitled"
+    }))
+
     reactive(list(
       name                     = blank_to_na(input$name),
       source_key               = blank_to_na(input$source_key),
@@ -72,7 +79,11 @@ cdm_sources_ui <- function(id) {
         h3("CDM sources", class = "mb-1"),
         p(class = "text-muted mb-0", "The databases this study will run against.")
       ),
-      actionButton(ns("add"), "Add source", class = "btn btn-primary", icon = icon("plus"))
+      div(
+        class = "d-flex gap-2",
+        collapse_all_button(paste0("#", ns("items"))),
+        actionButton(ns("add"), "Add source", class = "btn btn-primary", icon = icon("plus"))
+      )
     ),
     conditionalPanel(
       condition = sprintf("output['%s'] == 0", ns("n")),

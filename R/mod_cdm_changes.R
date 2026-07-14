@@ -35,6 +35,14 @@ cdm_item_server <- function(id, prefill = NULL, on_remove = function() {},
   moduleServer(id, function(input, output, session) {
     observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
     sync_pickers(session, "data_source", source_names, prefiller(prefill))
+
+    # A CDM change has no name -- what identifies it is the column it touches.
+    item_card_label(output, reactive({
+      parts <- c(trimws(input$cdm_table %||% ""), trimws(input$cdm_field %||% ""))
+      parts <- parts[nzchar(parts)]
+      if (length(parts)) paste(parts, collapse = ".") else "Untitled"
+    }))
+
     reactive(list(
       cdm_table   = blank_to_na(input$cdm_table),
       cdm_field   = blank_to_na(input$cdm_field),
@@ -56,7 +64,11 @@ cdm_changes_ui <- function(id) {
         h3("CDM changes", class = "mb-1"),
         p(class = "text-muted mb-0", "Changes to the common data model this study depends on.")
       ),
-      actionButton(ns("add"), "Add change", class = "btn btn-primary", icon = icon("plus"))
+      div(
+        class = "d-flex gap-2",
+        collapse_all_button(paste0("#", ns("items"))),
+        actionButton(ns("add"), "Add change", class = "btn btn-primary", icon = icon("plus"))
+      )
     ),
     conditionalPanel(
       condition = sprintf("output['%s'] == 0", ns("n")),

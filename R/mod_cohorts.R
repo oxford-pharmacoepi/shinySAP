@@ -43,6 +43,13 @@ cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
     ns      <- session$ns
     base_pf <- prefiller(prefill)
 
+    # What a collapsed card says it is: the cohort's name and kind.
+    item_card_label(output, reactive({
+      nm   <- trimws(input$name %||% "")
+      kind <- names(COHORT_KINDS)[match(kind_r(), COHORT_KINDS)]
+      paste0(if (nzchar(nm)) nm else "Untitled", " — ", kind %||% "")
+    }))
+
     # Same rule as the analysis card: Shiny keeps an input's last value after its
     # node is destroyed, so a block rebuilt after a kind switch reads back what
     # was typed into it. NULL means never rendered -> fall back to the file. A
@@ -109,7 +116,11 @@ cohorts_ui <- function(id) {
         h3("Cohorts", class = "mb-1"),
         p(class = "text-muted mb-0", "Populations the analyses are run against.")
       ),
-      actionButton(ns("add"), "Add cohort", class = "btn btn-primary", icon = icon("plus"))
+      div(
+        class = "d-flex gap-2",
+        collapse_all_button(paste0("#", ns("items"))),
+        actionButton(ns("add"), "Add cohort", class = "btn btn-primary", icon = icon("plus"))
+      )
     ),
     conditionalPanel(
       condition = sprintf("output['%s'] == 0", ns("n")),
