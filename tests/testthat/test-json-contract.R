@@ -6,26 +6,23 @@ sap <- list(
   generated_at = "2026-07-09T00:00:00+0000",
   study = list(
     title = "Metformin and lactic acidosis",
-    acronym = blank_to_na("   "),
+    study_code = blank_to_na("   "),
     authors = as_array("A. Researcher"),          # single author
     version = "1.0",
     date = "2026-07-09",
     background = blank_to_na(""),
-    objectives = as_array(split_lines("Estimate incidence\n\n  Characterise users  "))
+    objectives = as_array(split_lines("Estimate incidence\n\n  Characterise users  ")),
+    amendments = list()
   ),
   cdm_sources = list(list(
     name = "CPRD GOLD",
     source_key = "cprd",
-    data_type = "Primary care records",
-    population_size = 12000000,
-    cdm_version = "5.4",
     country = blank_to_na("")
   )),
   cdm_changes = list(),
   cohorts = list(list(
     name = "Metformin new users",
     kind = "target_denominator",
-    cohort_id = 1001,
     entry_events = as_array(split_lines("First metformin dispensation")),
     inclusion_criteria = as_array(character(0)),
     washout_days = NA
@@ -45,7 +42,7 @@ sap <- list(
 txt <- as.character(sap_json(sap))
 back <- fromJSON(txt, simplifyVector = FALSE)
 
-test_that("blank text serialises to null", expect_null(back$study$acronym))
+test_that("blank text serialises to null", expect_null(back$study$study_code))
 test_that("single author stays an array", {
   expect_true(is.list(back$study$authors))
   expect_length(back$study$authors, 1)
@@ -54,6 +51,7 @@ test_that("objectives split and trimmed",
           expect_identical(unlist(back$study$objectives),
                            c("Estimate incidence", "Characterise users")))
 test_that("empty section is an array", expect_match(txt, '"cdm_changes": \\[\\]'))
+test_that("empty amendment history is an array", expect_match(txt, '"amendments": \\[\\]'))
 test_that("empty criteria list is an array", expect_match(txt, '"inclusion_criteria": \\[\\]'))
 test_that("NA numeric serialises to null", expect_null(back$cohorts[[1]]$washout_days))
 test_that("scalars are unboxed",
@@ -81,7 +79,34 @@ test_that("coalesce_key with neither key gives an empty list",
 
 test_that("slugify",
           expect_identical(slugify("Metformin & Lactic Acidosis!"), "metformin-lactic-acidosis"))
-test_that("slugify empty falls back", expect_identical(slugify(""), "sap"))
+test_that("slugify empty stays empty", expect_identical(slugify(""), ""))
+
+test_that("sap_file_base prefers the study code and carries the version",
+          expect_identical(
+            sap_file_base(list(title = "Metformin and lactic acidosis",
+                               study_code = "MELA", version = "1.0")),
+            "sap-mela-v1.0"))
+test_that("sap_file_base falls back to the title",
+          expect_identical(sap_file_base(list(title = "Metformin study", study_code = NA)),
+                           "sap-metformin-study"))
+test_that("sap_file_base never doubles the sap prefix", {
+  expect_identical(sap_file_base(list(title = "SAP")), "sap-untitled")
+  expect_identical(sap_file_base(list(title = "SAP metformin study")),
+                   "sap-metformin-study")
+})
+test_that("sap_file_base with no title is untitled",
+          expect_identical(sap_file_base(list(title = NA)), "sap-untitled"))
+
+test_that("next_sap_version bumps the major", {
+  expect_identical(next_sap_version("1"), "2")
+  expect_identical(next_sap_version("1.0"), "2.0")
+  expect_identical(next_sap_version("1.2"), "2.0")
+})
+test_that("next_sap_version gives no prefill for a non-numeric version", {
+  expect_identical(next_sap_version("draft"), "")
+  expect_identical(next_sap_version(NA), "")
+  expect_identical(next_sap_version(NULL), "")
+})
 test_that("join_lines round-trips split_lines",
           expect_identical(split_lines(join_lines(list("a", "b"))), c("a", "b")))
 
@@ -97,6 +122,6 @@ test_that("save_sap writes a slugged file that reads back", {
   on.exit(unlink(tmp, recursive = TRUE))
   path <- save_sap(sap, tmp)
   expect_true(file.exists(path))
-  expect_match(basename(path), "^sap-metformin-and-lactic-acidosis-\\d{8}-\\d{6}\\.json$")
+  expect_match(basename(path), "^sap-metformin-and-lactic-acidosis-v1\\.0-\\d{8}-\\d{6}\\.json$")
   expect_identical(read_sap(path)$study$title, sap$study$title)
 })

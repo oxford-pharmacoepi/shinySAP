@@ -1,0 +1,307 @@
+---
+title: "Statistical Analysis Plan"
+subtitle: |
+  `r params$sap$study$study_code %||% ''`\
+  `r if (is.na(params$sap$study$title %||% NA)) '' else params$sap$study$title`
+date: "`r params$sap$study$date %||% Sys.Date()`"
+author: "`r paste(unlist(params$sap$study$authors %||% ''), collapse = ', ')`"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    self_contained: true
+  officedown::rdocx_document:
+    toc: false
+    number_sections: false
+    reference_docx: reference.docx
+    tables:
+      style: Table
+      caption:
+        style: Table Caption
+    page_margins:
+      bottom: 1
+      top: 1
+      right: 1
+      left: 1
+      header: 0.5
+      footer: 0.5
+params:
+  sap: NULL
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+`%||%` <- function(x, y) {
+  if (is.null(x) || length(x) == 0) return(y)
+  if (length(x) == 1 && is.na(x)) return(y)
+  x
+}
+
+is_word <- isTRUE(knitr::opts_knit$get("rmarkdown.pandoc.to") == "docx")
+
+sap   <- params$sap
+study <- sap$study %||% list()
+
+library(flextable)
+set_flextable_defaults(font.family = "Calibri", font.size = 10)
+
+# Render a two-column label/value flextable, skipping rows with no value
+field_table <- function(rows) {
+  rows <- Filter(function(r) {
+    v <- r[2]
+    !is.null(v) && !is.na(v) && nzchar(trimws(v)) && v != "—"
+  }, rows)
+  if (!length(rows)) return(invisible(NULL))
+  df <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE)
+  colnames(df) <- c("Field", "Value")
+  ft <- flextable(df) |>
+    bold(j = 1) |>
+    border_remove() |>
+    hline(border = officer::fp_border(color = "#DDDDDD", width = 0.5)) |>
+    set_table_properties(layout = "autofit", width = 1) |>
+    padding(padding = 4) |>
+    fontsize(size = 10)
+  if (nrow(df) >= 2) ft <- bg(ft, i = seq(2, nrow(df), 2), bg = "#F5F5F5")
+  ft
+}
+
+# Render a data frame as a flextable, one row per item (sources, changes)
+items_table <- function(df) {
+  ft <- flextable(df) |>
+    bold(part = "header") |>
+    border_remove() |>
+    hline(border = officer::fp_border(color = "#DDDDDD", width = 0.5)) |>
+    set_table_properties(layout = "autofit", width = 1) |>
+    padding(padding = 4) |>
+    fontsize(size = 10)
+  if (nrow(df) >= 2) ft <- bg(ft, i = seq(2, nrow(df), 2), bg = "#F5F5F5")
+  ft
+}
+
+# A field as display text: NULL and NA become the empty string
+chr <- function(x) {
+  x <- as.character(x %||% "")
+  if (is.na(x)) "" else x
+}
+
+```
+
+```{r justify-html, results='asis'}
+# The Word output justifies body text via reference.docx; mirror it in HTML.
+if (!is_word) cat("<style>p { text-align: justify; }</style>\n")
+```
+
+# Study information
+
+```{r study-table}
+rows <- list(
+  c("Title",       study$title %||% ""),
+  c("Study code",  study$study_code %||% ""),
+  c("Authors",     paste(unlist(study$authors %||% list()), collapse = ", ")),
+  c("SAP version", study$version %||% ""),
+  c("Date",        study$date %||% "")
+)
+field_table(rows)
+```
+
+```{r amendments, results='asis'}
+amds <- study$amendments %||% list()
+if (length(amds)) {
+  cat("\n**Amendment history**\n\n")
+  df <- data.frame(
+    `Version`               = vapply(amds, function(a) chr(a$version), character(1)),
+    `Date`                  = vapply(amds, function(a) chr(a$date), character(1)),
+    `Description of change` = vapply(amds, function(a) chr(a$description), character(1)),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+  flextable::flextable_to_rmd(items_table(df))
+  cat("\n\n")
+}
+```
+
+```{r background, results='asis'}
+bg_text <- study$background %||% ""
+if (!is.na(bg_text) && nzchar(trimws(bg_text))) {
+  cat("\n**Rationale and background**\n\n", bg_text, "\n\n", sep = "")
+}
+```
+
+```{r objectives, results='asis'}
+aim  <- chr(study$aim)
+objs <- unlist(study$objectives %||% list())
+if (nzchar(trimws(aim)) || length(objs)) {
+  cat("\n**Research question and objectives**\n\n")
+  if (nzchar(trimws(aim))) cat(aim, "\n\n")
+  if (length(objs)) {
+    cat("The specific objectives of this study are:\n\n")
+    cat(sprintf("%d. %s\n", seq_along(objs), objs), sep = "")
+  }
+}
+```
+
+`r if (is_word) "\\newpage"`
+
+---
+
+# CDM sources
+
+```{r cdm-sources, results='asis'}
+sources <- sap$cdm_sources %||% list()
+if (!length(sources)) {
+  cat("_No CDM sources defined._\n")
+} else {
+  df <- data.frame(
+    `Source name`      = vapply(sources, function(s) chr(s$name), character(1)),
+    `Short key`        = vapply(sources, function(s) chr(s$source_key), character(1)),
+    `Country / region` = vapply(sources, function(s) chr(s$country), character(1)),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+  flextable::flextable_to_rmd(items_table(df))
+  cat("\n\n")
+}
+```
+
+`r if (is_word) "\\newpage"`
+
+---
+
+# CDM changes
+
+```{r cdm-changes, results='asis'}
+changes <- sap$cdm_changes %||% list()
+if (!length(changes)) {
+  cat("_No CDM changes defined._\n")
+} else {
+  df <- data.frame(
+    `Type of change` = vapply(changes, function(ch) chr(ch$change_type), character(1)),
+    `Data sources`   = vapply(changes, function(ch)
+      paste(unlist(ch$data_sources %||% list()), collapse = ", "), character(1)),
+    `Description`    = vapply(changes, function(ch) chr(ch$description), character(1)),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+  flextable::flextable_to_rmd(items_table(df))
+  cat("\n\n")
+}
+```
+
+`r if (is_word) "\\newpage"`
+
+---
+
+# Cohorts
+
+```{r cohorts, results='asis'}
+cohorts <- sap$cohorts %||% list()
+if (!length(cohorts)) {
+  cat("_No cohorts defined._\n")
+} else {
+  cohort_details <- function(co) {
+    parts <- character(0)
+    add <- function(label, value) {
+      if (nzchar(value)) parts <<- c(parts, sprintf("%s: %s", label, value))
+    }
+
+    if (!is.null(co$targetCohortTable))
+      add("Target cohort", chr(co$targetCohortTable))
+
+    if (!is.null(co$daysPriorObservation))
+      add("Days prior observation", paste(unlist(co$daysPriorObservation), collapse = ", "))
+
+    if (!is.null(co$ageGroup))
+      add("Age groups", paste(
+        vapply(co$ageGroup, function(a) paste(unlist(a), collapse = "–"), character(1)),
+        collapse = "; "))
+
+    sex <- unlist(co$sex %||% list())
+    if (length(sex)) add("Sex", paste(sex, collapse = ", "))
+
+    if (!is.null(co$cohortDateRange)) {
+      dr <- unlist(co$cohortDateRange)
+      add("Cohort date range", sprintf("%s to %s", dr[1] %||% "—", dr[2] %||% "—"))
+    }
+
+    tar_list <- co$timeAtRisk %||% list()
+    if (length(tar_list))
+      add("Time at risk", paste(vapply(tar_list, function(w) {
+        w <- unlist(w)
+        hi <- if (is.null(w[2]) || is.na(w[2]) || is.infinite(as.numeric(w[2]))) "∞" else w[2]
+        sprintf("[%s, %s]", w[1], hi)
+      }, character(1)), collapse = "; "))
+
+    entry <- unlist(co$entry_events %||% list())
+    if (length(entry)) add("Entry events", paste(entry, collapse = "; "))
+
+    paste(parts, collapse = " · ")
+  }
+
+  df <- data.frame(
+    `Name`        = vapply(cohorts, function(co) chr(co$name), character(1)),
+    `Kind`        = vapply(cohorts, function(co) chr(co$kind), character(1)),
+    `Description` = vapply(cohorts, function(co) chr(co$description), character(1)),
+    `Details`     = vapply(cohorts, cohort_details, character(1)),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+  flextable::flextable_to_rmd(items_table(df))
+  cat("\n\n")
+}
+```
+
+`r if (is_word) "\\newpage"`
+
+---
+
+# Proposed analyses
+
+```{r analyses, results='asis'}
+analyses <- sap$proposed_analyses %||% list()
+if (!length(analyses)) {
+  cat("_No analyses defined._\n")
+} else {
+  analysis_details <- function(a) {
+    p <- a$parameters %||% list()
+    parts <- character(0)
+    add <- function(label, value) {
+      if (nzchar(value)) parts <<- c(parts, sprintf("%s: %s", label, value))
+    }
+
+    denom <- p$denominatorTable %||% p$denominator_cohort %||% p$denominatorCohortId
+    if (!is.null(denom)) add("Denominator", chr(denom))
+
+    outcome <- p$outcomeTable %||% p$outcome_cohort %||% p$outcomeCohortId
+    if (!is.null(outcome)) add("Outcome", chr(outcome))
+
+    if (!is.null(p$interval))
+      add("Interval", paste(unlist(p$interval), collapse = ", "))
+
+    if (!is.null(p$outcomeWashout))
+      add("Outcome washout", sprintf("%s days", p$outcomeWashout))
+
+    if (!is.null(p$timePoint))
+      add("Time point", paste(unlist(p$timePoint), collapse = ", "))
+
+    strata <- unlist(p$strata %||% list())
+    if (length(strata)) add("Strata", paste(strata, collapse = ", "))
+
+    paste(parts, collapse = " · ")
+  }
+
+  df <- data.frame(
+    `Name`          = vapply(analyses, function(a) chr(a$name), character(1)),
+    `Analysis type` = vapply(analyses, function(a) chr(a$analysis_type), character(1)),
+    `Data sources`  = vapply(analyses, function(a)
+      paste(unlist(a$data_sources %||% list()), collapse = ", "), character(1)),
+    `Description`   = vapply(analyses, function(a) chr(a$description), character(1)),
+    `Details`       = vapply(analyses, analysis_details, character(1)),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+  flextable::flextable_to_rmd(items_table(df))
+  cat("\n\n")
+}
+```
+
+---
+
+`r sprintf("_Generated by shinySAP · schema %s · %s_", sap$sap_schema_version %||% "unknown", sap$generated_at %||% as.character(Sys.time()))`

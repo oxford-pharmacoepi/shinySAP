@@ -100,6 +100,84 @@ test_that("migrate_sap: an analysis already on a real denominator is left alone"
             proposed_analyses = list(list(denominator_cohort = "D"))
           ))$proposed_analyses[[1]]$denominator_cohort, "D"))
 
+# 0.4.10 renamed study$acronym to study$study_code.
+test_that("migrate_sap: an old acronym becomes the study code", {
+  st <- migrate_sap(list(study = list(title = "T", acronym = "MALA")))$study
+  expect_identical(st$study_code, "MALA")
+  expect_null(st$acronym)
+})
+test_that("migrate_sap: a current study_code is never overwritten by a stale acronym",
+          expect_identical(
+            migrate_sap(list(study = list(study_code = "P3-C1-006",
+                                          acronym = "OLD")))$study$study_code,
+            "P3-C1-006"))
+
+# 0.4.4 replaced a CDM change's scalar data_source with a data_sources array and
+# dropped its cdm_version. 0.4.5 retyped the section (validations / alterations /
+# person cleaning): legacy types map to an alteration, and the dropped
+# cdm_table/cdm_field pair folds into the description.
+test_that("migrate_sap: a legacy change type becomes a database-specific alteration", {
+  ch <- migrate_sap(list(cdm_changes = list(list(
+    change_type = "ETL fix", cdm_table = "drug_exposure", cdm_field = "days_supply",
+    description = "Impute missing days_supply from quantity."
+  ))))$cdm_changes[[1]]
+  expect_identical(ch$change_type, "Other database-specific alteration")
+  expect_identical(ch$description,
+                   "drug_exposure.days_supply: Impute missing days_supply from quantity.")
+  expect_null(ch[["cdm_table"]])
+  expect_null(ch[["cdm_field"]])
+})
+test_that("migrate_sap: a current change type is left alone",
+          expect_identical(
+            migrate_sap(list(cdm_changes = list(list(
+              change_type = "Extra CDM validation"
+            ))))$cdm_changes[[1]]$change_type,
+            "Extra CDM validation"))
+test_that("migrate_sap: an old rationale folds into the description", {
+  ch <- migrate_sap(list(cdm_changes = list(list(
+    description = "Restrict drug_exposure to valid quantities.",
+    rationale = "12% of records have a null days_supply."
+  ))))$cdm_changes[[1]]
+  expect_identical(
+    ch$description,
+    paste("Restrict drug_exposure to valid quantities.",
+          "Rationale: 12% of records have a null days_supply.")
+  )
+  expect_null(ch$rationale)
+})
+test_that("migrate_sap: a rationale with no description stands alone",
+          expect_identical(
+            migrate_sap(list(cdm_changes = list(list(
+              rationale = "Data quality."
+            ))))$cdm_changes[[1]]$description,
+            "Rationale: Data quality."))
+
+test_that("migrate_sap: a table with no description still lands in the description",
+          expect_identical(
+            migrate_sap(list(cdm_changes = list(list(
+              cdm_table = "person"
+            ))))$cdm_changes[[1]]$description,
+            "person"))
+test_that("migrate_sap: a pre-0.4.4 CDM change's data_source becomes the array", {
+  ch <- migrate_sap(list(cdm_changes = list(list(
+    cdm_table = "drug_exposure", data_source = "cprd", cdm_version = "5.4"
+  ))))$cdm_changes[[1]]
+  expect_identical(as.character(ch$data_sources), "cprd")
+  # [[ not $: partial matching would find data_sources.
+  expect_null(ch[["data_source"]])
+  expect_null(ch$cdm_version)
+})
+test_that("migrate_sap: a CDM change with no data_source gets an empty array", {
+  ch <- migrate_sap(list(cdm_changes = list(list(cdm_table = "person"))))$cdm_changes[[1]]
+  expect_length(ch$data_sources, 0)
+})
+test_that("migrate_sap: an already-migrated data_sources array is left alone",
+          expect_identical(
+            as.character(migrate_sap(list(cdm_changes = list(list(
+              data_sources = list("cprd", "sidiap")
+            ))))$cdm_changes[[1]]$data_sources),
+            c("cprd", "sidiap")))
+
 # Neither generator takes a washout, and there is nowhere to move a cohort one to.
 test_that("migrate_sap: an old cohort washout is dropped, not misapplied",
           expect_null(migrate_sap(list(

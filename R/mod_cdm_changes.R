@@ -1,8 +1,16 @@
 # Section 1: CDM Changes -----------------------------------------------------
 
+# The changes a SAP applies to the CDM before analysis: extra validations, the
+# common database-specific alterations, and the standard person-cleaning steps.
+# The last entry is the catch-all, and where legacy change types land on load.
 CDM_CHANGE_TYPES <- c(
-  "Add table", "Add field", "Modify field", "Remove field",
-  "Vocabulary / mapping update", "Source data addition", "ETL fix", "Other"
+  "Extra CDM validation",
+  "Subset a CDM table",
+  "Limit observation periods",
+  "Remap concepts / fix vocabulary mappings",
+  "Remove people with no year of birth or sex data",
+  "Remove people with implausible dates",
+  "Other database-specific alteration"
 )
 
 cdm_item_ui <- function(id, prefill = NULL) {
@@ -11,22 +19,19 @@ cdm_item_ui <- function(id, prefill = NULL) {
   item_card(
     id, "CDM change",
     layout_columns(
-      col_widths = c(4, 4, 4),
-      textInput(ns("cdm_table"), "CDM table", pf("cdm_table"), width = "100%"),
-      textInput(ns("cdm_field"), "Field / column", pf("cdm_field"), width = "100%"),
-      selectInput(
-        ns("change_type"), "Change type", CDM_CHANGE_TYPES,
-        selected = pf("change_type", CDM_CHANGE_TYPES[1]), width = "100%"
-      )
-    ),
-    layout_columns(
       col_widths = c(6, 6),
-      textInput(ns("cdm_version"), "CDM version affected", pf("cdm_version"), width = "100%"),
-      entity_picker(ns("data_source"), "Data source", pf("data_source"),
-                    placeholder = "Select or type a CDM source")
+      selectInput(
+        ns("change_type"), "Type of change", CDM_CHANGE_TYPES,
+        selected = pf("change_type", CDM_CHANGE_TYPES[1]), width = "100%"
+      ),
+      entity_picker(ns("data_sources"), "Data sources", pf("data_sources", character(0)),
+                    multiple = TRUE, placeholder = "Select or type CDM sources")
     ),
-    textAreaInput(ns("description"), "Description of change", pf("description"), rows = 3, width = "100%"),
-    textAreaInput(ns("rationale"), "Rationale", pf("rationale"), rows = 2, width = "100%")
+    textAreaInput(
+      ns("description"), "Description of change", pf("description"),
+      rows = 3, width = "100%",
+      placeholder = "e.g. restrict drug_exposure to records with quantity > 0"
+    )
   )
 }
 
@@ -34,23 +39,15 @@ cdm_item_server <- function(id, prefill = NULL, on_remove = function() {},
                             source_names = reactive(character(0))) {
   moduleServer(id, function(input, output, session) {
     observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
-    sync_pickers(session, "data_source", source_names, prefiller(prefill))
+    sync_pickers(session, "data_sources", source_names, prefiller(prefill))
 
-    # A CDM change has no name -- what identifies it is the column it touches.
-    item_card_label(output, reactive({
-      parts <- c(trimws(input$cdm_table %||% ""), trimws(input$cdm_field %||% ""))
-      parts <- parts[nzchar(parts)]
-      if (length(parts)) paste(parts, collapse = ".") else "Untitled"
-    }))
+    # A CDM change has no name -- what identifies it is its type.
+    item_card_label(output, reactive(input$change_type %||% "Untitled"))
 
     reactive(list(
-      cdm_table   = blank_to_na(input$cdm_table),
-      cdm_field   = blank_to_na(input$cdm_field),
-      change_type = input$change_type,
-      cdm_version = blank_to_na(input$cdm_version),
-      data_source = blank_to_na(input$data_source),
-      description = blank_to_na(input$description),
-      rationale   = blank_to_na(input$rationale)
+      change_type  = input$change_type,
+      data_sources = as_array(input$data_sources %||% character(0)),
+      description  = blank_to_na(input$description)
     ))
   })
 }
@@ -62,7 +59,8 @@ cdm_changes_ui <- function(id) {
       class = "d-flex justify-content-between align-items-center mb-3",
       div(
         h3("CDM changes", class = "mb-1"),
-        p(class = "text-muted mb-0", "Changes to the common data model this study depends on.")
+        p(class = "text-muted mb-0",
+          "Extra validations and database-specific alterations applied to the CDM before analysis.")
       ),
       div(
         class = "d-flex gap-2",

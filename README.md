@@ -8,12 +8,15 @@ backend as a single JSON dictionary and written to `output/`.
 
 | Tab | Captures |
 | --- | --- |
-| **Study** | Title, acronym, authors, SAP version, date, background, objectives |
-| **CDM Sources** | The databases the study runs against — name, short key, data type, country, custodian, population size, CDM & vocabulary version, snapshot/release, data lock point, observation period, description |
-| **CDM Changes** | Changes to the common data model the study depends on — table, field, change type, CDM version, data source, description, rationale |
-| **Cohorts** | Name, cohort ID, description — plus a set of inputs that **depends on the cohort's kind**. A denominator is *generated*, so it asks for the generator's arguments (cohort date range, age groups, sex, prior observation); a target denominator asks for those plus the target cohort and the time at risk; every other kind (target, outcome, comparator, censoring, strata) is a plain cohort *definition* — entry events, inclusion & exclusion criteria, exit criteria, concept set |
+| **Study** | Title, study code, authors, SAP version, date, rationale & background, aim / research question, specific objectives, and an amendment history (version, date, description of change) |
+| **CDM Sources** | The databases the study runs against — name, short key, country/region |
+| **CDM Changes** | Extra CDM validations and database-specific alterations applied before analysis — a change type (extra validation; subset a CDM table; limit observation periods; remap concepts; remove people with no year of birth or sex data; remove people with implausible dates; other), the data sources it applies to, and a description |
+| **Cohorts** | Name, kind, description — plus a set of inputs that **depends on the cohort's kind**. A denominator is *generated*, so it asks for the generator's arguments (cohort date range, age groups, sex, prior observation); a target denominator asks for those plus the target cohort and the time at risk; every other kind (target, outcome, comparator, censoring, strata) is a plain cohort *definition* — entry events, inclusion & exclusion criteria, exit criteria, concept set |
 | **Proposed Analyses** | Name, analysis type, CDM sources it runs on — plus a set of inputs that **depends on the analysis type** (an incidence asks for a denominator, a washout and an interval; a prevalence asks for time points instead) |
-| **Review & Save** | Live JSON preview, save to `output/`, download, and reload a saved SAP |
+| **Review & Save** | Live JSON preview, save to `output/`, and download |
+
+**Load SAP** sits in the navbar, visible from every tab: it reloads a saved
+plan into all sections at once.
 
 CDM sources, CDM changes, cohorts and analyses are repeating sections — use
 **Add** to append another, **Remove** to drop one.
@@ -46,50 +49,40 @@ JSON arrays even when they hold a single entry.
 
 ```json
 {
-  "sap_schema_version": "0.4.3",
+  "sap_schema_version": "0.4.8",
   "generated_at": "2026-07-09T14:02:11+0100",
   "study": {
     "title": "Metformin and lactic acidosis",
-    "acronym": "MALA",
+    "study_code": "P3-C1-006",
     "authors": ["A. Researcher"],
-    "version": "1.0",
+    "version": "1.1",
     "date": "2026-07-09",
     "background": "...",
-    "objectives": ["Estimate the incidence of lactic acidosis"]
+    "aim": "The aim of this study is to ...",
+    "objectives": ["Estimate the incidence of lactic acidosis"],
+    "amendments": [
+      { "version": "1.1", "date": "2026-07-09",
+        "description": "Added the SIDIAP data source." }
+    ]
   },
   "cdm_sources": [
     {
       "name": "CPRD GOLD",
       "source_key": "cprd",
-      "data_type": "Primary care records",
-      "country": "United Kingdom",
-      "custodian": "MHRA",
-      "population_size": 12000000,
-      "cdm_version": "5.4",
-      "vocabulary_version": "v5.0 30-AUG-24",
-      "release_date": "2026-01-15",
-      "data_lock": "2025-12-31",
-      "observation_period_start": "1987-01-01",
-      "observation_period_end": "2025-12-31",
-      "description": "..."
+      "country": "United Kingdom"
     }
   ],
   "cdm_changes": [
     {
-      "cdm_table": "drug_exposure",
-      "cdm_field": "days_supply",
-      "change_type": "ETL fix",
-      "cdm_version": "5.4",
-      "data_source": "CPRD GOLD",
-      "description": "Impute missing days_supply from quantity.",
-      "rationale": "12% of records are null."
+      "change_type": "Subset a CDM table",
+      "data_sources": ["cprd"],
+      "description": "Restrict drug_exposure to records with a valid quantity."
     }
   ],
   "cohorts": [
     {
       "name": "Metformin new users",
       "kind": "target",
-      "cohort_id": 1001,
       "description": "...",
       "entry_events": ["First metformin dispensation"],
       "inclusion_criteria": ["Aged 18 or over at index"],
@@ -99,7 +92,6 @@ JSON arrays even when they hold a single entry.
     {
       "name": "Metformin denominator",
       "kind": "target_denominator",
-      "cohort_id": 1002,
       "description": "...",
       "targetCohortTable": "Metformin new users",
       "cohortDateRange": ["2015-01-01", "2024-12-31"],
@@ -115,7 +107,7 @@ JSON arrays even when they hold a single entry.
     {
       "name": "Incidence of lactic acidosis",
       "analysis_type": "Incidence",
-      "data_sources": ["CPRD GOLD"],
+      "data_sources": ["cprd"],
       "parameters": {
         "denominatorTable": "Metformin denominator",
         "outcomeTable": "Lactic acidosis",
@@ -382,7 +374,7 @@ R/mod_cdm_sources.R       Section: CDM Sources
 R/mod_cdm_changes.R       Section: CDM Changes
 R/mod_cohorts.R           Section: Cohorts
 R/mod_analyses.R          Section: Proposed Analyses
-R/mod_review.R            Review, save, download, load
+R/mod_review.R            Review, save, download
 tests/testthat/           testthat suite: JSON contract, templates, migrations
 tests/testthat.R          runner (Rscript tests/testthat.R)
 output/                   Saved SAPs

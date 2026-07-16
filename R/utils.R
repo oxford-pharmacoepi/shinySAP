@@ -72,7 +72,30 @@ slugify <- function(x) {
   x <- tolower(trimws(x %||% ""))
   x <- gsub("[^a-z0-9]+", "-", x)
   x <- gsub("^-+|-+$", "", x)
-  if (!nzchar(x)) "sap" else substr(x, 1, 60)
+  substr(x, 1, 60)
+}
+
+# The base name every saved or downloaded SAP file shares: sap-<study>[-v<version>].
+# The study is the study code when there is one (short and already unique), else
+# the title. A leading "sap" in either is dropped -- the name already starts sap-,
+# and a title of "SAP" alone must not become "sap-sap". No title at all is "untitled".
+sap_file_base <- function(study) {
+  stem <- slugify(study$study_code %||% study$title)
+  stem <- sub("^sap(-|$)", "", stem)
+  if (!nzchar(stem)) stem <- "untitled"
+  ver <- gsub("[^A-Za-z0-9._-]+", "", as.character(study$version %||% ""))
+  if (nzchar(ver)) sprintf("sap-%s-v%s", stem, ver) else sprintf("sap-%s", stem)
+}
+
+# The version a new amendment proposes: the current SAP version with the major
+# bumped (1 -> 2, 1.0 -> 2.0, 1.2 -> 2.0). A version that does not start with a
+# number gives no prefill -- better empty than a guess the author must delete.
+next_sap_version <- function(v) {
+  v <- trimws(as.character(v %||% ""))
+  m <- regmatches(v, regexpr("^\\d+", v))
+  if (!length(m)) return("")
+  major <- as.integer(m) + 1
+  if (grepl("^\\d+\\.", v)) sprintf("%d.0", major) else as.character(major)
 }
 
 # Builds the value-lookup used by the *_item_ui() functions when restoring a
@@ -100,8 +123,8 @@ sap_json <- function(sap) {
 save_sap <- function(sap, dir = "output") {
   dir.create(dir, recursive = TRUE, showWarnings = FALSE)
   path <- file.path(dir, sprintf(
-    "sap-%s-%s.json",
-    slugify(sap$study$title),
+    "%s-%s.json",
+    sap_file_base(sap$study),
     format(Sys.time(), "%Y%m%d-%H%M%S")
   ))
   writeLines(sap_json(sap), path)
@@ -132,6 +155,12 @@ read_sap <- function(path) {
 # a single [[start, end]] interval. The anchors are dropped: the API has nowhere
 # to put them, because both bounds are relative to target cohort entry.
 migrate_sap <- function(sap) {
+  # 0.4.10 renamed study$acronym: what authors put there is a study code.
+  if (!is.null(sap$study)) {
+    sap$study$study_code <- sap$study$study_code %||% sap$study$acronym
+    sap$study$acronym    <- NULL
+  }
+  sap$cdm_changes <- lapply(sap$cdm_changes %||% list(), migrate_cdm_change)
   analyses <- coalesce_key(sap, "proposed_analyses", "analyses")
   cohorts  <- lapply(sap$cohorts %||% list(), migrate_cohort)
   if (!length(analyses)) {
@@ -180,6 +209,52 @@ migrate_sap <- function(sap) {
   sap$proposed_analyses <- analyses
   sap$analyses <- NULL
   sap
+}
+
+# Before 0.4.4 a CDM change named one `data_source`; now it holds a
+# `data_sources` array. The dropped `cdm_version` is discarded.
+#
+# 0.4.5 retyped the section around the questions a SAP asks of the CDM
+# (validations / alterations / person cleaning). Every pre-0.4.5 type described
+# an alteration -- so any type the current list no longer carries lands on the
+# catch-all -- and the dropped cdm_table/cdm_field pair folds into the
+# description so nothing the author wrote is lost.
+migrate_cdm_change <- function(ch) {
+  if (is.null(ch$data_sources)) {
+    old <- as.character(ch$data_source %||% character(0))
+    ch$data_sources <- as_array(old[!is.na(old) & nzchar(old)])
+  }
+  ch$data_source <- NULL
+  ch$cdm_version <- NULL
+
+  type <- as.character(ch$change_type %||% "")
+  if (!is.na(type) && nzchar(type) && !(type %in% CDM_CHANGE_TYPES)) {
+    ch$change_type <- "Other database-specific alteration"
+  }
+
+  tf <- as.character(c(ch$cdm_table, ch$cdm_field))
+  tf <- paste(tf[!is.na(tf) & nzchar(tf)], collapse = ".")
+  if (nzchar(tf)) {
+    desc <- as.character(ch$description %||% "")
+    if (is.na(desc)) desc <- ""
+    ch$description <- if (nzchar(desc)) paste0(tf, ": ", desc) else tf
+  }
+  ch$cdm_table <- NULL
+  ch$cdm_field <- NULL
+
+  # 0.4.7 dropped the rationale; an old one folds into the description.
+  rat <- as.character(ch$rationale %||% "")
+  if (!is.na(rat) && nzchar(trimws(rat))) {
+    desc <- as.character(ch$description %||% "")
+    if (is.na(desc)) desc <- ""
+    ch$description <- if (nzchar(desc)) {
+      paste0(desc, " Rationale: ", rat)
+    } else {
+      paste0("Rationale: ", rat)
+    }
+  }
+  ch$rationale <- NULL
+  ch
 }
 
 # One generator call per (target, time at risk), so the name has to carry both.

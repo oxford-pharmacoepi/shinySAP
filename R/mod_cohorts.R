@@ -17,13 +17,11 @@ cohort_item_ui <- function(id, prefill = NULL) {
   item_card(
     id, "Cohort",
     layout_columns(
-      col_widths = c(5, 4, 3),
+      col_widths = c(7, 5),
       textInput(ns("name"), "Cohort name", pf("name"), width = "100%"),
       selectInput(ns("kind"), "Kind", COHORT_KINDS,
                   selected = canonical_cohort_kind(pf("kind", COHORT_KINDS[[1]])),
-                  width = "100%"),
-      # NULL, not NA: numericInput(value = NA) renders value="NA", which browsers reject.
-      numericInput(ns("cohort_id"), "Cohort ID", value = pf("cohort_id", NULL), width = "100%")
+                  width = "100%")
     ),
     textAreaInput(ns("description"), "Description", pf("description"), rows = 2, width = "100%"),
     tags$hr(class = "my-3"),
@@ -87,7 +85,6 @@ cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
         list(
           name        = blank_to_na(input$name),
           kind        = kind_r(),
-          cohort_id   = input$cohort_id %||% NA,
           description = blank_to_na(input$description)
         ),
         # collect() reads only its own kind's input ids, so values stranded by a
