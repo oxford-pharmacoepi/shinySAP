@@ -143,7 +143,10 @@ server <- function(input, output, session) {
       showNotification(paste("Could not read that file:", conditionMessage(loaded)), type = "error")
       return()
     }
-    failed <- tryCatch({ load_sap(loaded); NULL }, error = function(e) e)
+    failed <- tryCatch({
+      load_sap(loaded)
+      NULL
+    }, error = function(e) e)
     if (!is.null(failed)) {
       showNotification(paste("Could not load that SAP:", conditionMessage(failed)), type = "error")
       return()

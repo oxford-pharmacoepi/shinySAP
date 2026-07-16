@@ -17,7 +17,8 @@ dynamic_items <- function(prefix, container, item_ui, item_server,
   ns <- parent$ns
   ids <- reactiveVal(character(0))
   handlers <- new.env(parent = emptyenv())
-  counter <- 0
+  state <- new.env(parent = emptyenv())
+  state$counter <- 0
 
   remove_item <- function(iid) {
     withReactiveDomain(parent, {
@@ -28,8 +29,8 @@ dynamic_items <- function(prefix, container, item_ui, item_server,
   }
 
   add_item <- function(prefill = NULL) {
-    counter <<- counter + 1
-    iid <- sprintf("%s_%d", prefix, counter)
+    state$counter <- state$counter + 1
+    iid <- sprintf("%s_%d", prefix, state$counter)
     withReactiveDomain(parent, {
       insertUI(
         selector = paste0("#", ns(container)),

@@ -144,8 +144,10 @@ format_washout <- function(w) {
 # The registry ----------------------------------------------------------------
 #
 # Populated at source time by the analysis_type_*.R files. Lookup is by key, so
-# the order they register in does not matter.
+# the order they register in does not matter. The registry lives wherever this
+# file was sourced; register_analysis_template() updates it there explicitly.
 ANALYSIS_TEMPLATES <- list()
+analysis_registry_env <- environment()
 
 # A template is a set of pieces that mirror one another, so a field cannot be
 # added to the form without also being serialised and read back:
@@ -178,7 +180,7 @@ register_analysis_template <- function(type, hint = NULL, ui, collect,
                                        subcohorts = list(), serialised_type = NULL,
                                        flatten = function(p) p,
                                        validate = function(params, cohorts) character(0)) {
-  ANALYSIS_TEMPLATES[[type]] <<- list(
+  analysis_registry_env$ANALYSIS_TEMPLATES[[type]] <- list(
     hint = hint, ui = ui, collect = collect, pickers = pickers,
     denominator = denominator, subcohorts = subcohorts,
     serialised_type = serialised_type, flatten = flatten, validate = validate
@@ -472,11 +474,12 @@ validate_strata_against <- function(groups, cohort) {
 # that records instead of namespacing. Saves maintaining the id list by hand in a
 # third place; the tests use it to check for collisions.
 template_field_ids <- function(tmpl) {
-  ids <- character(0)
+  rec <- new.env(parent = emptyenv())
+  rec$ids <- character(0)
   rec_ns <- function(x) {
-    ids <<- c(ids, x)
+    rec$ids <- c(rec$ids, x)
     x
   }
   tmpl$ui(rec_ns, function(key, default = NULL) default)
-  unique(ids)
+  unique(rec$ids)
 }

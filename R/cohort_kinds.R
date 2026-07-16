@@ -143,7 +143,10 @@ bound_upper <- function(pair) {
 
 # The registry ----------------------------------------------------------------
 
+# The registry lives wherever this file was sourced; register_cohort_kind()
+# updates it there explicitly.
 COHORT_TEMPLATES <- list()
+cohort_registry_env <- environment()
 
 # hint      one line shown above the block, or NULL
 # ui        function(ns, pf) -> the kind's inputs
@@ -154,7 +157,7 @@ COHORT_TEMPLATES <- list()
 register_cohort_kind <- function(kind, hint = NULL, ui, collect,
                                  pickers = list(), flatten = function(p) p,
                                  validate = function(cohort, cohorts) character(0)) {
-  COHORT_TEMPLATES[[kind]] <<- list(
+  cohort_registry_env$COHORT_TEMPLATES[[kind]] <- list(
     hint = hint, ui = ui, collect = collect, pickers = pickers,
     flatten = flatten, validate = validate
   )
