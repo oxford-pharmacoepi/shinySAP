@@ -59,9 +59,10 @@ cdm_sources_ui <- function(id) {
 
 cdm_sources_server <- function(id) {
   moduleServer(id, function(input, output, session) {
-    items <- dynamic_items("source", "items", source_item_ui, source_item_server)
+    items <- dynamic_items("source", "items", source_item_ui, source_item_server,
+                           noun = "CDM source")
 
-    observeEvent(input$add, items$add())
+    observeEvent(input$add, items$add(reveal = TRUE))
 
     output$n <- renderText(items$count())
     outputOptions(output, "n", suspendWhenHidden = FALSE)
@@ -71,7 +72,7 @@ cdm_sources_server <- function(id) {
       for (s in sources) items$add(s)
     }
 
-    # Feeds the data-source pickers in CDM Changes and Proposed Analyses.
+    # Feeds the data-source pickers in CDM Changes and Analyses.
     # Sources are referred to by short key, falling back to the full name
     # for sources without one.
     names_r <- reactive({

@@ -49,7 +49,16 @@ library(jsonlite)
 # 0.4.11 dropped a cohort's cohort_id: IDs are assigned at generation time, not
 #        authored in the SAP. Without them the *CohortId sub-pickers stay hidden
 #        and those parameters serialise null = all cohorts in the set.
-SAP_SCHEMA_VERSION <- "0.4.11"
+# 0.4.12 dropped a cohort's description: the kind block already says what a
+#        cohort is in structured form (entry events, criteria, generator
+#        arguments), and free text beside it only drifted out of step.
+# 0.4.13 gave cohorts a data_sources array: the SAP-level counterpart of the
+#        generators' `cdm` argument, naming the CDM sources the cohort is built
+#        against -- the same shape analyses already used.
+# 0.4.14 gave plain cohorts an index_rule: WHICH occurrence of the entry event
+#        indexes the cohort ("Index date" in protocol tables) -- previously
+#        conflated into the entry-event line.
+SAP_SCHEMA_VERSION <- "0.4.14"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")
@@ -67,9 +76,10 @@ ui <- page_navbar(
     .item-card-toggle:focus { box-shadow: none; }
 
     /* Load SAP in the navbar: strip fileInput() down to its button -- no
-       filename box, no progress bar -- and dress it as a nav link, pinned to
-       the right edge and in the theme's primary blue. */
-    .nav-item:has(> .navbar-load) { margin-left: auto; }
+       filename box, no progress bar -- and dress it as a nav link in the
+       theme's primary blue. It shares one right-pinned nav_item with the
+       autosave status (nav_spacer() does the pinning; a second auto margin
+       here would split the free space and strand the status mid-navbar). */
     /* width: shiny-input-container defaults to 300px; shrink to the button. */
     .navbar-load { margin-bottom: 0; width: auto !important; }
     .navbar-load .form-control, .navbar-load .progress { display: none; }
@@ -82,21 +92,48 @@ ui <- page_navbar(
     }
     .navbar-load .btn-file:hover,
     .navbar-load .btn-file:focus { color: var(--bs-link-hover-color, #0a58ca); }
+
+    /* The navbar Save link: dressed exactly like Load SAP beside it, but in
+       the theme's success green -- saving is the \"go\" action of the pair.
+       Bootstrap pins `.navbar-text a` (and its :hover/:focus) to the navbar's
+       active colour, which is what kept this link black -- so these selectors
+       must OUT-RANK that rule, not merely exist. Hover darkens, exactly as
+       Load's blue does. */
+    .navbar-text a.navbar-save {
+      font-size: var(--bs-nav-link-font-size, 1rem);
+      font-weight: 700;
+      color: var(--bs-success, #198754);
+      text-decoration: none;
+    }
+    .navbar-text a.navbar-save:hover,
+    .navbar-text a.navbar-save:focus { color: var(--bs-success-text-emphasis, #146c43); }
   "))),
   nav_panel("Study", div(class = "container-fluid py-3", study_ui("study"))),
   nav_panel("CDM Sources", div(class = "container-fluid py-3", cdm_sources_ui("sources"))),
   nav_panel("CDM Changes", div(class = "container-fluid py-3", cdm_changes_ui("cdm"))),
   nav_panel("Cohorts", div(class = "container-fluid py-3", cohorts_ui("cohorts"))),
-  nav_panel("Proposed Analyses", div(class = "container-fluid py-3", analyses_ui("analyses"))),
-  nav_panel("Review & Save", div(class = "container-fluid py-3", review_ui("review"))),
+  nav_panel("Analyses", div(class = "container-fluid py-3", analyses_ui("analyses"))),
+  nav_panel("Review", div(class = "container-fluid py-3", review_ui("review"))),
   nav_spacer(),
-  # Load acts on the whole SAP, not one section, so it lives outside the tabs.
+  # One group at the right edge: Save beside Load, both acting on the whole
+  # SAP rather than one section. Save is a LINK, not just a status: it reads
+  # "Save" until the working file exists, then "Saved HH:MM", and clicking it
+  # either way writes THE working file -- one file per SAP, rewritten in
+  # place, never a new copy.
   nav_item(
-    tagAppendAttributes(
-      fileInput("load", NULL, accept = ".json",
-                buttonLabel = tagList(icon("upload"), "Load SAP"),
-                placeholder = ""),
-      class = "navbar-load"
+    div(
+      class = "d-flex align-items-center gap-3",
+      div(class = "navbar-text py-0",
+          uiOutput("save_status", inline = TRUE)),
+      # A quiet vertical rule: Save and Load are two whole-SAP actions side by
+      # side, not one control -- the divider says where one ends.
+      div(class = "vr my-2"),
+      tagAppendAttributes(
+        fileInput("load", NULL, accept = ".json",
+                  buttonLabel = tagList(icon("upload"), "Load SAP"),
+                  placeholder = ""),
+        class = "navbar-load"
+      )
     )
   )
 )
@@ -105,13 +142,16 @@ server <- function(input, output, session) {
   study    <- study_server("study")
   sources  <- cdm_sources_server("sources")
   cdm      <- cdm_changes_server("cdm", source_names = sources$names)
-  cohorts  <- cohorts_server("cohorts")
+  cohorts  <- cohorts_server("cohorts", source_names = sources$names)
   # by_name, not just names: the templates echo what the denominator cohort
   # already fixes, and validate against it.
   analyses <- analyses_server("analyses",
                               cohort_names = cohorts$names,
                               cohort_index = cohorts$by_name,
-                              source_names = sources$names)
+                              source_names = sources$names,
+                              # Renaming a cohort walks every analysis picker
+                              # still holding the old name (see cohorts_server).
+                              cohort_renames = cohorts$renames)
 
   # The single source of truth for what gets serialised.
   sap <- reactive(list(
@@ -151,11 +191,120 @@ server <- function(input, output, session) {
       showNotification(paste("Could not load that SAP:", conditionMessage(failed)), type = "error")
       return()
     }
+    # The loaded file IS the working file from here on: every save and autosave
+    # rewrites it, never a new copy. The browser only surfaces the file's NAME,
+    # so it is anchored in the current save folder -- for a file loaded from
+    # there (the usual case) that is exactly the file that was picked.
+    nm <- input$load$name
+    if (!is.null(nm) && nzchar(nm)) working_file(file.path(save_dir(), nm))
     showNotification("SAP loaded.", type = "message")
   })
 
-  review_server("review", sap = sap, output_dir = OUTPUT_DIR,
-                problems = reactive(c(cohorts$problems(), analyses$problems())))
+  # -- The working file -------------------------------------------------------
+  # A SAP lives in ONE file. It comes into existence at the FIRST of: loading a
+  # SAP (the loaded file itself), the first clicked Save (the dialog asks where,
+  # once), or the first autosave (the default folder). From then on EVERY write
+  # -- autosave or clicked Save -- rewrites that same file, and nothing else is
+  # ever created. Autosave is debounced: sap() invalidates on every keystroke,
+  # and two quiet seconds also ride out the one round-trip after a kind/type
+  # switch in which a rebuilt block's inputs have not reported back (see data_r
+  # in mod_analyses.R).
+  working_file <- reactiveVal(NULL)
+  save_dir     <- reactiveVal(OUTPUT_DIR)
+  saved_at     <- reactiveVal(NULL)
+
+  persist <- function(s) {
+    path <- working_file() %||% working_sap_path(s$study, save_dir())
+    path <- tryCatch(write_sap(s, path), error = function(e) NULL)
+    if (is.null(path)) return(invisible(NULL))
+    working_file(path)
+    save_dir(dirname(path))
+    saved_at(Sys.time())
+    invisible(path)
+  }
+
+  sap_settled <- debounce(sap, 2000)
+  observeEvent(sap_settled(), {
+    s <- sap_settled()
+    if (sap_is_empty(s)) return()   # the app as it starts: nothing to keep yet
+    persist(s)
+  })
+
+  # The navbar Save link doubles as the indicator: "Save" until the working
+  # file exists, then "Saved HH:MM". Re-rendering keeps the same input id, so
+  # the click observer below survives every relabel. The full path rides in
+  # the tooltip; the navbar only has room for the when. .navbar-save (see the
+  # header CSS) dresses it exactly like Load, in green.
+  output$save_status <- renderUI({
+    at <- saved_at()
+    actionLink(
+      "save_now",
+      class = "navbar-save",
+      title = if (is.null(at)) "Save the SAP to a file; every later save rewrites it"
+              else sprintf("Every save and autosave rewrites %s. Click to save now.",
+                           working_file()),
+      if (is.null(at)) tagList(icon("floppy-disk"), "Save")
+      else tagList(icon("check"), sprintf("Saved %s", format(at, "%H:%M")))
+    )
+  })
+
+  problems <- reactive(c(cohorts$problems(), analyses$problems()))
+
+  # A clicked Save: once the working file exists it simply rewrites it (with
+  # the title guard and the problems warning). Only the FIRST save has a
+  # question to ask -- where -- and a browser app cannot open the OS's own
+  # save dialog for a server-side write, so the folder is a text field.
+  observeEvent(input$save_now, {
+    s <- sap()
+    if (is.na(s$study$title %||% NA)) {
+      showNotification("Give the study a title before saving.", type = "warning")
+      return()
+    }
+    if (!is.null(working_file())) {
+      save_working(s, working_file(), length(problems()))
+      saved_at(Sys.time())
+      return()
+    }
+    showModal(modalDialog(
+      title = "Save SAP",
+      textInput("save_dir", "Folder to save into", value = save_dir(), width = "100%"),
+      div(class = "form-text",
+          sprintf("Creates %s in this folder (made if missing); every later save and
+                   autosave rewrites that same file. A relative path is inside the app
+                   folder; ~ is your home folder.",
+                  basename(working_sap_path(s$study, ".")))),
+      footer = tagList(
+        modalButton("Cancel"),
+        actionButton("save_confirm", "Save", class = "btn btn-success",
+                     icon = icon("floppy-disk"))
+      ),
+      easyClose = TRUE
+    ))
+  })
+
+  # An unwritable folder keeps the dialog open with an error, so the typed
+  # path is not lost.
+  observeEvent(input$save_confirm, {
+    dir <- path.expand(trimws(input$save_dir %||% ""))
+    if (!nzchar(dir)) {
+      showNotification("Name a folder to save into.", type = "warning")
+      return()
+    }
+    s <- sap()
+    path <- tryCatch(save_working(s, working_sap_path(s$study, dir), length(problems())),
+                     error = function(e) {
+                       showNotification(paste("Could not save there:", conditionMessage(e)),
+                                        type = "error")
+                       NULL
+                     })
+    if (is.null(path)) return()
+    working_file(path)
+    save_dir(dir)
+    saved_at(Sys.time())
+    removeModal()
+  })
+
+  review_server("review", sap = sap, problems = problems)
 }
 
 shinyApp(ui, server)

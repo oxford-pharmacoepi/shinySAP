@@ -25,7 +25,7 @@
 COHORT_KINDS <- c(
   "Denominator (general population)"      = "denominator",
   "Target denominator (from a cohort)"    = "target_denominator",
-  "Target cohort (exposure / index)"      = "target",
+  "Target cohort (population of interest)" = "target",
   "Outcome"                               = "outcome",
   "Comparator"                            = "comparator",
   "Censoring"                             = "censor",
@@ -64,13 +64,33 @@ AGE_MAX <- 150
 # produce -- the strata picker then offered it and the validator waved it through.)
 STRATA_VARIABLES <- c("age_group", "sex")
 
-COHORT_COMMON_FIELDS <- c("name", "kind", "description")
+# Ids a denominator kind's ui() renders that are OUTPUTS, not inputs: the live
+# preview of the generated cohort set, filled by cohort_item_server(). They hold
+# no value, so collect() never reads them and the tests exempt them from the
+# collect -> JSON -> flatten round trip -- the same idea as the analysis
+# registry's DISPLAY_ONLY_IDS.
+COHORT_DISPLAY_ONLY_IDS <- "cohort_set_preview"
 
+# 0.4.12 dropped `description`: the kind block already says what a cohort IS in
+# structured form (entry events, criteria, generator arguments), and free text
+# beside it only drifted out of step.
+# 0.4.13 added `data_sources`: the SAP-level counterpart of the generators'
+# `cdm` argument -- WHICH databases the cohort is built against. Common, not a
+# kind field: every kind is built against a database, and the kind blocks stay
+# exactly the generator's other arguments.
+COHORT_COMMON_FIELDS <- c("name", "kind", "data_sources")
+
+# "" is the UNSET kind: a new card starts with none chosen, because a kind is a
+# decision -- the same rule as sex and requirementInteractions. Unset renders a
+# prompt instead of a block, collects nothing kind-specific, and is a validation
+# problem (cohort_problems), never a silent default. An unknown non-empty kind
+# (a hand-edited file) falls back to "other": reading it as a plain cohort loses
+# nothing, where reading it as a denominator would invent generator arguments.
 canonical_cohort_kind <- function(x) {
-  if (length(x) != 1 || is.na(x) || !nzchar(x)) return(unname(COHORT_KINDS[[1]]))
+  if (length(x) != 1 || is.na(x) || !nzchar(x)) return("")
   if (x %in% COHORT_KINDS) return(x)                                  # already a kind
   if (x %in% names(COHORT_KIND_ALIASES)) return(unname(COHORT_KIND_ALIASES[[x]]))
-  unname(COHORT_KINDS[[1]])
+  "other"
 }
 
 # Analyses look a cohort up by the name in a picker. Free text is allowed, so an
@@ -83,6 +103,46 @@ cohort_by_name <- function(cohorts, nm) {
 
 is_denominator_kind <- function(kind) {
   canonical_cohort_kind(kind) %in% c("denominator", "target_denominator")
+}
+
+# One saved (or live) cohort -> the prefill its card is rebuilt from. Shared by
+# cohorts load() and the Duplicate button, so the two can never drift.
+cohort_to_prefill <- function(ch) {
+  # 0.2.0 called it `role`, with a different vocabulary.
+  ch$kind <- canonical_cohort_kind(ch$kind %||% ch$role)
+  cohort_template(ch$kind)$flatten(ch)
+}
+
+# Everything wrong with one cohort. The kind check comes first: with no kind
+# there is no template to validate against -- and falling through to the plain
+# template would find nothing wrong, which would read as "fine".
+cohort_problems <- function(ch, cohorts) {
+  kind <- canonical_cohort_kind(ch$kind)
+  if (!nzchar(kind)) {
+    return("This cohort has no kind chosen, so it carries no fields and cannot be validated.")
+  }
+  tryCatch(
+    as.character(cohort_template(kind)$validate(ch, cohorts)),
+    error = function(e) paste("Could not validate this cohort:", conditionMessage(e))
+  )
+}
+
+# Names are the identity everything joins on (cohort_by_name, the analysis
+# pickers), so two cohorts sharing one silently shadow each other: the pickers
+# offer a single entry and every lookup takes the first. One problem entry per
+# duplicated name, shaped like the per-cohort entries in problems_r.
+duplicate_name_problems <- function(cohorts) {
+  nms <- vapply(cohorts, function(ch) {
+    nm <- as.character(ch$name %||% "")[1]
+    if (is.na(nm)) "" else trimws(nm)
+  }, character(1))
+  nms <- nms[nzchar(nms)]
+  lapply(unique(nms[duplicated(nms)]), function(nm) list(
+    name = nm,
+    messages = sprintf(
+      "%d cohorts are named '%s'. Everything referring to that name silently uses the first; rename one.",
+      sum(nms == nm), nm)
+  ))
 }
 
 # Bounded intervals ------------------------------------------------------------
@@ -202,8 +262,8 @@ date_bound <- function(range, i) {
 # Both generators take these under exactly these names.
 denominator_requirements_ui <- function(ns, pf) tagList(
   # cohortDateRange takes Dates, so these are pickers rather than free text.
-  # dateInput() has no placeholder, and blank is a meaningful value here, so what
-  # blank *means* moves into help text under each field.
+  # date_input()'s placeholder shows the FORMAT; blank is a meaningful value
+  # here, so what blank *means* stays in the help text under each field.
   layout_columns(
     col_widths = c(6, 6),
     div(
@@ -217,37 +277,60 @@ denominator_requirements_ui <- function(ns, pf) tagList(
       div(class = "form-text", "Blank = the latest observation period in the database.")
     )
   ),
+  # The three requirement factors together, in one row: they are the axes the
+  # cohort set is crossed over. requirementInteractions is NOT one of them -- it
+  # is the rule for how they combine -- so it sits below all three at full
+  # width, rather than beside one of them as if it belonged to it.
   layout_columns(
     col_widths = c(6, 6),
     # ageGroup = list(c(0, 17), c(18, 30)): numeric pairs, one cohort each.
     textAreaInput(ns("ageGroup"), "Age groups (one per line, as lower, upper)",
                   join_lines(format_bound_list(pf("ageGroup", list()), open = AGE_MAX)),
-                  rows = 3, width = "100%", placeholder = "0, 17\n18, 64\n65, 150"),
-    selectizeInput(ns("sex"), "Sex", COHORT_SEXES, multiple = TRUE, width = "100%",
-                   selected = pf("sex", "Both"),
-                   options = list(placeholder = "One or more of Both / Male / Female"))
+                  rows = 4, width = "100%", placeholder = "0, 17\n18, 64\n65, 150"),
+    # Nothing is preselected: a prefilled "Both" or "0" would be a decision the
+    # author never made. The generator's own defaults still apply downstream --
+    # the preview says so -- but the SAP records only what was actually chosen,
+    # and the sex validator objects until the author picks.
+    div(
+      selectizeInput(ns("sex"), "Sex", COHORT_SEXES, multiple = TRUE, width = "100%",
+                     selected = pf("sex"),
+                     options = list(placeholder = "One or more of Both / Male / Female")),
+      # The saved values MUST be among the choices: shiny silently drops a
+      # selected value it cannot find, so with empty choices every rebuild
+      # (load, kind switch, duplicate) emptied the field and the next autosave
+      # wrote [] -- the values were never saved back. Same defense as
+      # entity_picker() and the index_rule field.
+      selectizeInput(ns("daysPriorObservation"), "Days of prior observation required",
+                     choices = as.character(unlist(pf("daysPriorObservation"))),
+                     multiple = TRUE, width = "100%",
+                     selected = as.character(unlist(pf("daysPriorObservation"))),
+                     options = list(create = TRUE,
+                                    placeholder = "Type one or more numbers of days, e.g. 0 or 365"))
+    )
   ),
-  layout_columns(
-    col_widths = c(6, 6),
-    selectizeInput(ns("daysPriorObservation"), "Days of prior observation required",
-                   choices = character(0), multiple = TRUE, width = "100%",
-                   selected = as.character(unlist(pf("daysPriorObservation", 0))),
-                   options = list(create = TRUE, placeholder = "0 (type more to vary it)")),
-    checkboxInput(ns("requirementInteractions"),
-                  "Generate a cohort for every combination of age group, sex and prior observation",
-                  value = isTRUE(pf("requirementInteractions", TRUE)))
-  )
+  checkboxInput(ns("requirementInteractions"),
+                "Generate a cohort for every combination of age group, sex and prior observation",
+                value = isTRUE(pf("requirementInteractions", FALSE)), width = "100%"),
+  # The unticked behaviour is the surprising half, and it silently changes what
+  # the ORDER of the values above means -- so it is said here, not only in the
+  # package docs.
+  div(class = "form-text mb-2",
+      paste("Unticked, the first value of each field above is the baseline, and each further",
+            "value varies alone against it — so the order of the values matters."))
   # No strata input: the columns a denominator carries are not the author's to
   # choose. generateDenominatorCohortSet() produces age_group and sex, and nothing
   # else -- see STRATA_VARIABLES, which is now the only place that is said.
 )
 
+# Empty stays empty -- writing "Both" or 0 for an untouched field would put a
+# decision in the JSON the author never made, and flatten() would then prefill
+# it back into the form as if they had.
 denominator_requirements_collect <- function(input) list(
   cohortDateRange         = cohort_date_range(input$cohortDateRangeStart,
                                               input$cohortDateRangeEnd),
   ageGroup                = parse_bound_list(input$ageGroup),
-  sex                     = as_array(input$sex %||% "Both"),
-  daysPriorObservation    = as_num_array(input$daysPriorObservation %||% 0),
+  sex                     = as_array(input$sex %||% character(0)),
+  daysPriorObservation    = as_num_array(input$daysPriorObservation %||% numeric(0)),
   requirementInteractions = isTRUE(input$requirementInteractions)
 )
 
@@ -324,7 +407,7 @@ denominator_cohort_set <- function(cohort) {
 }
 
 # One generated cohort as a single line, e.g.
-#   "Age 18, 64 · Female · 365 days prior observation · time at risk 0, 30"
+#   "Age 18, 64 | Female | 365 days prior observation | time at risk 0, 30"
 format_denominator_cohort <- function(x) {
   parts <- c(
     sprintf("Age %s", format_bound_list(list(x$ageGroup), open = AGE_MAX)),
@@ -334,8 +417,21 @@ format_denominator_cohort <- function(x) {
   if (!is.null(x$timeAtRisk)) {
     parts <- c(parts, sprintf("time at risk %s", format_bound_list(list(x$timeAtRisk))))
   }
-  paste(parts, collapse = " · ")
+  paste(parts, collapse = " | ")
 }
+
+# Which occurrence of the entry event indexes the cohort -- "Index date" in
+# protocol tables. A RULE, not a date (hence the key index_rule): "influenza
+# vaccination" says what qualifies, "first per season" says which occurrence
+# indexes, and conflating the two into one entry-event line hid a decision
+# reviewers need to see. A small canonical core plus a free tail (create =
+# TRUE), because "first per influenza season" fits no enum.
+INDEX_RULES <- c(
+  "First occurrence ever",
+  "First occurrence per period (state which)",
+  "Latest occurrence",
+  "All occurrences (re-entry per episode)"
+)
 
 # The plain cohort definition: what a source cohort actually is.
 cohort_definition_ui <- function(ns, pf) tagList(
@@ -348,14 +444,24 @@ cohort_definition_ui <- function(ns, pf) tagList(
                   join_lines(pf("exit_criteria", character(0))), rows = 4, width = "100%",
                   placeholder = "End of continuous observation")
   ),
+  layout_columns(
+    col_widths = c(6, 6),
+    selectizeInput(ns("index_rule"), "Index date",
+                   choices = unique(c("", INDEX_RULES, pf("index_rule"))),
+                   selected = pf("index_rule"), width = "100%",
+                   options = list(create = TRUE,
+                                  placeholder = "Which occurrence of the entry event indexes the cohort")),
+    textInput(ns("concept_set"), "Concept set / codelist", pf("concept_set"), width = "100%",
+              placeholder = "Name or reference of the codelist, e.g. cs_influenza_vaccine")
+  ),
   textAreaInput(ns("inclusion_criteria"), "Inclusion / exclusion criteria (one per line)",
                 join_lines(pf("inclusion_criteria", character(0))), rows = 3, width = "100%",
-                placeholder = "Aged 18 or over at index\nNo prior insulin exposure"),
-  textInput(ns("concept_set"), "Concept set / codelist", pf("concept_set"), width = "100%")
+                placeholder = "Aged 18 or over at index\nNo prior insulin exposure")
 )
 
 cohort_definition_collect <- function(input) list(
   entry_events       = as_array(split_lines(input$entry_events)),
+  index_rule         = blank_to_na(input$index_rule),
   inclusion_criteria = as_array(split_lines(input$inclusion_criteria)),
   exit_criteria      = as_array(split_lines(input$exit_criteria)),
   concept_set        = blank_to_na(input$concept_set)
@@ -363,17 +469,54 @@ cohort_definition_collect <- function(input) list(
 
 # Shared validation ------------------------------------------------------------
 
+# Every check here mirrors what generateDenominatorCohortSet() will actually
+# accept: ages are finite pairs within 0..AGE_MAX, prior observation is a
+# non-negative number of days, the date range runs forwards. Empty ageGroup /
+# sex / daysPriorObservation are problems rather than silent defaults -- the
+# form starts blank on purpose, and [] in the JSON must mean "not decided yet",
+# never "meant the default but cannot be told apart from forgot".
 validate_denominator_requirements <- function(p) {
   errs <- character(0)
-  for (g in p$ageGroup %||% list()) {
-    if (bound_upper(g) < as.numeric(g[[1]])) {
-      errs <- c(errs, sprintf("Age group '%s' has an upper bound below its lower bound.",
-                              format_bound_list(list(g), open = AGE_MAX)))
+
+  groups <- p$ageGroup %||% list()
+  if (!length(groups)) {
+    errs <- c(errs, "Age groups must have at least one interval; the generator's default is 0, 150.")
+  }
+  for (g in groups) {
+    lo <- as.numeric(g[[1]])
+    hi <- bound_upper(g)
+    label <- format_bound_list(list(g))   # an open bound renders as Inf, not a fake 150
+    if (is.infinite(hi)) {
+      errs <- c(errs, sprintf(
+        "Age group '%s' has no upper bound; the generator needs a finite age, at most %d.",
+        label, AGE_MAX))
+    } else if (hi < lo) {
+      errs <- c(errs, sprintf("Age group '%s' has an upper bound below its lower bound.", label))
+    }
+    if (lo < 0 || (!is.infinite(hi) && hi > AGE_MAX)) {
+      errs <- c(errs, sprintf("Age group '%s' must lie within 0 and %d.", label, AGE_MAX))
     }
   }
+
   if (!length(as.character(unlist(p$sex %||% character(0))))) {
     errs <- c(errs, "Sex must be at least one of Both, Male or Female.")
   }
+
+  prior <- suppressWarnings(as.numeric(unlist(p$daysPriorObservation %||% numeric(0))))
+  if (!length(prior)) {
+    errs <- c(errs,
+              "Days of prior observation must have at least one value; the generator's default is 0.")
+  } else if (any(is.na(prior)) || any(prior < 0, na.rm = TRUE)) {
+    errs <- c(errs, "Days of prior observation must be numbers of days, none negative.")
+  }
+
+  dr    <- p[["cohortDateRange"]]
+  start <- date_bound(dr, 1)
+  end   <- date_bound(dr, 2)
+  if (!is.null(start) && !is.null(end) && as.Date(start) > as.Date(end)) {
+    errs <- c(errs, sprintf("Cohort date range starts (%s) after it ends (%s).", start, end))
+  }
+
   errs
 }
 
@@ -381,9 +524,14 @@ validate_denominator_requirements <- function(p) {
 
 register_cohort_kind(
   "denominator",
-  hint = paste("Generated with generateDenominatorCohortSet(). A denominator cohort set is",
-               "generated from the whole database, not defined by entry criteria."),
-  ui = function(ns, pf) denominator_requirements_ui(ns, pf),
+  hint = paste("Generated with generateDenominatorCohortSet(): a denominator cohort set",
+               "built from the whole database, not defined by entry criteria."),
+  # The uiOutput is the live preview of the set these requirements generate --
+  # display-only (COHORT_DISPLAY_ONLY_IDS), filled by cohort_item_server().
+  ui = function(ns, pf) tagList(
+    denominator_requirements_ui(ns, pf),
+    uiOutput(ns("cohort_set_preview"))
+  ),
   collect = function(input) denominator_requirements_collect(input),
   flatten = denominator_requirements_flatten,
   validate = function(cohort, cohorts) validate_denominator_requirements(cohort)
@@ -401,14 +549,28 @@ register_cohort_kind(
     # BOTH relative to target cohort entry. There is no anchoring on cohort end --
     # if time at risk runs past cohort exit or the observation period, only the
     # time up to those is contributed. Each interval generates its own cohort set.
+    # Starts EMPTY, like every other decision on the card: the validator asks
+    # for at least one interval, and the preview shows what the generator's
+    # default (0, Inf) would produce meanwhile.
     textAreaInput(ns("timeAtRisk"),
                   "Time at risk (one interval per line, days from target cohort entry)",
-                  join_lines(format_bound_list(pf("timeAtRisk", list(I(c(0, Inf)))))),
+                  join_lines(format_bound_list(pf("timeAtRisk", list()))),
                   rows = 3, width = "100%", placeholder = "0, Inf\n0, 30\n31, 60"),
     denominator_requirements_ui(ns, pf),
+    # Unticked until the author says otherwise -- the generator's own default
+    # is TRUE, so the recorded FALSE is an explicit choice, same trade-off as
+    # requirementInteractions.
     checkboxInput(ns("requirementsAtEntry"),
                   "Requirements must be met on the target cohort start date",
-                  value = isTRUE(pf("requirementsAtEntry", TRUE)))
+                  value = isTRUE(pf("requirementsAtEntry", FALSE)), width = "100%"),
+    # The unticked mode is the semantically rich one, and it carries the
+    # vignette's trap -- so it is said here, not only in the package docs.
+    div(class = "form-text mb-2",
+        paste("Unticked, people start contributing once they meet the requirements,",
+              "even part-way through their time in the target cohort. Time at risk",
+              "stays anchored on target entry either way: someone eligible only from",
+              "day 31 contributes nothing to a 0–30 window.")),
+    uiOutput(ns("cohort_set_preview"))
   ),
   # Keys, and their order, are generateTargetDenominatorCohortSet()'s own. `cdm` is
   # a live database handle, not a plan field; `name` is the cohort's own name, in
@@ -446,13 +608,32 @@ register_cohort_kind(
       errs <- c(errs, "Time at risk must have at least one interval (the default is 0, Inf).")
     }
     for (w in cohort$timeAtRisk %||% list()) {
-      if (bound_upper(w) < as.numeric(w[[1]])) {
+      # Both bounds are days FROM TARGET ENTRY, so a window cannot start before
+      # day 0 -- the generator has no notion of time before entry.
+      lo <- suppressWarnings(as.numeric(w[[1]]))
+      if (is.na(lo) || lo < 0) {
+        errs <- c(errs, sprintf("Time at risk '%s' must start at day 0 or later.",
+                                format_bound_list(list(w))))
+      } else if (bound_upper(w) < lo) {
         errs <- c(errs, sprintf("Time at risk '%s' ends before it starts.",
                                 format_bound_list(list(w))))
       }
     }
     errs
   }
+)
+
+# The target cohort, per the a03 vignette: the population of interest -- people
+# and the episodes during which they belong to it. A PLAIN cohort with its own
+# hint: IncidencePrevalence never creates it, only points at it.
+register_cohort_kind(
+  "target",
+  hint = paste("A pre-existing cohort of the population of interest — people and the",
+               "episodes during which they belong to it. Instantiated outside",
+               "IncidencePrevalence; a target denominator is generated FROM it,",
+               "restricting person-time to those episodes."),
+  ui = function(ns, pf) cohort_definition_ui(ns, pf),
+  collect = function(input) cohort_definition_collect(input)
 )
 
 # Outcome, comparator, censoring, strata and anything else: a plain cohort. None

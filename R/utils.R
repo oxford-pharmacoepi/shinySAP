@@ -61,11 +61,18 @@ as_date_value <- function(x) {
 # A silently pre-filled today would decide both on their behalf -- the same trap
 # the outcome washout's empty first choice exists to avoid. An empty string is
 # neither undefined nor null, so the picker starts empty and stays that way.
-date_input <- function(inputId, label, value = NULL, ...) { # nolint: object_name_linter.
+#
+# A blank field then needs to say what typing into it looks like, and
+# dateInput() takes no placeholder either -- so that attribute goes on the same
+# way. It shows the FORMAT, not what blank means: blank is meaningful per field,
+# so each call site says so in its own help text.
+date_input <- function(inputId, label, value = NULL, # nolint: object_name_linter.
+                       placeholder = "YYYY-MM-DD", ...) {
   value <- as_date_value(value)
   di <- dateInput(inputId, label, value = value, width = "100%", ...)
-  if (!is.null(value)) return(di)
-  htmltools::tagQuery(di)$find("input")$addAttrs("data-initial-date" = "")$allTags()
+  tq <- htmltools::tagQuery(di)$find("input")$addAttrs(placeholder = placeholder)
+  if (is.null(value)) tq <- tq$addAttrs("data-initial-date" = "")
+  tq$allTags()
 }
 
 slugify <- function(x) {
@@ -120,15 +127,54 @@ sap_json <- function(sap) {
   jsonlite::toJSON(sap, pretty = TRUE, auto_unbox = TRUE, na = "null", null = "null")
 }
 
-save_sap <- function(sap, dir = "output") {
-  dir.create(dir, recursive = TRUE, showWarnings = FALSE)
-  path <- file.path(dir, sprintf(
-    "%s-%s.json",
-    sap_file_base(sap$study),
-    format(Sys.time(), "%Y%m%d-%H%M%S")
-  ))
+# A SAP lives in ONE file. There are no timestamped copies and no separate
+# autosave file: the working file is created the first time there is anything
+# to keep, and every write after that -- a clicked Save or an autosave --
+# rewrites it in place. Loading a SAP adopts the loaded file as the working
+# file (see app.R). Versioning is git's job, or the author's, not the app's.
+working_sap_path <- function(study, dir = "output") {
+  file.path(dir, sprintf("%s.json", sap_file_base(study)))
+}
+
+write_sap <- function(sap, path) {
+  dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   writeLines(sap_json(sap), path)
   path
+}
+
+# One deliberate save, with its guard and its notifications. Returns the path,
+# or NULL when nothing was saved. Must run inside a Shiny session
+# (showNotification).
+save_working <- function(sap, path, n_problems = 0) {
+  if (is.na(sap$study$title %||% NA)) {
+    showNotification("Give the study a title before saving.", type = "warning")
+    return(invisible(NULL))
+  }
+  path <- write_sap(sap, path)
+  if (n_problems > 0) {
+    showNotification(
+      sprintf("Saved %s, but %d item(s) still need attention.", basename(path), n_problems),
+      type = "warning", duration = 8
+    )
+  } else {
+    showNotification(paste("Saved", basename(path)), type = "message")
+  }
+  invisible(path)
+}
+
+# TRUE for the app exactly as it starts, which is not worth autosaving -- an
+# empty file would overwrite nothing useful, but it would appear in output/
+# every time someone opens the app and closes it again. version and date carry
+# defaults the author never typed, so they do not count as content.
+sap_is_empty <- function(sap) {
+  s <- sap$study %||% list()
+  authored <- c(s$title, s$study_code, unlist(s$authors), s$background, s$aim,
+                unlist(s$objectives))
+  authored <- authored[!is.na(authored)]
+  !any(nzchar(as.character(authored))) &&
+    !length(s$amendments) &&
+    !length(sap$cdm_sources) && !length(sap$cdm_changes) &&
+    !length(sap$cohorts) && !length(sap$proposed_analyses)
 }
 
 read_sap <- function(path) {
@@ -190,9 +236,6 @@ migrate_sap <- function(sap) {
       cohorts[[length(cohorts) + 1]] <- list(
         name                = den,
         kind                = "target_denominator",
-        description         = sprintf(
-          paste0("Denominator generated from '%s'. Added when this SAP was read: ",
-                 "before 0.3.2 the time at risk lived on the analysis."), nm),
         targetCohortTable   = as.character(nm),
         timeAtRisk          = tar,
         requirementsAtEntry = TRUE
@@ -341,6 +384,10 @@ migrate_cohort <- function(ch) {
   # loses it -- and any analysis stratified by that column now fails validation,
   # which is the honest outcome: the generator was never going to produce it.
   ch$strata_variables <- NULL
+
+  # 0.4.12 dropped the cohort description: the kind block already says what a
+  # cohort is in structured form. An older file's description does not survive.
+  ch$description <- NULL
 
   ch
 }

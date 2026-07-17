@@ -4,24 +4,25 @@
 review_ui <- function(id) {
   ns <- NS(id)
   tagList(
-    h3("Review & Save"),
-    p(class = "text-muted", "Review, export, and save the statistical analysis plan."),
+    h3("Review"),
+    p(class = "text-muted",
+      "Review and export the statistical analysis plan. Saving lives in the navbar,
+       next to Load: one file per SAP, created on the first save and rewritten by
+       every save and autosave after it."),
     layout_columns(
       col_widths = c(3, 3, 3, 3),
       value_box("CDM sources",       textOutput(ns("n_sources")),  theme = "primary"),
       value_box("CDM changes",       textOutput(ns("n_cdm")),      theme = "primary"),
       value_box("Cohorts",           textOutput(ns("n_cohorts")),  theme = "primary"),
-      value_box("Proposed analyses", textOutput(ns("n_analyses")), theme = "primary")
+      value_box("Analyses",          textOutput(ns("n_analyses")), theme = "primary")
     ),
     div(
       class = "d-flex gap-2 my-3 align-items-center flex-wrap",
-      actionButton(ns("save"),       "Save to output/", class = "btn btn-success",          icon = icon("floppy-disk")),
       downloadButton(ns("download"), "Download JSON",   class = "btn btn-outline-secondary"),
       downloadButton(ns("dl_word"),  "Download Word",   class = "btn btn-outline-secondary"),
-      actionButton(ns("refresh"),    "Refresh preview", class = "btn btn-primary",           icon = icon("rotate"))
+      actionButton(ns("refresh"),    "Refresh preview", class = "btn btn-primary", icon = icon("rotate"))
     ),
     uiOutput(ns("problems")),
-    uiOutput(ns("status")),
     navset_tab(
       nav_panel(
         "Document preview",
@@ -42,13 +43,10 @@ review_ui <- function(id) {
   )
 }
 
-review_server <- function(id, sap, output_dir,
-                          problems = reactive(list())) {
+# Saving is NOT here: the navbar's Save link (app.R) owns it, via
+# save_working(). This tab reviews, downloads and previews.
+review_server <- function(id, sap, problems = reactive(list())) {
   moduleServer(id, function(input, output, session) {
-
-    # -- Save -----------------------------------------------------------------
-
-    saved_path <- reactiveVal(NULL)
 
     output$problems <- renderUI({
       found <- problems()
@@ -69,29 +67,6 @@ review_server <- function(id, sap, output_dir,
     output$n_analyses <- renderText(length(sap()$proposed_analyses))
 
     output$json <- renderText(as.character(sap_json(sap())))
-
-    observeEvent(input$save, {
-      if (is.na(sap()$study$title)) {
-        showNotification("Give the study a title before saving.", type = "warning")
-        return()
-      }
-      path <- save_sap(sap(), output_dir)
-      saved_path(path)
-      n <- length(problems())
-      if (n > 0) {
-        showNotification(
-          sprintf("Saved %s, but %d item(s) still need attention.", basename(path), n),
-          type = "warning", duration = 8
-        )
-      } else {
-        showNotification(paste("Saved", basename(path)), type = "message")
-      }
-    })
-
-    output$status <- renderUI({
-      req(saved_path())
-      div(class = "alert alert-success py-2", "Saved to ", tags$code(saved_path()))
-    })
 
     output$download <- downloadHandler(
       filename = function() sprintf("%s.json", sap_file_base(sap()$study)),

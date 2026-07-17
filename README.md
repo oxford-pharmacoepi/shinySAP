@@ -11,9 +11,9 @@ backend as a single JSON dictionary and written to `output/`.
 | **Study** | Title, study code, authors, SAP version, date, rationale & background, aim / research question, specific objectives, and an amendment history (version, date, description of change) |
 | **CDM Sources** | The databases the study runs against — name, short key, country/region |
 | **CDM Changes** | Extra CDM validations and database-specific alterations applied before analysis — a change type (extra validation; subset a CDM table; limit observation periods; remap concepts; remove people with no year of birth or sex data; remove people with implausible dates; other), the data sources it applies to, and a description |
-| **Cohorts** | Name, kind, description — plus a set of inputs that **depends on the cohort's kind**. A denominator is *generated*, so it asks for the generator's arguments (cohort date range, age groups, sex, prior observation); a target denominator asks for those plus the target cohort and the time at risk; every other kind (target, outcome, comparator, censoring, strata) is a plain cohort *definition* — entry events, inclusion & exclusion criteria, exit criteria, concept set |
-| **Proposed Analyses** | Name, analysis type, CDM sources it runs on — plus a set of inputs that **depends on the analysis type** (an incidence asks for a denominator, a washout and an interval; a prevalence asks for time points instead) |
-| **Review & Save** | Live JSON preview, save to `output/`, and download |
+| **Cohorts** | Name, kind and the CDM sources the cohort is built against (the SAP-level counterpart of the generators' `cdm` argument) — plus a set of inputs that **depends on the cohort's kind**. A denominator is *generated*, so it asks for the generator's arguments (cohort date range, age groups, sex, prior observation); a target denominator asks for those plus the target cohort and the time at risk; every other kind (target, outcome, comparator, censoring, strata) is a plain cohort *definition* — entry events, index date (which occurrence indexes), inclusion & exclusion criteria, exit criteria, concept set |
+| **Analyses** | Name, analysis type, CDM sources it runs on — plus a set of inputs that **depends on the analysis type** (an incidence asks for a denominator, a washout and an interval; a prevalence asks for time points instead) |
+| **Review** | Live JSON preview, document preview, and download as JSON or Word. Saving sits in the navbar: one file per SAP, created on the first save (you choose the folder once) and rewritten in place by every save and autosave after it — loading a SAP adopts that file |
 
 **Load SAP** sits in the navbar, visible from every tab: it reloads a saved
 plan into all sections at once.
@@ -21,9 +21,9 @@ plan into all sections at once.
 CDM sources, CDM changes, cohorts and analyses are repeating sections — use
 **Add** to append another, **Remove** to drop one.
 
-Sections cross-reference each other. The cohort pickers on Proposed Analyses are
+Sections cross-reference each other. The cohort pickers on Analyses are
 populated from the cohorts you have defined; the data-source pickers on CDM
-Changes and Proposed Analyses are populated from the CDM Sources tab. All of them
+Changes and Analyses are populated from the CDM Sources tab. All of them
 accept free text, so you can reference something you have not written down yet.
 
 ## Running
@@ -49,7 +49,7 @@ JSON arrays even when they hold a single entry.
 
 ```json
 {
-  "sap_schema_version": "0.4.8",
+  "sap_schema_version": "0.4.14",
   "generated_at": "2026-07-09T14:02:11+0100",
   "study": {
     "title": "Metformin and lactic acidosis",
@@ -83,8 +83,9 @@ JSON arrays even when they hold a single entry.
     {
       "name": "Metformin new users",
       "kind": "target",
-      "description": "...",
-      "entry_events": ["First metformin dispensation"],
+      "data_sources": ["cprd"],
+      "entry_events": ["Metformin dispensation"],
+      "index_rule": "First occurrence ever",
       "inclusion_criteria": ["Aged 18 or over at index"],
       "exit_criteria": ["End of continuous observation"],
       "concept_set": "cs_metformin"
@@ -92,7 +93,7 @@ JSON arrays even when they hold a single entry.
     {
       "name": "Metformin denominator",
       "kind": "target_denominator",
-      "description": "...",
+      "data_sources": ["cprd"],
       "targetCohortTable": "Metformin new users",
       "cohortDateRange": ["2015-01-01", "2024-12-31"],
       "timeAtRisk": [[0, 30], [31, null]],
@@ -226,7 +227,7 @@ different analysis from an unstated one, and an unbounded washout is different
 again. `estimateIncidence()` defaults to `Inf`, but the SAP deliberately refuses
 to inherit that silently and makes the author choose.
 
-Loading a saved file back into the form (**Review & Save → Load a SAP...**)
+Loading a saved file back into the form (**Load SAP**, in the navbar)
 repopulates every section, so a SAP can be revised and re-saved.
 
 ### Schema versions
@@ -342,7 +343,7 @@ Saving writes the current schema version (`0.4.0`) back out.
 A template may declare a `validate(params, cohorts)` that returns a character
 vector of problems — for instance, that an incidence analysis's denominator is
 not actually a denominator cohort, or that it stratifies by sex on a male-only
-cohort. Problems are listed on **Review & Save**. They do **not** block saving: a
+cohort. Problems are listed on **Review**. They do **not** block saving: a
 SAP is drafted over many sittings and an incomplete one still has to be
 checkpointed, so saving with outstanding problems warns rather than refuses.
 
@@ -373,7 +374,7 @@ R/mod_study.R             Study metadata
 R/mod_cdm_sources.R       Section: CDM Sources
 R/mod_cdm_changes.R       Section: CDM Changes
 R/mod_cohorts.R           Section: Cohorts
-R/mod_analyses.R          Section: Proposed Analyses
+R/mod_analyses.R          Section: Analyses
 R/mod_review.R            Review, save, download
 tests/testthat/           testthat suite: JSON contract, templates, migrations
 tests/testthat.R          runner (Rscript tests/testthat.R)

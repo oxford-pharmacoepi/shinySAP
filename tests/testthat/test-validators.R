@@ -1,4 +1,4 @@
-# Template validators: problems a saved analysis reports on Review & Save.
+# Template validators: problems a saved analysis reports on the Review tab.
 
 INC <- ANALYSIS_TEMPLATES[["Incidence"]]
 

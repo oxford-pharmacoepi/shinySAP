@@ -81,6 +81,20 @@ test_that("slugify",
           expect_identical(slugify("Metformin & Lactic Acidosis!"), "metformin-lactic-acidosis"))
 test_that("slugify empty stays empty", expect_identical(slugify(""), ""))
 
+# date_input(): the placeholder says what typing into the field looks like; the
+# empty data-initial-date is what keeps a blank field from silently becoming
+# today (blank is meaningful -- see the comment on date_input()).
+test_that("date_input: a blank field shows the format and stays blank", {
+  html <- as.character(date_input("d", "Date"))
+  expect_match(html, 'placeholder="YYYY-MM-DD"', fixed = TRUE)
+  expect_match(html, 'data-initial-date=""', fixed = TRUE)
+})
+test_that("date_input: a prefilled field keeps its date and the format placeholder", {
+  html <- as.character(date_input("d", "Date", "2024-01-31"))
+  expect_match(html, 'placeholder="YYYY-MM-DD"', fixed = TRUE)
+  expect_match(html, 'data-initial-date="2024-01-31"', fixed = TRUE)
+})
+
 test_that("sap_file_base prefers the study code and carries the version",
           expect_identical(
             sap_file_base(list(title = "Metformin and lactic acidosis",
@@ -117,11 +131,35 @@ test_that("prefiller returns value, defaults on NA, defaults on absent", {
   expect_identical(pf("nope", "d"), "d")
 })
 
-test_that("save_sap writes a slugged file that reads back", {
+# A SAP lives in ONE file: a stable slugged name with NO timestamp, created on
+# the first write and rewritten in place by every write after it -- clicked
+# Save and autosave alike.
+test_that("write_sap rewrites one stable working file that reads back", {
   tmp <- file.path(tempdir(), "sap-out")
   on.exit(unlink(tmp, recursive = TRUE))
-  path <- save_sap(sap, tmp)
-  expect_true(file.exists(path))
-  expect_match(basename(path), "^sap-metformin-and-lactic-acidosis-v1\\.0-\\d{8}-\\d{6}\\.json$")
-  expect_identical(read_sap(path)$study$title, sap$study$title)
+  path <- working_sap_path(sap$study, tmp)
+  expect_match(basename(path), "^sap-metformin-and-lactic-acidosis-v1\\.0\\.json$")
+  p1 <- write_sap(sap, path)
+  p2 <- write_sap(sap, path)
+  expect_identical(p1, p2)
+  expect_length(list.files(tmp), 1)
+  expect_identical(read_sap(p1)$study$title, sap$study$title)
+})
+
+# The app as it starts must not autosave: version and date carry defaults the
+# author never typed, so they alone are not content.
+test_that("sap_is_empty: a fresh app is empty, anything authored is not", {
+  fresh <- list(study = list(title = NA, study_code = NA, authors = character(0),
+                             version = "1.0", date = "2026-07-17",
+                             background = NA, aim = NA, objectives = character(0),
+                             amendments = list()),
+                cdm_sources = list(), cdm_changes = list(),
+                cohorts = list(), proposed_analyses = list())
+  expect_true(sap_is_empty(fresh))
+  titled <- fresh
+  titled$study$title <- "My study"
+  expect_false(sap_is_empty(titled))
+  with_cohort <- fresh
+  with_cohort$cohorts <- list(list(name = "D"))
+  expect_false(sap_is_empty(with_cohort))
 })

@@ -234,14 +234,17 @@ if (!length(cohorts)) {
     entry <- unlist(co$entry_events %||% list())
     if (length(entry)) add("Entry events", paste(entry, collapse = "; "))
 
+    add("Index date", chr(co$index_rule))
+
     paste(parts, collapse = " · ")
   }
 
   df <- data.frame(
-    `Name`        = vapply(cohorts, function(co) chr(co$name), character(1)),
-    `Kind`        = vapply(cohorts, function(co) chr(co$kind), character(1)),
-    `Description` = vapply(cohorts, function(co) chr(co$description), character(1)),
-    `Details`     = vapply(cohorts, cohort_details, character(1)),
+    `Name`         = vapply(cohorts, function(co) chr(co$name), character(1)),
+    `Kind`         = vapply(cohorts, function(co) chr(co$kind), character(1)),
+    `Data sources` = vapply(cohorts, function(co)
+      paste(unlist(co$data_sources %||% list()), collapse = ", "), character(1)),
+    `Details`      = vapply(cohorts, cohort_details, character(1)),
     check.names = FALSE, stringsAsFactors = FALSE
   )
   flextable::flextable_to_rmd(items_table(df))
@@ -253,7 +256,7 @@ if (!length(cohorts)) {
 
 ---
 
-# Proposed analyses
+# Analyses
 
 ```{r analyses, results='asis'}
 analyses <- sap$proposed_analyses %||% list()

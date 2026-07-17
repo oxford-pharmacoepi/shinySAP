@@ -11,8 +11,23 @@ test_that("cohort kind: a target cohort is not a denominator", {
 })
 test_that("cohort kind: a current kind is left alone",
           expect_identical(canonical_cohort_kind("denominator"), "denominator"))
-test_that("cohort kind: NULL falls back",
-          expect_identical(canonical_cohort_kind(NULL), "denominator"))
+# A new card starts with no kind chosen -- unset is "", a state of its own, not a
+# silent denominator. An unknown kind from a hand-edited file reads as a plain
+# cohort: that loses nothing, where a denominator would invent generator arguments.
+test_that("cohort kind: unset stays unset, never a silent default", {
+  expect_identical(canonical_cohort_kind(NULL), "")
+  expect_identical(canonical_cohort_kind(""), "")
+  expect_identical(canonical_cohort_kind(NA), "")
+})
+test_that("cohort kind: an unknown kind falls back to a plain cohort",
+          expect_identical(canonical_cohort_kind("something made up"), "other"))
+test_that("cohort: an unset kind is a problem, not a validated card", {
+  msgs <- cohort_problems(list(name = "X"), list())
+  expect_true(any(grepl("no kind", msgs)))
+})
+test_that("cohort: a kind that is set validates through its template",
+          expect_true(any(grepl("Sex must be",
+                                cohort_problems(list(kind = "denominator"), list())))))
 test_that("cohort_by_name: a known cohort",
           expect_identical(cohort_by_name(list(A = list(kind = "outcome")), "A")$kind, "outcome"))
 test_that("cohort_by_name: a free-typed cohort nobody defined is NULL, not an error",
@@ -62,13 +77,16 @@ test_that("bounds: a finite pair round-trips",
 
 for (kind in names(COHORT_TEMPLATES)) {
   tmpl <- COHORT_TEMPLATES[[kind]]
-  ids  <- template_field_ids(tmpl)
+  # The cohort-set preview is an output, not an input: it holds no value, so it
+  # is exempt from the round trip -- same as the analysis DISPLAY_ONLY_IDS.
+  ids  <- setdiff(template_field_ids(tmpl), COHORT_DISPLAY_ONLY_IDS)
   pk   <- unlist(tmpl$pickers, use.names = FALSE) %||% character(0)
 
   test_that(sprintf("[cohort:%s] ui() renders at least one input", kind),
             expect_gt(length(ids), 0))
   test_that(sprintf("[cohort:%s] no id collides with a common field", kind),
-            expect_length(intersect(ids, c(COHORT_COMMON_FIELDS, "remove", "box", "kind_fields")),
+            expect_length(intersect(ids, c(COHORT_COMMON_FIELDS, "remove", "duplicate",
+                                           "box", "kind_fields")),
                           0))
   test_that(sprintf("[cohort:%s] every declared picker is actually rendered", kind),
             expect_true(all(pk %in% ids)))
@@ -93,6 +111,15 @@ test_that("cohort: a plain denominator has no time at risk",
 test_that("cohort: a target denominator does have a time at risk",
           expect_true("timeAtRisk" %in%
                         names(COHORT_TEMPLATES[["target_denominator"]]$collect(list()))))
+# 0.4.14: which occurrence of the entry event indexes the cohort. A rule, not
+# a date; blank stays blank (null), same as every undecided field.
+test_that("cohort: a plain cohort records its index rule, and blank stays blank", {
+  tmpl <- COHORT_TEMPLATES[["target"]]
+  p <- tmpl$collect(list(index_rule = "First influenza vaccination in the season"))
+  expect_identical(p$index_rule, "First influenza vaccination in the season")
+  expect_true(is.na(tmpl$collect(list())$index_rule))
+})
+
 test_that("cohort: an outcome cohort carries none of the generator arguments",
           expect_length(intersect(names(COHORT_TEMPLATES[["other"]]$collect(list())),
                                   c("ageGroup", "sex", "timeAtRisk",
@@ -114,6 +141,26 @@ test_that("cohort: the plain denominator's keys are exactly its generator's argu
     c("cohortDateRange", "ageGroup", "sex", "daysPriorObservation",
       "requirementInteractions"))
 })
+# An untouched form must not put decisions in the JSON: no "Both", no 0 days,
+# no interactions. The generator's defaults still apply downstream (the cohort
+# set preview says so), but the SAP records only what the author chose -- and
+# the validator objects until sex actually is chosen.
+test_that("cohort: an untouched denominator form collects no decisions", {
+  p <- COHORT_TEMPLATES[["denominator"]]$collect(list())
+  expect_length(p$sex, 0)
+  expect_length(p$daysPriorObservation, 0)
+  expect_false(p$requirementInteractions)
+})
+test_that("cohort: an untouched target denominator collects no decisions either", {
+  p <- COHORT_TEMPLATES[["target_denominator"]]$collect(list())
+  expect_length(p$timeAtRisk, 0)
+  expect_false(p$requirementsAtEntry)
+})
+test_that("cohort: an unset sex is a problem, not a silent Both",
+          expect_true(any(grepl("Sex must be",
+                                COHORT_TEMPLATES[["denominator"]]$validate(
+                                  list(kind = "denominator"), list())))))
+
 test_that("cohort: no denominator key is snake_case any more", {
   for (kind in c("denominator", "target_denominator")) {
     keys <- names(COHORT_TEMPLATES[[kind]]$collect(list()))
@@ -156,7 +203,8 @@ test_that("cohort: flatten splits cohortDateRange back onto the two date fields"
 TD <- COHORT_TEMPLATES[["target_denominator"]]
 td_ok <- list(name = "TD", kind = "target_denominator",
               targetCohortTable = "Metformin new users",
-              timeAtRisk = list(c(0, 30)), sex = list("Both"), ageGroup = list(c(0, 150)))
+              timeAtRisk = list(c(0, 30)), sex = list("Both"), ageGroup = list(c(0, 150)),
+              daysPriorObservation = list(0))
 
 # A copy of td_ok with one key changed. NOT within(): its `targetCohortTable <- x`
 # reads as a camelCase *variable* assignment, which the linter rejects. These are
@@ -184,6 +232,51 @@ test_that("cohort validate: time at risk cannot end before it starts",
 test_that("cohort validate: time at risk must have at least one interval",
           expect_true(any(grepl("at least one interval",
                                 TD$validate(td_but("timeAtRisk", list()), cohorts_idx)))))
+# Both bounds are days from TARGET ENTRY: there is no time before day 0.
+test_that("cohort validate: time at risk cannot start before target entry", {
+  expect_true(any(grepl("must start at day 0",
+                        TD$validate(td_but("timeAtRisk", list(c(-7, 30))), cohorts_idx))))
+  expect_true(any(grepl("must start at day 0",
+                        TD$validate(td_but("timeAtRisk", list(c(NA, 30))), cohorts_idx))))
+})
+
+# Value domains mirror what generateDenominatorCohortSet() will actually accept:
+# finite ages within 0..150, non-negative days, a forward date range -- and [],
+# the blank form's honest "not decided yet", is a problem, never a silent default.
+test_that("cohort validate: empty age groups and prior observation are problems", {
+  expect_true(any(grepl("Age groups must have at least one",
+                        TD$validate(td_but("ageGroup", list()), cohorts_idx))))
+  expect_true(any(grepl("prior observation must have at least one",
+                        TD$validate(td_but("daysPriorObservation", list()), cohorts_idx))))
+})
+test_that("cohort validate: an age group must end at a finite age", {
+  # "65+" parses to an unbounded upper bound, which serialises as [65, null].
+  errs <- TD$validate(td_but("ageGroup", parse_bound_list("65+")), cohorts_idx)
+  expect_true(any(grepl("no upper bound.*finite", errs)))
+})
+test_that("cohort validate: ages beyond 0..150 are problems", {
+  expect_true(any(grepl("must lie within 0 and 150",
+                        TD$validate(td_but("ageGroup", list(c(0, 200))), cohorts_idx))))
+  expect_true(any(grepl("must lie within 0 and 150",
+                        TD$validate(td_but("ageGroup", list(c(-5, 64))), cohorts_idx))))
+})
+test_that("cohort validate: prior observation must be non-negative numbers", {
+  expect_true(any(grepl("none negative",
+                        TD$validate(td_but("daysPriorObservation", list(-30)), cohorts_idx))))
+  # A lone NA reads as unset (%||% treats a length-1 NA as absent), so it lands
+  # on the at-least-one-value message; an NA hiding AMONG numbers is caught here.
+  expect_true(any(grepl("at least one value",
+                        TD$validate(td_but("daysPriorObservation", list(NA)), cohorts_idx))))
+  expect_true(any(grepl("none negative",
+                        TD$validate(td_but("daysPriorObservation", list(0, NA)), cohorts_idx))))
+})
+test_that("cohort validate: a date range cannot start after it ends", {
+  bad <- td_but("cohortDateRange", list("2024-12-31", "2015-01-01"))
+  expect_true(any(grepl("starts .* after it ends", TD$validate(bad, cohorts_idx))))
+  # One open bound is fine: null means the database decides that side.
+  half <- td_but("cohortDateRange", list("2015-01-01", NULL))
+  expect_length(TD$validate(half, cohorts_idx), 0)
+})
 
 # Strata columns are NOT a cohort field ----------------------------------------
 #
@@ -219,6 +312,15 @@ test_that("cohort: anything that is not a denominator carries no strata columns"
   expect_length(cohort_strata_variables(list(kind = "outcome")), 0)
   expect_length(cohort_strata_variables(NULL), 0)
 })
+# 0.4.12 dropped the cohort description: the kind block already says what a
+# cohort is in structured form, so an old file's free text does not survive.
+test_that("migrate_sap: an old cohort's description is dropped", {
+  m <- migrate_sap(list(cohorts = list(list(
+    name = "D", kind = "denominator", description = "prose that drifted"
+  ))))
+  expect_null(m$cohorts[[1]]$description)
+})
+
 test_that("migrate_sap: an old file's declared strata columns are dropped", {
   m <- migrate_sap(list(cohorts = list(list(
     name = "D", kind = "denominator", strata_variables = list("age_group", "sex", "region")
@@ -288,4 +390,109 @@ test_that("cohort set: an empty denominator is the generator's own defaults", {
   s <- den_set()
   expect_length(s, 1)
   expect_match(format_denominator_cohort(s[[1]]), "Age 0, 150 . Both . 0 days")
+})
+
+# 0.4.13: a cohort names the CDM sources it is generated against -- the
+# SAP-level counterpart of the generators' `cdm` argument. A common field, so
+# the kind blocks stay exactly the generator's other arguments.
+test_that("cohort: the card collects its CDM sources and they survive a round trip", {
+  testServer(cohorts_server, {
+    session$setInputs(add = 1)
+    session$setInputs("cohort_1-name" = "D", "cohort_1-kind" = "denominator",
+                      "cohort_1-data_sources" = c("cprd", "sidiap"))
+    d <- isolate(data_r())[[1]]
+    expect_identical(as.character(d$data_sources), c("cprd", "sidiap"))
+    # The Duplicate/load path keeps them: common keys pass through flatten.
+    expect_identical(as.character(cohort_to_prefill(d)$data_sources), c("cprd", "sidiap"))
+  })
+})
+test_that("cohort: no picked sources collect as an empty array, not a guess", {
+  testServer(cohorts_server, {
+    session$setInputs(add = 1)
+    session$setInputs("cohort_1-name" = "D", "cohort_1-kind" = "denominator")
+    expect_length(isolate(data_r())[[1]]$data_sources, 0)
+  })
+})
+
+# Shiny drops a selected value it cannot find among the choices, so a
+# create-to-type selectize MUST fold its saved values into them -- or every
+# rebuild (load, kind switch, duplicate) empties the field and the next
+# autosave erases the value from the file. The user-visible bug: save 0 days,
+# reload the SAP, the field is blank.
+test_that("cohort: saved daysPriorObservation renders back into its field", {
+  for (v in list(0, 365)) {
+    html <- as.character(COHORT_TEMPLATES[["denominator"]]$ui(
+      function(x) x, prefiller(list(daysPriorObservation = list(v)))))
+    expect_match(html, sprintf("<option value=\"%s\" selected", v), fixed = TRUE)
+  }
+})
+
+# The cohort card previews the set live, so an author sees the cross product at
+# the point of editing rather than inferring it (or first meeting it on the
+# Analyses tab). The placeholder is display-only: the card server fills it.
+test_that("cohort: both denominator kinds render the cohort-set preview", {
+  for (kind in c("denominator", "target_denominator")) {
+    expect_true("cohort_set_preview" %in% template_field_ids(COHORT_TEMPLATES[[kind]]),
+                info = kind)
+  }
+})
+test_that("cohort: a plain cohort renders no cohort-set preview",
+          expect_false("cohort_set_preview" %in%
+                         template_field_ids(COHORT_TEMPLATES[["other"]])))
+test_that("cohort: the preview never reaches the JSON", {
+  for (kind in c("denominator", "target_denominator")) {
+    expect_false("cohort_set_preview" %in%
+                   names(COHORT_TEMPLATES[[kind]]$collect(list())), info = kind)
+  }
+})
+# Duplicated names shadow each other in cohort_by_name and every picker --
+# a problem of the list, which no single card's validator can see.
+test_that("duplicate names: two cohorts sharing a name is one problem", {
+  p <- duplicate_name_problems(list(list(name = "D"), list(name = "D"),
+                                    list(name = "Other")))
+  expect_length(p, 1)
+  expect_identical(p[[1]]$name, "D")
+  expect_match(p[[1]]$messages, "2 cohorts are named 'D'")
+})
+test_that("duplicate names: distinct, blank and NA names raise nothing",
+          expect_length(duplicate_name_problems(list(list(name = "A"), list(name = "B"),
+                                                     list(name = ""), list(name = NA),
+                                                     list())), 0))
+
+# cohort_to_prefill() is the ONE path a card is rebuilt from -- load and the
+# Duplicate button both use it.
+test_that("cohort_to_prefill: an old role is canonicalised and flattened", {
+  p <- cohort_to_prefill(list(name = "T", role = "Target"))
+  expect_identical(p$kind, "target")
+})
+test_that("cohort_to_prefill: a denominator's date range splits back onto its fields", {
+  p <- cohort_to_prefill(list(kind = "denominator",
+                              cohortDateRange = list("2015-01-01", NULL)))
+  expect_identical(p$cohortDateRangeStart, "2015-01-01")
+})
+test_that("cohort_to_prefill: no kind survives as no kind", {
+  expect_identical(cohort_to_prefill(list(name = "X"))$kind, "")
+})
+
+# The cohort card and the analysis card render the SAME panel -- facts grid plus
+# generated set -- so the two views can never disagree; only the sentences differ.
+test_that("denominator_panel: facts, custom intro and custom lead render together", {
+  html <- as.character(denominator_panel(
+    list(kind = "denominator", sex = list("Female"), ageGroup = list(c(0, 17))),
+    "My intro:", lead = function(n) sprintf("Makes %d.", n)
+  ))
+  for (needle in c("My intro:", "Age groups", "0, 17", "Sex", "Female",
+                   "Prior observation", "Makes 1.")) {
+    expect_match(html, needle, fixed = TRUE)
+  }
+  expect_no_match(html, "Time at risk")   # plain denominator: no such fact
+})
+
+test_that("denominator_cohort_set_ui: a caller can supply its own lead sentence", {
+  ui <- denominator_cohort_set_ui(list(kind = "denominator"),
+                                  lead = function(n) sprintf("Makes %d.", n))
+  expect_match(as.character(ui), "Makes 1.", fixed = TRUE)
+  # NULL keeps the analysis-card wording.
+  expect_match(as.character(denominator_cohort_set_ui(list(kind = "denominator"))),
+               "the analysis runs on it")
 })

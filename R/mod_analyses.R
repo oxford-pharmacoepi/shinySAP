@@ -1,4 +1,4 @@
-# Section 4: Proposed Analyses -----------------------------------------------
+# Section 4: Analyses ----------------------------------------------------------
 #
 # The card is in two halves: the common fields below, and a type block rendered
 # from the registry in R/analysis_templates.R. ANALYSIS_TYPES, ANCHORS and
@@ -28,7 +28,8 @@ analysis_item_ui <- function(id, prefill = NULL) {
 analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
                                  cohort_names = reactive(character(0)),
                                  source_names = reactive(character(0)),
-                                 cohort_index = reactive(list())) {
+                                 cohort_index = reactive(list()),
+                                 cohort_renames = reactive(NULL)) {
   moduleServer(id, function(input, output, session) {
     observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
 
@@ -89,6 +90,17 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     sync_pickers(session, function() analysis_template(type_r())$pickers$sources %||% character(0),
                  source_names, base_pf)
     sync_pickers(session, "data_sources", source_names, base_pf)
+
+    # A cohort rename (see cohorts_server) lands on this card's cohort pickers
+    # while they still hold the old name. Only the CURRENT template's pickers
+    # exist in the DOM; a value stranded on a template switched away from keeps
+    # the old name, and the validators catch it if that template comes back.
+    observeEvent(cohort_renames(), {
+      ev <- cohort_renames()
+      apply_rename_to_pickers(session, input,
+                              analysis_template(type_r())$pickers$cohorts %||% character(0),
+                              ev$old, ev$new, available = cohort_names())
+    }, ignoreInit = TRUE)
 
     # Sub-cohort ID pickers (template$subcohorts). Each maps a multi-select of
     # cohort IDs onto one of the template's cohort pickers: when the picked
@@ -193,13 +205,38 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
   })
 }
 
+# One saved (or live) analysis -> the prefill its card is rebuilt from. Shared
+# by analyses load() and the Duplicate button, so the two can never drift.
+analysis_to_prefill <- function(a) {
+  raw_type <- a$analysis_type
+  a$analysis_type <- canonical_analysis_type(raw_type)
+  tmpl <- analysis_template(a$analysis_type)
+  # Pre-0.3.0 files kept the type-specific fields at the top level, so they
+  # load with no migration step. is.null(), not %||%: an empty parameters
+  # object reads back as a zero-length list, which %||% would take for
+  # absent and then mistake a 0.3.0 file for an old one.
+  params <- if (is.null(a$parameters)) a else a$parameters
+  # A serialised_type template splits its type across two levels of the
+  # file; hand flatten() the raw label so it can recover its inputs. The
+  # canonical type in the common half shadows this key in the prefill.
+  params$analysis_type <- raw_type
+  flat <- tmpl$flatten(params)
+  if (!is.list(flat)) flat <- list()
+  # c(), not modifyList(): modifyList merges nested lists instead of
+  # replacing them, drops keys whose new value is NULL, and errors on a
+  # non-list -- after items$clear() has already emptied the section. And
+  # because prefill[[key]] takes the first match, a template parameter that
+  # collides with a common key cannot clobber it.
+  c(a[intersect(ANALYSIS_COMMON_FIELDS, names(a))], flat)
+}
+
 analyses_ui <- function(id) {
   ns <- NS(id)
   tagList(
     div(
       class = "d-flex justify-content-between align-items-center mb-3",
       div(
-        h3("Proposed analyses", class = "mb-1"),
+        h3("Analyses", class = "mb-1"),
         p(class = "text-muted mb-0", "What is estimated, on which cohorts and sources, and how.")
       ),
       div(
@@ -218,49 +255,35 @@ analyses_ui <- function(id) {
 
 analyses_server <- function(id, cohort_names = reactive(character(0)),
                             source_names = reactive(character(0)),
-                            cohort_index = reactive(list())) {
+                            cohort_index = reactive(list()),
+                            cohort_renames = reactive(NULL)) {
   moduleServer(id, function(input, output, session) {
     # These change on every keystroke in the section that owns them; settle first
     # so the pickers are not rebuilt, and the summary not redrawn, mid-word.
+    # Renames are NOT debounced: the follow-up must land before the settled
+    # name list rebuilds the pickers around the stale value.
     settled_cohorts <- debounce(cohort_names, 600)
     settled_sources <- debounce(source_names, 600)
     settled_index   <- debounce(cohort_index, 600)
 
     item_server <- function(iid, prefill, on_remove) {
       analysis_item_server(iid, prefill, on_remove, settled_cohorts, settled_sources,
-                           settled_index)
+                           settled_index, cohort_renames)
     }
-    items <- dynamic_items("analysis", "items", analysis_item_ui, item_server)
+    items <- dynamic_items("analysis", "items", analysis_item_ui, item_server,
+                           to_prefill = function(x) analysis_to_prefill(x$data),
+                           noun = "Analysis")
 
-    observeEvent(input$add, items$add())
+    observeEvent(input$add, items$add(reveal = TRUE))
 
     output$n <- renderText(items$count())
     outputOptions(output, "n", suspendWhenHidden = FALSE)
 
     load <- function(analyses) {
       items$clear()
-      for (a in analyses) {
-        raw_type <- a$analysis_type
-        a$analysis_type <- canonical_analysis_type(raw_type)
-        tmpl <- analysis_template(a$analysis_type)
-        # Pre-0.3.0 files kept the type-specific fields at the top level, so they
-        # load with no migration step. is.null(), not %||%: an empty parameters
-        # object reads back as a zero-length list, which %||% would take for
-        # absent and then mistake a 0.3.0 file for an old one.
-        params <- if (is.null(a$parameters)) a else a$parameters
-        # A serialised_type template splits its type across two levels of the
-        # file; hand flatten() the raw label so it can recover its inputs. The
-        # canonical type in the common half shadows this key in the prefill.
-        params$analysis_type <- raw_type
-        flat   <- tmpl$flatten(params)
-        if (!is.list(flat)) flat <- list()
-        # c(), not modifyList(): modifyList merges nested lists instead of
-        # replacing them, drops keys whose new value is NULL, and errors on a
-        # non-list -- after items$clear() has already emptied the section. And
-        # because prefill[[key]] takes the first match, a template parameter that
-        # collides with a common key cannot clobber it.
-        items$add(c(a[intersect(ANALYSIS_COMMON_FIELDS, names(a))], flat))
-      }
+      # analysis_to_prefill() also serves the Duplicate button, so load and
+      # duplicate rebuild a card the same way.
+      for (a in analyses) items$add(analysis_to_prefill(a))
     }
 
     # Each item now reports {data, problems}; the SAP only wants the data.

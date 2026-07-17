@@ -39,7 +39,7 @@ ANALYSIS_COMMON_FIELDS <- c("name", "analysis_type", "data_sources")
 
 # Ids already taken by the common half and by item_card(). No template may reuse
 # one, or the card would carry a duplicate input id.
-RESERVED_INPUT_IDS <- c(ANALYSIS_COMMON_FIELDS, "remove", "box", "type_fields")
+RESERVED_INPUT_IDS <- c(ANALYSIS_COMMON_FIELDS, "remove", "duplicate", "box", "type_fields")
 
 ANCHORS           <- c("cohort start", "cohort end")
 DENOMINATOR_UNITS <- c("person-years", "person-months", "person-days")
@@ -362,6 +362,15 @@ denominator_summary <- function(cohort) {
               cohort$name %||% "This cohort")
     ))
   }
+  denominator_panel(cohort, "Inherited from this cohort — set it on the Cohorts tab:")
+}
+
+# The panel itself: the facts grid plus the generated cohort set, one styled
+# block. Shared by the analysis card's summary above and the cohort card's own
+# preview (mod_cohorts.R), so the two views can never disagree -- only the
+# sentences differ. `intro` sits above the facts; `lead` is passed through to
+# denominator_cohort_set_ui().
+denominator_panel <- function(cohort, intro, lead = NULL) {
   fact <- function(label, value) {
     div(class = "col", tags$span(class = "text-muted", label), tags$br(), tags$strong(value))
   }
@@ -376,7 +385,7 @@ denominator_summary <- function(cohort) {
   }
   div(
     class = "border rounded bg-body-tertiary p-3 mb-3 small",
-    div(class = "text-muted mb-2", "Inherited from this cohort — set it on the Cohorts tab:"),
+    div(class = "text-muted mb-2", intro),
     div(
       class = "row row-cols-auto gap-3",
       # cohortDateRange is one key holding two dates, either of which may be null.
@@ -396,7 +405,7 @@ denominator_summary <- function(cohort) {
       if (identical(canonical_cohort_kind(cohort$kind), "target_denominator"))
         fact("Time at risk (days from target entry)", bounds(cohort$timeAtRisk))
     ),
-    denominator_cohort_set_ui(cohort)
+    denominator_cohort_set_ui(cohort, lead = lead)
   )
 }
 
@@ -406,18 +415,26 @@ denominator_summary <- function(cohort) {
 # actually generate, and how fast it multiplies.
 DENOMINATOR_SET_SHOWN <- 100
 
-denominator_cohort_set_ui <- function(cohort) {
+# `lead` is a function(n) -> the sentence above the list, because the sentence
+# differs by context: the analysis card says "the analysis runs on all of them",
+# while the cohort card (which may predate any analysis) says what the
+# requirements will generate. NULL keeps the analysis-card wording.
+denominator_cohort_set_ui <- function(cohort, lead = NULL) {
   set <- denominator_cohort_set(cohort)
   n   <- length(set)
   # Never silently truncate: say what was dropped. Only a pathological cohort gets
   # near this, but a 500-line card would be unreadable and unscrollable.
   shown  <- utils::head(set, DENOMINATOR_SET_SHOWN)
   hidden <- n - length(shown)
+  msg <- if (is.null(lead)) {
+    sprintf("This cohort set generates %d cohort%s, and the analysis runs on %s:",
+            n, if (n == 1) "" else "s", if (n == 1) "it" else "all of them")
+  } else {
+    lead(n)
+  }
   div(
     class = "mt-3",
-    div(class = "text-muted mb-1",
-        sprintf("This cohort set generates %d cohort%s, and the analysis runs on %s:",
-                n, if (n == 1) "" else "s", if (n == 1) "it" else "all of them")),
+    div(class = "text-muted mb-1", msg),
     tags$ol(
       class = "mb-0 ps-3 font-monospace",
       lapply(shown, function(x) tags$li(format_denominator_cohort(x)))
@@ -444,7 +461,11 @@ validate_strata_against <- function(groups, cohort) {
   if (!length(groups) || is.null(cohort)) return(character(0))
   errs     <- character(0)
   declared <- cohort_strata_variables(cohort)
-  sex      <- as.character(unlist(cohort$sex %||% "Both"))
+  # The form starts with no sex chosen, so an unset sex is an EMPTY list, which
+  # %||% does not catch. Unset means the generator's own default applies: "Both",
+  # one cohort holding both sexes, which CAN be split.
+  sex      <- as.character(unlist(cohort$sex %||% character(0)))
+  if (!length(sex)) sex <- "Both"
   n_ages   <- length(cohort$ageGroup %||% list())
 
   for (v in unique(as.character(unlist(groups)))) {

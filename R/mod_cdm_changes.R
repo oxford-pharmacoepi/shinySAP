@@ -83,9 +83,10 @@ cdm_changes_server <- function(id, source_names = reactive(character(0))) {
     item_server <- function(iid, prefill, on_remove) {
       cdm_item_server(iid, prefill, on_remove, settled_names)
     }
-    items <- dynamic_items("cdm", "items", cdm_item_ui, item_server)
+    items <- dynamic_items("cdm", "items", cdm_item_ui, item_server,
+                           noun = "CDM change")
 
-    observeEvent(input$add, items$add())
+    observeEvent(input$add, items$add(reveal = TRUE))
 
     output$n <- renderText(items$count())
     outputOptions(output, "n", suspendWhenHidden = FALSE)
