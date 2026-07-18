@@ -16,9 +16,10 @@ unzip(ref, exdir = file.path(work, "unzipped"))
 styles_path <- file.path(work, "unzipped", "word", "styles.xml")
 doc <- xml2::read_xml(styles_path)
 
-# Justify the styles pandoc writes plain paragraphs with. Everything else
+# Justify the styles pandoc writes plain paragraphs with -- and Compact, which
+# it uses for tight list items (the numbered objectives). Everything else
 # (headings, captions, tables) stays as shipped.
-for (id in c("BodyText", "FirstParagraph")) {
+for (id in c("BodyText", "FirstParagraph", "Compact")) {
   style <- xml2::xml_find_first(doc, sprintf("//w:style[@w:styleId='%s']", id))
   if (is.na(style)) stop("style not found in reference docx: ", id)
   ppr <- xml2::xml_find_first(style, "./w:pPr")

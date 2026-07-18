@@ -13,8 +13,12 @@ analysis_item_ui <- function(id, prefill = NULL) {
     layout_columns(
       col_widths = c(7, 5),
       textInput(ns("name"), "Analysis name", pf("name"), width = "100%"),
-      selectInput(ns("analysis_type"), "Analysis type", ANALYSIS_TYPES,
-                  selected = canonical_analysis_type(pf("analysis_type", ANALYSIS_TYPES[1])),
+      # A new card starts with NO type: the type decides everything else on the
+      # card, so it is the author's first decision, not a default -- the same
+      # rule as the cohort kind.
+      selectInput(ns("analysis_type"), "Analysis type",
+                  c("Choose a type…" = "", ANALYSIS_TYPES),
+                  selected = canonical_analysis_type(pf("analysis_type")),
                   width = "100%")
     ),
     entity_picker(ns("data_sources"), "CDM sources this analysis runs on",
@@ -41,8 +45,10 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
 
     # What a collapsed card says it is: the analysis's name and type.
     item_card_label(output, reactive({
-      nm <- trimws(input$name %||% "")
-      paste0(if (nzchar(nm)) nm else "Untitled", " — ", type_r())
+      nm   <- trimws(input$name %||% "")
+      type <- type_r()
+      paste0(if (nzchar(nm)) nm else "Untitled", " — ",
+             if (nzchar(type)) type else "no type chosen")
     }))
 
     # Shiny keeps an input's last reported value after its node leaves the DOM,
@@ -59,11 +65,10 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
       v
     }
 
-    # The default has to match analysis_item_ui()'s, or a new card paints one
-    # template, binds and reports its inputs, then repaints with another --
-    # leaving a set of stale values behind on the first.
+    # "" until the author picks -- canonical_analysis_type() maps NULL/NA/""
+    # there, so the ui's blank start and this reactive cannot disagree.
     type_r <- reactive(
-      canonical_analysis_type(input$analysis_type %||% base_pf("analysis_type", ANALYSIS_TYPES[1]))
+      canonical_analysis_type(input$analysis_type %||% base_pf("analysis_type"))
     )
 
     # Only the type may invalidate this. A dependency on the field values would
@@ -71,7 +76,12 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # rebuild it whenever a cohort is edited in another tab; both steal focus
     # mid-edit.
     output$type_fields <- renderUI({
-      tmpl <- analysis_template(type_r())
+      type <- type_r()
+      if (!nzchar(type)) {
+        return(p(class = "text-muted small mb-0",
+                 "Choose an analysis type above to see the fields it takes."))
+      }
+      tmpl <- analysis_template(type)
       tagList(
         if (!is.null(tmpl$hint)) p(class = "text-muted small mb-3", tmpl$hint),
         tmpl$ui(ns, live_pf)
@@ -164,7 +174,9 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # unconditionally: a template that does not use the block simply never renders
     # the placeholder, and this output goes unused.
     output$denominator_summary <- renderUI({
-      denominator_summary(cohort_by_name(cohort_index(), denominator_pick()))
+      # The raw pick rides along so an EMPTY pick prompts instead of warning.
+      denominator_summary(cohort_by_name(cohort_index(), denominator_pick()),
+                          picked = denominator_pick())
     })
 
     # For one round-trip after a type switch the new block's inputs have not
@@ -173,20 +185,25 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # the Save button (a later click) -- but an autosave observe({ sap(); ... })
     # would capture the gap.
     data_r <- reactive({
-      tmpl <- analysis_template(type_r())
-      list(
+      type <- type_r()
+      common <- list(
         name          = blank_to_na(input$name),
-        # type_r(), not input$analysis_type: the type we emit and the collector
-        # that produced `parameters` must never disagree. serialised_type may
-        # refine the label (Prevalence -> estimatePointPrevalence), but the
-        # aliases map it back to the same template on load.
-        analysis_type = if (is.null(tmpl$serialised_type)) type_r()
-                        else tmpl$serialised_type(input),
-        data_sources  = as_array(input$data_sources %||% character(0)),
-        # collect() reads only its own template's input ids, so values stranded
-        # by a previously selected template never reach the JSON.
-        parameters    = tmpl$collect(input)
+        analysis_type = NA,   # overwritten below once a type is chosen
+        data_sources  = as_array(input$data_sources %||% character(0))
       )
+      # No type, no parameters: collecting through the fallback template would
+      # write generic keys the author never saw. Unset saves as null.
+      if (!nzchar(type)) return(common)
+      tmpl <- analysis_template(type)
+      # type_r(), not input$analysis_type: the type we emit and the collector
+      # that produced `parameters` must never disagree. serialised_type may
+      # refine the label (Prevalence -> estimatePointPrevalence), but the
+      # aliases map it back to the same template on load.
+      common$analysis_type <- if (is.null(tmpl$serialised_type)) type
+                              else tmpl$serialised_type(input)
+      # collect() reads only its own template's input ids, so values stranded
+      # by a previously selected template never reach the JSON.
+      c(common, list(parameters = tmpl$collect(input)))
     })
 
     # A template's validate() is written against a fully specified analysis. In
@@ -195,8 +212,14 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # as a problem like any other.
     problems_r <- reactive({
       d <- data_r()
+      type <- canonical_analysis_type(d$analysis_type)
+      # No type: no template to validate against, and the fallback would find
+      # nothing wrong -- which would read as "fine".
+      if (!nzchar(type)) {
+        return("This analysis has no type chosen, so it carries no parameters and cannot be validated.")
+      }
       tryCatch(
-        as.character(analysis_template(d$analysis_type)$validate(d$parameters, cohort_index())),
+        as.character(analysis_template(type)$validate(d$parameters %||% list(), cohort_index())),
         error = function(e) paste("Could not validate this analysis:", conditionMessage(e))
       )
     })

@@ -214,8 +214,13 @@ subcohort_choices <- function(parent_name, cohorts) {
 # throws in R (it does not return NULL), and an analysis can be saved with no
 # analysis_type. load() clears the section before repopulating it, so an error
 # here would wipe the user's analyses.
+#
+# "" is the UNSET type: a new card starts with none chosen, because the type
+# decides everything else on the card -- the same rule as the cohort kind.
+# Unset renders a prompt, collects no parameters, and is a validation problem,
+# never a silent Incidence.
 canonical_analysis_type <- function(x) {
-  if (length(x) != 1 || is.na(x) || !nzchar(x)) return(ANALYSIS_TYPES[1])
+  if (length(x) != 1 || is.na(x) || !nzchar(x)) return("")
   if (x %in% names(ANALYSIS_TYPE_ALIASES)) ANALYSIS_TYPE_ALIASES[[x]] else x
 }
 
@@ -229,6 +234,12 @@ analysis_template <- function(x) {
 # Templates that share a block share its input ids. That is safe because only one
 # template is ever in the DOM, and it is what lets a time-at-risk window carry
 # over when you switch between two types that both have one.
+
+# A visible mini-heading above a group of related fields. The groupings used to
+# exist only as code comments -- invisible in the rendered card.
+section_heading <- function(text) {
+  div(class = "text-muted small fw-semibold text-uppercase mt-3 mb-2", text)
+}
 
 tar_ui <- function(ns, pf) tagList(
   tags$label(class = "form-label fw-semibold", "Time at risk"),
@@ -346,12 +357,22 @@ denominator_summary_ui <- function(ns, pf) {
 }
 
 # cohort is the cohorts$by_name() entry for whatever the denominator picker
-# holds, or NULL when it names a cohort that has not been written down.
-denominator_summary <- function(cohort) {
+# holds, or NULL when it names a cohort that has not been written down --
+# `picked` is the raw picker value, because an EMPTY pick and a DANGLING pick
+# are different states: nothing chosen yet deserves a prompt, not an
+# accusation about a cohort that was never named.
+denominator_summary <- function(cohort, picked = NULL) {
   if (is.null(cohort)) {
+    picked <- trimws(as.character(picked %||% "")[1])
+    if (is.na(picked) || !nzchar(picked)) {
+      return(p(class = "text-muted small mb-3",
+               "Pick a denominator cohort to see what it fixes and the cohort set
+                this analysis runs over."))
+    }
     return(div(
       class = "alert alert-warning py-2 small mb-3",
-      "This cohort is not defined on the Cohorts tab, so nothing can be inherited from it."
+      sprintf("'%s' is not defined on the Cohorts tab, so nothing can be inherited from it.",
+              picked)
     ))
   }
   if (!is_denominator_kind(cohort$kind)) {

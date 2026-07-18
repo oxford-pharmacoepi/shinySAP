@@ -111,13 +111,26 @@ test_that("cohort: a plain denominator has no time at risk",
 test_that("cohort: a target denominator does have a time at risk",
           expect_true("timeAtRisk" %in%
                         names(COHORT_TEMPLATES[["target_denominator"]]$collect(list()))))
-# 0.4.14: which occurrence of the entry event indexes the cohort. A rule, not
-# a date; blank stays blank (null), same as every undecided field.
-test_that("cohort: a plain cohort records its index rule, and blank stays blank", {
-  tmpl <- COHORT_TEMPLATES[["target"]]
-  p <- tmpl$collect(list(index_rule = "First influenza vaccination in the season"))
-  expect_identical(p$index_rule, "First influenza vaccination in the season")
-  expect_true(is.na(tmpl$collect(list())$index_rule))
+# 0.4.15 folded index_rule and concept_set back into the text fields: the
+# codelist is cited inline in the entry event, the index rule is an inclusion
+# criterion. An old file's values fold in on load -- nothing is lost.
+test_that("cohort: a plain cohort no longer collects index_rule or concept_set", {
+  keys <- names(COHORT_TEMPLATES[["target"]]$collect(list()))
+  expect_false(any(c("index_rule", "concept_set") %in% keys))
+})
+test_that("migrate_sap: an old concept_set and index_rule fold into the text fields", {
+  m <- migrate_sap(list(cohorts = list(list(
+    name = "T", kind = "target",
+    entry_events = list("Influenza vaccination"),
+    index_rule = "First occurrence ever",
+    inclusion_criteria = list("Aged 18 or over at index"),
+    concept_set = "Influenza vaccine (ATC J07BB)"
+  ))))
+  ch <- m$cohorts[[1]]
+  expect_true("Codelist: Influenza vaccine (ATC J07BB)" %in% unlist(ch$entry_events))
+  expect_true("Index date: First occurrence ever" %in% unlist(ch$inclusion_criteria))
+  expect_null(ch$concept_set)
+  expect_null(ch$index_rule)
 })
 
 test_that("cohort: an outcome cohort carries none of the generator arguments",
@@ -447,6 +460,32 @@ test_that("cohort: the preview never reaches the JSON", {
 })
 # Duplicated names shadow each other in cohort_by_name and every picker --
 # a problem of the list, which no single card's validator can see.
+# The bracket convention as a contract: [cs_x] must resolve to a codelist on
+# the Codelists tab, and an idle codelist gets a nudge.
+test_that("codelist refs: bracketed references are extracted from all text fields", {
+  refs <- extract_codelist_refs(list(
+    entry_events = list("Flu vaccination [cs_flu]"),
+    inclusion_criteria = list("Prior MI [cs_mi]", "Index on first occurrence"),
+    exit_criteria = list("End of observation")
+  ))
+  expect_identical(sort(refs), c("cs_flu", "cs_mi"))
+  expect_length(extract_codelist_refs(list(kind = "denominator")), 0)
+})
+test_that("codelist refs: an unresolved citation is a problem naming the cohort", {
+  p <- codelist_reference_problems(
+    list(list(name = "T", entry_events = list("Flu [cs_flu]"))), c("cs_influenza"))
+  msgs <- unlist(lapply(p, function(x) x$messages))
+  expect_true(any(grepl("\\[cs_flu\\], which is not on the Codelists tab", msgs)))
+  expect_true(any(grepl("No cohort cites \\[cs_influenza\\]", msgs)))
+})
+test_that("codelist refs: a resolved citation raises nothing", {
+  expect_length(codelist_reference_problems(
+    list(list(name = "T", entry_events = list("Flu [cs_flu]"))), "cs_flu"), 0)
+})
+test_that("codelist refs: no codelists and no references is silent", {
+  expect_length(codelist_reference_problems(list(list(name = "T")), character(0)), 0)
+})
+
 test_that("duplicate names: two cohorts sharing a name is one problem", {
   p <- duplicate_name_problems(list(list(name = "D"), list(name = "D"),
                                     list(name = "Other")))

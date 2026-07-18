@@ -3,12 +3,13 @@
 # analysis_template() is called on whatever a saved file happens to hold, and
 # load() has already cleared the section by then -- so nothing here may error.
 
-test_that("resolver: NULL falls back",
-          expect_identical(canonical_analysis_type(NULL), ANALYSIS_TYPES[1]))
-test_that("resolver: NA falls back",
-          expect_identical(canonical_analysis_type(NA), ANALYSIS_TYPES[1]))
-test_that("resolver: empty string falls back",
-          expect_identical(canonical_analysis_type(""), ANALYSIS_TYPES[1]))
+# A new card starts with no type chosen -- unset is "", a state of its own,
+# never a silent Incidence. Same rule as the cohort kind.
+test_that("resolver: unset stays unset, never a silent default", {
+  expect_identical(canonical_analysis_type(NULL), "")
+  expect_identical(canonical_analysis_type(NA), "")
+  expect_identical(canonical_analysis_type(""), "")
+})
 test_that("resolver: a renamed type is aliased",
           expect_identical(canonical_analysis_type("Incidence rate"), "Incidence"))
 test_that("resolver: serialised estimator names resolve to the Prevalence template", {
@@ -27,6 +28,19 @@ test_that("template: an unknown type falls back to Other",
                            ANALYSIS_TEMPLATES[["Other"]]))
 test_that("template: a type with no entry yet falls back to Other",
           expect_identical(analysis_template("Case-control"), ANALYSIS_TEMPLATES[["Other"]]))
+
+# The card-level contract for the unset type: nothing collected, one problem.
+test_that("analysis: a card with no type chosen collects nothing and is a problem", {
+  testServer(analyses_server, {
+    session$setInputs(add = 1)
+    session$setInputs("analysis_1-name" = "Untyped")
+    d <- isolate(data_r())[[1]]
+    expect_true(is.na(d$analysis_type))
+    expect_false("parameters" %in% names(d))
+    msgs <- unlist(lapply(isolate(problems_r()), function(p) p$messages))
+    expect_true(any(grepl("no type chosen", msgs)))
+  })
+})
 
 test_that("Other is always present, it is the fallback",
           expect_true("Other" %in% names(ANALYSIS_TEMPLATES)))

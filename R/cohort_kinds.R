@@ -127,6 +127,51 @@ cohort_problems <- function(ch, cohorts) {
   )
 }
 
+# The [bracketed] codelist references in a cohort's free text. The convention
+# (entry events cite their codelist as "... [cs_x]") exists so the document can
+# DERIVE which codelists a cohort uses -- which only works if the references
+# resolve. Anything [bracketed] is treated as a reference: text that brackets
+# something else earns a nudge toward the convention, not silence.
+extract_codelist_refs <- function(cohort) {
+  txt <- c(unlist(cohort$entry_events %||% list()),
+           unlist(cohort$inclusion_criteria %||% list()),
+           unlist(cohort$exit_criteria %||% list()))
+  txt <- as.character(txt[!is.na(txt)])
+  if (!length(txt)) return(character(0))
+  refs <- unlist(regmatches(txt, gregexpr("\\[[^][]+\\]", txt)))
+  unique(gsub("^\\[|\\]$", "", refs))
+}
+
+# The contract behind the convention: every reference resolves to a codelist on
+# the Codelists tab, and every codelist is cited by someone. Problems OF THE
+# LIST, shaped like the per-cohort entries in problems_r; unresolved references
+# are the hard half, an uncited codelist just a nudge. Warn-not-block, like
+# every other problem here.
+codelist_reference_problems <- function(cohorts, codelist_names) {
+  codelist_names <- as.character(codelist_names %||% character(0))
+  found <- list()
+  used  <- character(0)
+  for (ch in cohorts) {
+    refs <- extract_codelist_refs(ch)
+    used <- c(used, refs)
+    missing <- setdiff(refs, codelist_names)
+    if (length(missing)) {
+      found[[length(found) + 1]] <- list(
+        name = ch$name %||% "Untitled cohort",
+        messages = sprintf("Cites [%s], which is not on the Codelists tab.", missing)
+      )
+    }
+  }
+  unused <- setdiff(codelist_names, used)
+  if (length(unused)) {
+    found[[length(found) + 1]] <- list(
+      name = "Codelists",
+      messages = sprintf("No cohort cites [%s].", unused)
+    )
+  }
+  found
+}
+
 # Names are the identity everything joins on (cohort_by_name, the analysis
 # pickers), so two cohorts sharing one silently shadow each other: the pickers
 # offer a single entry and every lookup takes the first. One problem entry per
@@ -299,7 +344,7 @@ denominator_requirements_ui <- function(ns, pf) tagList(
       # selected value it cannot find, so with empty choices every rebuild
       # (load, kind switch, duplicate) emptied the field and the next autosave
       # wrote [] -- the values were never saved back. Same defense as
-      # entity_picker() and the index_rule field.
+      # entity_picker().
       selectizeInput(ns("daysPriorObservation"), "Days of prior observation required",
                      choices = as.character(unlist(pf("daysPriorObservation"))),
                      multiple = TRUE, width = "100%",
@@ -420,51 +465,32 @@ format_denominator_cohort <- function(x) {
   paste(parts, collapse = " | ")
 }
 
-# Which occurrence of the entry event indexes the cohort -- "Index date" in
-# protocol tables. A RULE, not a date (hence the key index_rule): "influenza
-# vaccination" says what qualifies, "first per season" says which occurrence
-# indexes, and conflating the two into one entry-event line hid a decision
-# reviewers need to see. A small canonical core plus a free tail (create =
-# TRUE), because "first per influenza season" fits no enum.
-INDEX_RULES <- c(
-  "First occurrence ever",
-  "First occurrence per period (state which)",
-  "Latest occurrence",
-  "All occurrences (re-entry per episode)"
-)
-
-# The plain cohort definition: what a source cohort actually is.
+# The plain cohort definition: what a source cohort actually is. Three fields,
+# by design (0.4.15 folded index_rule and concept_set back in): the codelist is
+# cited inline, in [square brackets], in the entry event that uses it, and the
+# index rule ("first per season") is an inclusion criterion -- the placeholders
+# teach both conventions. Brackets, not <angle> or `backticks`: angle brackets
+# read as placeholders and pandoc may eat them; backticks render literally in
+# the Word tables.
 cohort_definition_ui <- function(ns, pf) tagList(
   layout_columns(
     col_widths = c(6, 6),
     textAreaInput(ns("entry_events"), "Entry events (one per line)",
                   join_lines(pf("entry_events", character(0))), rows = 4, width = "100%",
-                  placeholder = "First metformin dispensation"),
+                  placeholder = "Influenza vaccination [cs_influenza_vaccine]"),
     textAreaInput(ns("exit_criteria"), "Exit criteria (one per line)",
                   join_lines(pf("exit_criteria", character(0))), rows = 4, width = "100%",
                   placeholder = "End of continuous observation")
   ),
-  layout_columns(
-    col_widths = c(6, 6),
-    selectizeInput(ns("index_rule"), "Index date",
-                   choices = unique(c("", INDEX_RULES, pf("index_rule"))),
-                   selected = pf("index_rule"), width = "100%",
-                   options = list(create = TRUE,
-                                  placeholder = "Which occurrence of the entry event indexes the cohort")),
-    textInput(ns("concept_set"), "Concept set / codelist", pf("concept_set"), width = "100%",
-              placeholder = "Name or reference of the codelist, e.g. cs_influenza_vaccine")
-  ),
   textAreaInput(ns("inclusion_criteria"), "Inclusion / exclusion criteria (one per line)",
                 join_lines(pf("inclusion_criteria", character(0))), rows = 3, width = "100%",
-                placeholder = "Aged 18 or over at index\nNo prior insulin exposure")
+                placeholder = "Index on the first occurrence per influenza season\nAged 18 or over at index")
 )
 
 cohort_definition_collect <- function(input) list(
   entry_events       = as_array(split_lines(input$entry_events)),
-  index_rule         = blank_to_na(input$index_rule),
   inclusion_criteria = as_array(split_lines(input$inclusion_criteria)),
-  exit_criteria      = as_array(split_lines(input$exit_criteria)),
-  concept_set        = blank_to_na(input$concept_set)
+  exit_criteria      = as_array(split_lines(input$exit_criteria))
 )
 
 # Shared validation ------------------------------------------------------------

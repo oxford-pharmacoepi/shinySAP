@@ -48,7 +48,9 @@ den <- migrated$cohorts[[3]]
 
 test_that("migrate_sap: an old Target stays a PLAIN cohort, keeping its definition", {
   expect_identical(migrated$cohorts[[1]]$kind, "target")
-  expect_identical(unlist(migrated$cohorts[[1]]$entry_events), "First metformin dispensation")
+  # 0.4.15: the old concept_set folds into the entry events rather than being lost.
+  expect_identical(as.character(unlist(migrated$cohorts[[1]]$entry_events)),
+                   c("First metformin dispensation", "Codelist: cs_metformin"))
 })
 test_that("migrate_sap: the missing target denominator is synthesised", {
   expect_identical(den$kind, "target_denominator")

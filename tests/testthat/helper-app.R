@@ -17,6 +17,8 @@ source(file.path(app_root, "R", "analysis_registry.R"))
 source(file.path(app_root, "R", "cohort_kinds.R"))   # the analysis validators read it
 source(file.path(app_root, "R", "mod_cdm_changes.R")) # migrate_cdm_change reads CDM_CHANGE_TYPES
 source(file.path(app_root, "R", "mod_cohorts.R"))     # test-renames drives cohorts_server
+source(file.path(app_root, "R", "mod_analyses.R"))    # the no-type-chosen tests drive analyses_server
+source(file.path(app_root, "R", "mod_codelists.R"))   # test-codelists drives codelists_server
 for (f in sort(list.files(file.path(app_root, "R"),
                           pattern = "^analysis_type_.*\\.R$", full.names = TRUE))) {
   source(f)

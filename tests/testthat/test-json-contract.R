@@ -131,6 +131,16 @@ test_that("prefiller returns value, defaults on NA, defaults on absent", {
   expect_identical(pf("nope", "d"), "d")
 })
 
+test_that("working_sap_path: the study code outranks the title", {
+  study <- list(title = "A long descriptive study title",
+                study_code = "P4-C1-016", version = "1.0")
+  expect_identical(basename(working_sap_path(study)), "sap-p4-c1-016-v1.0.json")
+  # No code -> the title carries the name.
+  study$study_code <- NA
+  expect_identical(basename(working_sap_path(study)),
+                   "sap-a-long-descriptive-study-title-v1.0.json")
+})
+
 # A SAP lives in ONE file: a stable slugged name with NO timestamp, created on
 # the first write and rewritten in place by every write after it -- clicked
 # Save and autosave alike.
@@ -153,7 +163,7 @@ test_that("sap_is_empty: a fresh app is empty, anything authored is not", {
                              version = "1.0", date = "2026-07-17",
                              background = NA, aim = NA, objectives = character(0),
                              amendments = list()),
-                cdm_sources = list(), cdm_changes = list(),
+                cdm_sources = list(), cdm_changes = list(), codelists = list(),
                 cohorts = list(), proposed_analyses = list())
   expect_true(sap_is_empty(fresh))
   titled <- fresh

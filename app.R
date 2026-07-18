@@ -58,7 +58,14 @@ library(jsonlite)
 # 0.4.14 gave plain cohorts an index_rule: WHICH occurrence of the entry event
 #        indexes the cohort ("Index date" in protocol tables) -- previously
 #        conflated into the entry-event line.
-SAP_SCHEMA_VERSION <- "0.4.14"
+# 0.4.15 folded index_rule and concept_set back into the text fields: the
+#        codelist is cited inline in the entry event that uses it, and the
+#        index rule is an inclusion criterion. Old values fold in on load.
+# 0.4.16 added codelists: first-class entities (name, provenance, source file,
+#        and the codes themselves, uploaded from csv/txt/json) that cohorts
+#        cite in [square brackets]. The codes live in the SAP, so the plan is
+#        self-contained.
+SAP_SCHEMA_VERSION <- "0.4.16"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")
@@ -111,6 +118,7 @@ ui <- page_navbar(
   nav_panel("Study", div(class = "container-fluid py-3", study_ui("study"))),
   nav_panel("CDM Sources", div(class = "container-fluid py-3", cdm_sources_ui("sources"))),
   nav_panel("CDM Changes", div(class = "container-fluid py-3", cdm_changes_ui("cdm"))),
+  nav_panel("Codelists", div(class = "container-fluid py-3", codelists_ui("codelists"))),
   nav_panel("Cohorts", div(class = "container-fluid py-3", cohorts_ui("cohorts"))),
   nav_panel("Analyses", div(class = "container-fluid py-3", analyses_ui("analyses"))),
   nav_panel("Review", div(class = "container-fluid py-3", review_ui("review"))),
@@ -142,6 +150,7 @@ server <- function(input, output, session) {
   study    <- study_server("study")
   sources  <- cdm_sources_server("sources")
   cdm      <- cdm_changes_server("cdm", source_names = sources$names)
+  codelists <- codelists_server("codelists")
   cohorts  <- cohorts_server("cohorts", source_names = sources$names)
   # by_name, not just names: the templates echo what the denominator cohort
   # already fixes, and validate against it.
@@ -160,6 +169,7 @@ server <- function(input, output, session) {
     study              = study$data(),
     cdm_sources        = sources$data(),
     cdm_changes        = cdm$data(),
+    codelists          = codelists$data(),
     cohorts            = cohorts$data(),
     proposed_analyses  = analyses$data()
   ))
@@ -171,6 +181,7 @@ server <- function(input, output, session) {
     study$load(loaded$study %||% list())
     sources$load(loaded$cdm_sources %||% list())
     cdm$load(loaded$cdm_changes %||% list())
+    codelists$load(loaded$codelists %||% list())
     cohorts$load(loaded$cohorts %||% list())
     # "analyses" is the pre-0.2.0 name for this section.
     analyses$load(coalesce_key(loaded, "proposed_analyses", "analyses"))
@@ -196,7 +207,10 @@ server <- function(input, output, session) {
     # so it is anchored in the current save folder -- for a file loaded from
     # there (the usual case) that is exactly the file that was picked.
     nm <- input$load$name
-    if (!is.null(nm) && nzchar(nm)) working_file(file.path(save_dir(), nm))
+    if (!is.null(nm) && nzchar(nm)) {
+      working_file(file.path(save_dir(), nm))
+      sticky_name(TRUE)   # the user picked this name; it never auto-renames
+    }
     showNotification("SAP loaded.", type = "message")
   })
 
@@ -212,14 +226,36 @@ server <- function(input, output, session) {
   working_file <- reactiveVal(NULL)
   save_dir     <- reactiveVal(OUTPUT_DIR)
   saved_at     <- reactiveVal(NULL)
+  # TRUE only for a LOADED file: that name the user chose, so it stays. An
+  # app-derived name follows the study identity instead (see next_path).
+  sticky_name  <- reactiveVal(FALSE)
 
-  persist <- function(s) {
-    path <- working_file() %||% working_sap_path(s$study, save_dir())
-    path <- tryCatch(write_sap(s, path), error = function(e) NULL)
-    if (is.null(path)) return(invisible(NULL))
+  # Where the next write lands. An app-derived name FOLLOWS the study identity
+  # -- and sap_file_base() puts the study code before the title -- so typing
+  # the code after the first autosave RENAMES the file rather than stranding
+  # it under a title-derived name forever.
+  next_path <- function(s) {
+    path <- working_file()
+    if (is.null(path)) return(working_sap_path(s$study, save_dir()))
+    if (sticky_name()) return(path)
+    working_sap_path(s$study, dirname(path))
+  }
+
+  # After a successful write: adopt the path, and remove the file it
+  # superseded (only ever an app-derived earlier name -- never a loaded file,
+  # whose name is sticky), so the SAP keeps living in exactly one file.
+  adopt <- function(path) {
+    old <- working_file()
+    if (!is.null(old) && !identical(old, path) && file.exists(old)) unlink(old)
     working_file(path)
     save_dir(dirname(path))
     saved_at(Sys.time())
+  }
+
+  persist <- function(s) {
+    path <- tryCatch(write_sap(s, next_path(s)), error = function(e) NULL)
+    if (is.null(path)) return(invisible(NULL))
+    adopt(path)
     invisible(path)
   }
 
@@ -248,7 +284,10 @@ server <- function(input, output, session) {
     )
   })
 
-  problems <- reactive(c(cohorts$problems(), analyses$problems()))
+  # The bracket convention as a contract: every [cs_x] a cohort cites must
+  # resolve to a codelist on the Codelists tab, and idle codelists get a nudge.
+  problems <- reactive(c(cohorts$problems(), analyses$problems(),
+                         codelist_reference_problems(cohorts$data(), codelists$names())))
 
   # A clicked Save: once the working file exists it simply rewrites it (with
   # the title guard and the problems warning). Only the FIRST save has a
@@ -261,8 +300,8 @@ server <- function(input, output, session) {
       return()
     }
     if (!is.null(working_file())) {
-      save_working(s, working_file(), length(problems()))
-      saved_at(Sys.time())
+      path <- save_working(s, next_path(s), length(problems()))
+      if (!is.null(path)) adopt(path)
       return()
     }
     showModal(modalDialog(
@@ -298,9 +337,7 @@ server <- function(input, output, session) {
                        NULL
                      })
     if (is.null(path)) return()
-    working_file(path)
-    save_dir(dir)
-    saved_at(Sys.time())
+    adopt(path)
     removeModal()
   })
 

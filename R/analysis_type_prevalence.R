@@ -78,6 +78,7 @@ register_analysis_template(
     # The shared structured-strata block: one token per stratification, comma to
     # cross variables, choices being the columns the chosen denominator carries
     # (see pickers$strata and `denominator` below).
+    section_heading("Stratification"),
     strata_ui(ns, pf)
   ),
 
@@ -130,8 +131,18 @@ register_analysis_template(
     outcomeCohortId     = list(from = "outcomeTable",     label = "Outcome cohort IDs")
   ),
 
-  validate = function(p, cohorts)
-    validate_strata_against(p$strata, cohort_by_name(cohorts, p$denominatorTable)),
+  # The same cohort-kind discipline the Incidence template enforces: a
+  # prevalence runs ON a denominator and counts a PLAIN outcome cohort.
+  validate = function(p, cohorts) {
+    errs <- character(0)
+    d <- cohort_by_name(cohorts, p$denominatorTable)
+    if (!is.null(d) && !is_denominator_kind(d$kind))
+      errs <- c(errs, "Denominator must be a denominator or target-denominator cohort.")
+    o <- cohort_by_name(cohorts, p$outcomeTable)
+    if (!is.null(o) && is_denominator_kind(o$kind))
+      errs <- c(errs, "Outcome must be a plain cohort, not a generated denominator.")
+    c(errs, validate_strata_against(p$strata, d))
+  },
 
   # The file's analysis_type names the estimator planned; "Prevalence" is only
   # the registry key. ANALYSIS_TYPE_ALIASES maps both names back on load.

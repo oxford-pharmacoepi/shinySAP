@@ -174,11 +174,65 @@ sap_is_empty <- function(sap) {
   !any(nzchar(as.character(authored))) &&
     !length(s$amendments) &&
     !length(sap$cdm_sources) && !length(sap$cdm_changes) &&
+    !length(sap$codelists) &&
     !length(sap$cohorts) && !length(sap$proposed_analyses)
 }
 
 read_sap <- function(path) {
   jsonlite::fromJSON(path, simplifyVector = FALSE)
+}
+
+# Codelist uploads --------------------------------------------------------------
+#
+# The shapes codelist tools actually produce: a CSV with a concept_id column
+# (CodelistGenerator, Atlas exports), a text file with one code per line, or
+# JSON -- a plain array of codes, an array of {concept_id/code, concept_name/
+# name} objects, or an Atlas concept-set expression ({items: [{concept: ...}]}).
+# Returns a list of list(code, name?) with codes as CHARACTER -- concept ids can
+# exceed integer range, and a code is an identifier, not a quantity. Stops with
+# a plain message on anything unreadable; the caller shows it as a notification.
+read_codelist <- function(path, filename = path) {
+  ext <- tolower(tools::file_ext(filename))
+  nms <- NULL
+  if (ext == "csv") {
+    df <- utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE)
+    if (!nrow(df)) stop("the file has no rows")
+    cols   <- tolower(names(df))
+    id_col <- which(cols %in% c("concept_id", "conceptid", "code", "codes", "id"))[1]
+    if (is.na(id_col)) id_col <- 1
+    nm_col <- which(cols %in% c("concept_name", "conceptname", "name", "description"))[1]
+    codes  <- as.character(df[[id_col]])
+    if (!is.na(nm_col)) nms <- as.character(df[[nm_col]])
+  } else if (ext == "json") {
+    x <- jsonlite::fromJSON(path, simplifyVector = FALSE)
+    if (!is.null(x$items)) x <- lapply(x$items, function(it) it$concept %||% it)
+    if (!length(x)) stop("the file holds no codes")
+    one <- function(el, key) {
+      v <- el[[key[1]]]
+      for (k in key[-1]) v <- v %||% el[[k]]
+      v
+    }
+    codes <- vapply(x, function(el) {
+      if (!is.list(el)) return(as.character(el))
+      as.character(one(el, c("concept_id", "conceptId", "code", "CONCEPT_ID")) %||% NA)
+    }, character(1))
+    nms <- vapply(x, function(el) {
+      if (!is.list(el)) return(NA_character_)
+      as.character(one(el, c("concept_name", "conceptName", "name", "CONCEPT_NAME")) %||% NA)
+    }, character(1))
+  } else {   # txt, or anything line-based
+    codes <- trimws(readLines(path, warn = FALSE))
+  }
+  if (is.null(nms)) nms <- rep(NA_character_, length(codes))
+  keep  <- !is.na(codes) & nzchar(codes)
+  codes <- codes[keep]
+  nms   <- nms[keep]
+  if (!length(codes)) stop("no codes found in the file")
+  unname(Map(function(cd, nm) {
+    out <- list(code = cd)
+    if (!is.na(nm) && nzchar(nm)) out$name <- nm
+    out
+  }, codes, nms))
 }
 
 # Cross-section migrations, run once on a loaded SAP before any section sees it.
@@ -388,6 +442,21 @@ migrate_cohort <- function(ch) {
   # 0.4.12 dropped the cohort description: the kind block already says what a
   # cohort is in structured form. An older file's description does not survive.
   ch$description <- NULL
+
+  # 0.4.15 folded concept_set and index_rule back into the text fields: the
+  # codelist is cited inline in the entry event that uses it, and the index
+  # rule is an inclusion criterion. Nothing the author wrote is lost.
+  cs <- as.character(ch$concept_set %||% "")[1]
+  if (!is.na(cs) && nzchar(cs)) {
+    ch$entry_events <- as_array(c(unlist(ch$entry_events), paste("Codelist:", cs)))
+  }
+  ch$concept_set <- NULL
+  ir <- as.character(ch$index_rule %||% "")[1]
+  if (!is.na(ir) && nzchar(ir)) {
+    ch$inclusion_criteria <- as_array(c(unlist(ch$inclusion_criteria),
+                                        paste("Index date:", ir)))
+  }
+  ch$index_rule <- NULL
 
   ch
 }

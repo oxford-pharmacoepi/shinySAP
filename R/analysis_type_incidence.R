@@ -43,14 +43,17 @@ register_analysis_template(
     uiOutput(ns("denominatorCohortId_ui")),
     uiOutput(ns("outcomeCohortId_ui")),
 
-    # --- Risk set definition ---
+    section_heading("Risk set"),
     layout_columns(
-      col_widths = c(4, 4, 4),
+      col_widths = c(6, 6),
+      # Washout and repeated events are ONE decision pair -- the validator ties
+      # them together (repeated events needs a finite washout) -- so they share
+      # a column; censoring is a separate concept and gets its own.
+      #
       # outcomeWashout is a number of days, so it is typed rather than picked from
       # a menu -- any number, not just the handful a dropdown could offer. It
       # starts blank on purpose: estimateIncidence() defaults to Inf, but a washout
       # is too consequential to inherit silently, and validate() insists on it.
-      #
       # A number field cannot hold Inf, and blanking it already means "never
       # stated", so unbounded is a checkbox. See parse_washout() for the three
       # states the pair encodes.
@@ -60,16 +63,26 @@ register_analysis_template(
                      min = 0, step = 1, width = "100%"),
         checkboxInput(ns("outcomeWashout_unbounded"), "Unbounded (one event per person)",
                       value = isTRUE(pf("outcomeWashout_unbounded", FALSE))),
-        div(class = "form-text", "Leave both blank and the SAP is incomplete.")
+        div(class = "form-text", "Leave both blank and the SAP is incomplete."),
+        checkboxInput(ns("repeatedEvents"), "Count repeated events",
+                      value = isTRUE(pf("repeatedEvents", FALSE)), width = "100%"),
+        div(class = "form-text",
+            "Requires a finite washout: after each event's washout elapses, the
+             person re-enters time at risk.")
       ),
-      checkboxInput(ns("repeatedEvents"), "Count repeated events",
-                    value = isTRUE(pf("repeatedEvents", FALSE))),
-      entity_picker(ns("censorTable"), "Censoring cohort", pf("censorTable"),
-                    placeholder = "None (optional)")
+      div(
+        entity_picker(ns("censorTable"), "Censoring cohort", pf("censorTable"),
+                      placeholder = "None (optional)"),
+        # estimateIncidence(censorTable =): "must only include one record per
+        # person". A data-level constraint the SAP cannot check -- but it can
+        # say it, so the author picks a suitable cohort.
+        div(class = "form-text",
+            "Follow-up ends at this cohort's event. It must hold one record per person."),
+        uiOutput(ns("censorCohortId_ui"))
+      )
     ),
-    uiOutput(ns("censorCohortId_ui")),
 
-    # --- Time granularity ---
+    section_heading("Time granularity"),
     layout_columns(
       col_widths = c(6, 6),
       selectizeInput(ns("interval"), "Interval", INTERVALS, multiple = TRUE,
@@ -78,7 +91,8 @@ register_analysis_template(
                     value = isTRUE(pf("completeDatabaseIntervals", TRUE)))
     ),
 
-    # --- Stratification (columns on the denominator cohort) ---
+    # Columns on the denominator cohort; see strata_ui().
+    section_heading("Stratification"),
     strata_ui(ns, pf)
   ),
 
@@ -132,6 +146,16 @@ register_analysis_template(
 
     if (!is.null(d) && !d$kind %in% c("denominator", "target_denominator"))
       errs <- c(errs, "Denominator must be a denominator or target-denominator cohort.")
+
+    # The mirror-image mistake: outcome and censoring must be PLAIN cohorts --
+    # pointing either at a generated denominator is as wrong as the reverse.
+    for (side in list(c("outcomeTable", "Outcome"), c("censorTable", "Censoring"))) {
+      ch <- cohort_by_name(cohorts, p[[side[[1]]]])
+      if (!is.null(ch) && is_denominator_kind(ch$kind)) {
+        errs <- c(errs, sprintf("%s must be a plain cohort, not a generated denominator.",
+                                side[[2]]))
+      }
+    }
 
     # Order matters: an unset washout is not a *finite* one, so check it first or
     # an unset washout would also trip the repeated-events rule.

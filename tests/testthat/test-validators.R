@@ -30,6 +30,19 @@ test_that("validate: an outcome cohort cannot be the denominator",
 test_that("validate: a target cohort cannot be the denominator either",
           expect_true(any(grepl("denominator or target-denominator",
                                 problems(with_params(denominatorTable = "Metformin new users"))))))
+# The mirror image of the denominator check: outcome and censoring must be
+# PLAIN cohorts, never a generated denominator.
+test_that("validate: an outcome pointing at a denominator is reported", {
+  expect_true(any(grepl("Outcome must be a plain cohort",
+                        problems(with_params(outcomeTable = "Metformin denominator")))))
+})
+test_that("validate: a censoring cohort pointing at a denominator is reported", {
+  expect_true(any(grepl("Censoring must be a plain cohort",
+                        problems(with_params(censorTable = "Men only")))))
+  expect_false(any(grepl("Censoring must be",
+                         problems(with_params(censorTable = "Lactic acidosis")))))
+})
+
 test_that("validate: an unset washout is reported",
           expect_true(any(grepl("stated explicitly",
                                 problems(with_params(outcomeWashout = NULL,
@@ -85,3 +98,15 @@ test_that("validate: prevalence strata the denominator carries raise no problems
           expect_length(ANALYSIS_TEMPLATES[["Prevalence"]]$validate(
             list(denominatorTable = "Metformin denominator", strata = list(list("sex"))),
             cohorts_idx), 0))
+# Prevalence now enforces the same cohort-kind discipline as Incidence.
+test_that("validate: a prevalence denominator must be a denominator kind",
+          expect_true(any(grepl("denominator or target-denominator",
+                                ANALYSIS_TEMPLATES[["Prevalence"]]$validate(
+                                  list(denominatorTable = "Lactic acidosis"),
+                                  cohorts_idx)))))
+test_that("validate: a prevalence outcome cannot be a generated denominator",
+          expect_true(any(grepl("Outcome must be a plain cohort",
+                                ANALYSIS_TEMPLATES[["Prevalence"]]$validate(
+                                  list(denominatorTable = "Metformin denominator",
+                                       outcomeTable = "Men only"),
+                                  cohorts_idx)))))

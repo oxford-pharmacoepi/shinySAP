@@ -87,11 +87,27 @@ chr <- function(x) {
   if (is.na(x)) "" else x
 }
 
+# Every CDM source key the SAP defines. When an item runs on all of them --
+# the usual case -- its Data sources cell says so in two words instead of
+# repeating the same five keys on every row.
+all_source_keys <- vapply(sap$cdm_sources %||% list(), function(s) {
+  key <- chr(s$source_key)
+  if (nzchar(key)) key else chr(s$name)
+}, character(1))
+sources_cell <- function(x) {
+  ds <- as.character(unlist(x$data_sources %||% list()))
+  if (length(ds) && length(all_source_keys) && setequal(ds, all_source_keys)) {
+    return("All data sources")
+  }
+  paste(ds, collapse = ", ")
+}
+
 ```
 
 ```{r justify-html, results='asis'}
 # The Word output justifies body text via reference.docx; mirror it in HTML.
-if (!is_word) cat("<style>p { text-align: justify; }</style>\n")
+# li included: the numbered objectives are a list, not paragraphs.
+if (!is_word) cat("<style>p, li { text-align: justify; }</style>\n")
 ```
 
 # Study information
@@ -191,38 +207,77 @@ if (!length(changes)) {
 
 ---
 
-# Cohorts
+# Codelists
+
+```{r codelists, results='asis'}
+codelists <- sap$codelists %||% list()
+if (!length(codelists)) {
+  cat("_No codelists defined._\n")
+} else {
+  # How many codes a cell lists before folding; the remainder is counted out
+  # loud, never silently dropped.
+  codes_shown <- 40
+  codes_cell <- function(cl) {
+    codes <- cl$codes %||% list()
+    n <- length(codes)
+    if (!n) return("— not yet uploaded")
+    shown <- utils::head(codes, codes_shown)
+    txt <- paste(vapply(shown, function(cd) paste(c(cd$code, cd$name), collapse = " — "),
+                        character(1)), collapse = "\n")
+    if (n > length(shown)) {
+      txt <- paste0(txt, "\n… and ", n - length(shown), " more (all carried in the SAP)")
+    }
+    txt
+  }
+  describe <- function(cl) {
+    d   <- chr(cl$description)
+    src <- chr(cl$source_file)
+    if (nzchar(src)) d <- if (nzchar(d)) sprintf("%s (from %s)", d, src) else sprintf("from %s", src)
+    d
+  }
+  df <- data.frame(
+    `Codelist`    = vapply(codelists, function(cl) chr(cl$name), character(1)),
+    `Description` = vapply(codelists, describe, character(1)),
+    `Codes`       = vapply(codelists, codes_cell, character(1)),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+  flextable::flextable_to_rmd(items_table(df))
+  cat("\n\n")
+}
+```
+
+`r if (is_word) "\\newpage"`
+
+---
+
+# Description of cohorts
 
 ```{r cohorts, results='asis'}
 cohorts <- sap$cohorts %||% list()
 if (!length(cohorts)) {
   cat("_No cohorts defined._\n")
 } else {
-  cohort_details <- function(co) {
+  # A generated denominator has no entry logic -- its "logic" IS the generator
+  # arguments, kept as the compact facts line.
+  denominator_facts <- function(co) {
     parts <- character(0)
     add <- function(label, value) {
       if (nzchar(value)) parts <<- c(parts, sprintf("%s: %s", label, value))
     }
-
     if (!is.null(co$targetCohortTable))
       add("Target cohort", chr(co$targetCohortTable))
-
     if (!is.null(co$daysPriorObservation))
       add("Days prior observation", paste(unlist(co$daysPriorObservation), collapse = ", "))
-
     if (!is.null(co$ageGroup))
       add("Age groups", paste(
         vapply(co$ageGroup, function(a) paste(unlist(a), collapse = "–"), character(1)),
         collapse = "; "))
-
     sex <- unlist(co$sex %||% list())
     if (length(sex)) add("Sex", paste(sex, collapse = ", "))
-
     if (!is.null(co$cohortDateRange)) {
       dr <- unlist(co$cohortDateRange)
       add("Cohort date range", sprintf("%s to %s", dr[1] %||% "—", dr[2] %||% "—"))
     }
-
     tar_list <- co$timeAtRisk %||% list()
     if (length(tar_list))
       add("Time at risk", paste(vapply(tar_list, function(w) {
@@ -230,21 +285,39 @@ if (!length(cohorts)) {
         hi <- if (is.null(w[2]) || is.na(w[2]) || is.infinite(as.numeric(w[2]))) "∞" else w[2]
         sprintf("[%s, %s]", w[1], hi)
       }, character(1)), collapse = "; "))
+    paste(parts, collapse = "\n")
+  }
 
-    entry <- unlist(co$entry_events %||% list())
-    if (length(entry)) add("Entry events", paste(entry, collapse = "; "))
+  # A plain cohort's logic, IN ORDER, numbered: the entry event is step 1 --
+  # it is the index event -- then the inclusion / exclusion criteria; exit on
+  # a final line. flextable turns \n into real line breaks in HTML and Word.
+  cohort_logic <- function(co) {
+    steps <- c(unlist(co$entry_events %||% list()),
+               unlist(co$inclusion_criteria %||% list()))
+    txt <- if (length(steps)) sprintf("%d. %s", seq_along(steps), steps) else character(0)
+    exits <- unlist(co$exit_criteria %||% list())
+    if (length(exits)) txt <- c(txt, paste0("Exit: ", paste(exits, collapse = "; ")))
+    if (!length(txt)) return(denominator_facts(co))
+    paste(txt, collapse = "\n")
+  }
 
-    add("Index date", chr(co$index_rule))
-
-    paste(parts, collapse = " · ")
+  # The [bracketed] codelist references cited anywhere in the cohort's text --
+  # the convention exists precisely so this column can be derived, not retyped.
+  codelists_used <- function(co) {
+    txt  <- c(unlist(co$entry_events %||% list()),
+              unlist(co$inclusion_criteria %||% list()),
+              unlist(co$exit_criteria %||% list()))
+    if (!length(txt)) return("")
+    refs <- unlist(regmatches(txt, gregexpr("\\[[^][]+\\]", txt)))
+    paste(unique(gsub("^\\[|\\]$", "", refs)), collapse = "\n")
   }
 
   df <- data.frame(
-    `Name`         = vapply(cohorts, function(co) chr(co$name), character(1)),
-    `Kind`         = vapply(cohorts, function(co) chr(co$kind), character(1)),
-    `Data sources` = vapply(cohorts, function(co)
-      paste(unlist(co$data_sources %||% list()), collapse = ", "), character(1)),
-    `Details`      = vapply(cohorts, cohort_details, character(1)),
+    `Cohort`           = vapply(cohorts, function(co) chr(co$name), character(1)),
+    `Kind`             = vapply(cohorts, function(co) chr(co$kind), character(1)),
+    `Data sources`     = vapply(cohorts, sources_cell, character(1)),
+    `Codelists used`   = vapply(cohorts, codelists_used, character(1)),
+    `Logic (in order)` = vapply(cohorts, cohort_logic, character(1)),
     check.names = FALSE, stringsAsFactors = FALSE
   )
   flextable::flextable_to_rmd(items_table(df))
@@ -294,8 +367,7 @@ if (!length(analyses)) {
   df <- data.frame(
     `Name`          = vapply(analyses, function(a) chr(a$name), character(1)),
     `Analysis type` = vapply(analyses, function(a) chr(a$analysis_type), character(1)),
-    `Data sources`  = vapply(analyses, function(a)
-      paste(unlist(a$data_sources %||% list()), collapse = ", "), character(1)),
+    `Data sources`  = vapply(analyses, sources_cell, character(1)),
     `Description`   = vapply(analyses, function(a) chr(a$description), character(1)),
     `Details`       = vapply(analyses, analysis_details, character(1)),
     check.names = FALSE, stringsAsFactors = FALSE
