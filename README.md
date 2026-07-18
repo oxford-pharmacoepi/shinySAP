@@ -11,7 +11,7 @@ backend as a single JSON dictionary and written to `output/`.
 | **Study** | Title, study code, authors, SAP version, date, rationale & background, aim / research question, specific objectives, and an amendment history (version, date, description of change) |
 | **CDM Sources** | The databases the study runs against — name, short key, country/region |
 | **CDM Changes** | Extra CDM validations and database-specific alterations applied before analysis — a change type (extra validation; subset a CDM table; limit observation periods; remap concepts; remove people with no year of birth or sex data; remove people with implausible dates; other), the data sources it applies to, and a description |
-| **Codelists** | The concept sets cohorts cite in `[square brackets]` — name, description/provenance, and the codes themselves, uploaded from a `.csv` (concept_id column), `.txt` (one code per line) or `.json` (plain array or Atlas concept-set expression). The codes are stored in the SAP JSON, so the plan is self-contained |
+| **Codelists** | The concept sets cohorts cite in `[square brackets]` — name, an optional category (Index event, Comorbidity, Medicine, …, which the document groups by), description/provenance, and the codes themselves, uploaded from a `.csv` (concept_id column), `.txt` (one code per line) or `.json` (plain array or Atlas concept-set expression). The codes are stored in the SAP JSON, so the plan is self-contained |
 | **Cohorts** | Name, kind and the CDM sources the cohort is built against (the SAP-level counterpart of the generators' `cdm` argument) — plus a set of inputs that **depends on the cohort's kind**. A denominator is *generated*, so it asks for the generator's arguments (cohort date range, age groups, sex, prior observation); a target denominator asks for those plus the target cohort and the time at risk; every other kind (target, outcome, comparator, censoring, strata) is a plain cohort *definition* — entry events (citing the codelist inline in `[square brackets]`), inclusion & exclusion criteria (including the index-date rule), exit criteria |
 | **Analyses** | Name, analysis type, CDM sources it runs on — plus a set of inputs that **depends on the analysis type** (an incidence asks for a denominator, a washout and an interval; a prevalence asks for time points instead) |
 | **Review** | Live JSON preview, document preview, and download as JSON or Word. Saving sits in the navbar: one file per SAP, created on the first save (you choose the folder once) and rewritten in place by every save and autosave after it — loading a SAP adopts that file |
@@ -50,7 +50,7 @@ JSON arrays even when they hold a single entry.
 
 ```json
 {
-  "sap_schema_version": "0.4.16",
+  "sap_schema_version": "0.4.17",
   "generated_at": "2026-07-09T14:02:11+0100",
   "study": {
     "title": "Metformin and lactic acidosis",
@@ -83,6 +83,7 @@ JSON arrays even when they hold a single entry.
   "codelists": [
     {
       "name": "cs_metformin",
+      "category": "Medicine",
       "description": "CodelistGenerator, ATC A10BA02",
       "source_file": "metformin_codes.csv",
       "codes": [

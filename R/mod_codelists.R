@@ -10,18 +10,30 @@
 # are card STATE: seeded from the saved SAP, replaced wholesale by the next
 # upload, and reported alongside the other fields.
 
+# The roles DARWIN SAPs group their codelist appendix by (Index events,
+# Comorbidities, Medicines, ...). Canonical, but the picker takes free text --
+# a study may have a role no list foresees. Unset falls into "Other" in the
+# document; it is not a decision the app forces.
+CODELIST_CATEGORIES <- c(
+  "Index event", "Medicine", "Procedure", "Condition / observation",
+  "Comorbidity", "Outcome", "Other"
+)
+
 codelist_item_ui <- function(id, prefill = NULL) {
   ns <- NS(id)
   pf <- prefiller(prefill)
   item_card(
     id, "Codelist",
     layout_columns(
-      col_widths = c(4, 8),
+      col_widths = c(4, 4, 4),
       textInput(ns("name"), "Codelist name", pf("name"), width = "100%",
                 placeholder = "cs_influenza_vaccine"),
+      selectizeInput(ns("category"), "Category", choices = CODELIST_CATEGORIES,
+                     selected = pf("category"), width = "100%",
+                     options = list(create = TRUE, placeholder = "e.g. Index event")),
       textInput(ns("description"), "Description / provenance", pf("description"),
                 width = "100%",
-                placeholder = "e.g. CodelistGenerator, ATC J07BB, generated 2026-07-01")
+                placeholder = "e.g. CodelistGenerator, ATC J07BB")
     ),
     fileInput(ns("upload"),
               "Upload codes (.csv with a concept_id column, .txt one code per line, or .json)",
@@ -88,6 +100,7 @@ codelist_item_server <- function(id, prefill = NULL, on_remove = function() {}) 
 
     reactive(list(
       name        = blank_to_na(input$name),
+      category    = blank_to_na(input$category),
       description = blank_to_na(input$description),
       source_file = blank_to_na(as.character(source_file() %||% ""))[1],
       codes       = codes()

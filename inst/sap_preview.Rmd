@@ -235,14 +235,35 @@ if (!length(codelists)) {
     if (nzchar(src)) d <- if (nzchar(d)) sprintf("%s (from %s)", d, src) else sprintf("from %s", src)
     d
   }
-  df <- data.frame(
-    `Codelist`    = vapply(codelists, function(cl) chr(cl$name), character(1)),
-    `Description` = vapply(codelists, describe, character(1)),
-    `Codes`       = vapply(codelists, codes_cell, character(1)),
-    check.names = FALSE, stringsAsFactors = FALSE
-  )
-  flextable::flextable_to_rmd(items_table(df))
-  cat("\n\n")
+  # Grouped by category into one sub-table each, the way DARWIN SAPs lay out
+  # their codelist appendix (Index events, Comorbidities, ...). An uncategorised
+  # codelist falls into "Other"; the canonical order leads, then any free-text
+  # categories, then Other last.
+  cats <- vapply(codelists, function(cl) {
+    c <- chr(cl$category)
+    if (nzchar(c)) c else "Other"
+  }, character(1))
+  # Canonical categories, in the order the DARWIN appendix uses, each with its
+  # (irregular) plural heading. Free-text categories keep their own name.
+  canon    <- c("Index event", "Medicine", "Procedure", "Condition / observation",
+                "Comorbidity", "Outcome")
+  headings <- c(`Index event` = "Index events", Medicine = "Medicines",
+                Procedure = "Procedures", `Condition / observation` = "Conditions / observations",
+                Comorbidity = "Comorbidities", Outcome = "Outcomes")
+  ordered <- c(intersect(canon, cats), setdiff(unique(cats), c(canon, "Other")), "Other")
+  for (cat in ordered[ordered %in% cats]) {
+    idx     <- which(cats == cat)
+    heading <- if (cat %in% names(headings)) headings[[cat]] else cat
+    cat("\n\n## ", heading, "\n\n", sep = "")
+    df <- data.frame(
+      `Codelist`    = vapply(codelists[idx], function(cl) chr(cl$name), character(1)),
+      `Description` = vapply(codelists[idx], describe, character(1)),
+      `Codes`       = vapply(codelists[idx], codes_cell, character(1)),
+      check.names = FALSE, stringsAsFactors = FALSE
+    )
+    flextable::flextable_to_rmd(items_table(df))
+    cat("\n\n")
+  }
 }
 ```
 
@@ -295,8 +316,15 @@ if (!length(cohorts)) {
     steps <- c(unlist(co$entry_events %||% list()),
                unlist(co$inclusion_criteria %||% list()))
     txt <- if (length(steps)) sprintf("%d. %s", seq_along(steps), steps) else character(0)
+    # Exit criteria on their own lines, one per bullet, to match the numbered
+    # steps above -- a single exit stays inline. No "earliest of" gloss: these
+    # are the author's free-text lines, so let their wording carry the meaning.
     exits <- unlist(co$exit_criteria %||% list())
-    if (length(exits)) txt <- c(txt, paste0("Exit: ", paste(exits, collapse = "; ")))
+    if (length(exits) == 1) {
+      txt <- c(txt, paste0("Exit: ", exits))
+    } else if (length(exits) > 1) {
+      txt <- c(txt, "Exit:", paste0("• ", exits))
+    }
     if (!length(txt)) return(denominator_facts(co))
     paste(txt, collapse = "\n")
   }

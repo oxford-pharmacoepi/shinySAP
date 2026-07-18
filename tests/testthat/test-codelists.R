@@ -67,6 +67,19 @@ test_that("codelists: upload -> data -> duplicate keeps the codes", {
   })
 })
 
+# 0.4.17: an optional category the document groups by. Blank stays null.
+test_that("codelists: the card collects an optional category", {
+  csv <- write_tmp(c("concept_id", "111"), ".csv")
+  testServer(codelists_server, {
+    session$setInputs(add = 1)
+    session$setInputs("codelist_1-name" = "cs_mi", "codelist_1-category" = "Index event")
+    expect_identical(isolate(items$data())[[1]]$category, "Index event")
+    session$setInputs(add = 2)
+    session$setInputs("codelist_2-name" = "cs_x")
+    expect_true(is.na(isolate(items$data())[[2]]$category))
+  })
+})
+
 test_that("codelists: load seeds the codes back from the saved SAP", {
   testServer(codelists_server, {
     load(list(list(name = "cs_x", description = NA, source_file = "x.csv",

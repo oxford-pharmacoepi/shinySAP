@@ -65,7 +65,10 @@ library(jsonlite)
 #        and the codes themselves, uploaded from csv/txt/json) that cohorts
 #        cite in [square brackets]. The codes live in the SAP, so the plan is
 #        self-contained.
-SAP_SCHEMA_VERSION <- "0.4.16"
+# 0.4.17 gave codelists an optional category (Index event, Comorbidity, ...):
+#        the document groups the codelist appendix by it, the way DARWIN SAPs
+#        do. Uncategorised codelists fall into "Other".
+SAP_SCHEMA_VERSION <- "0.4.17"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")
