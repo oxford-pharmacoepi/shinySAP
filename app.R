@@ -73,7 +73,14 @@ library(jsonlite)
 #        per-analysis: it governs what may leave the data partner at all. A file
 #        without it loads at 5 -- the function's own default and the DARWIN
 #        convention -- rather than blank, which would read as no suppression.
-SAP_SCHEMA_VERSION <- "0.4.18"
+# 0.4.19 stopped prefilling study$min_cell_count, and flags it when unset. The
+#        threshold is the data partners' governance decision, not a convention
+#        the app can confirm on their behalf -- omopgenerics defaults to 5, but
+#        DARWIN EU's own notice states 100 for the catalogue, so there is no one
+#        number to prefill. A file without the key now loads blank and stays
+#        blank; study_problems() reports it on Review so the gap is visible
+#        rather than papered over with a plausible guess.
+SAP_SCHEMA_VERSION <- "0.4.19"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")
@@ -299,7 +306,8 @@ server <- function(input, output, session) {
   # cohort names that differ only in punctuation collapse to one CDM table name,
   # and the script would then create that table twice and quietly estimate
   # everything against the second.
-  problems <- reactive(c(cohorts$problems(), analyses$problems(),
+  problems <- reactive(c(study_problems(study$data()),
+                         cohorts$problems(), analyses$problems(),
                          codelist_reference_problems(cohorts$data(), codelists$names()),
                          table_name_collisions(cohorts$data())))
 

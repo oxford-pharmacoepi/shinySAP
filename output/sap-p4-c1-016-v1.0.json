@@ -1,0 +1,123 @@
+{
+  "sap_schema_version": "0.4.16",
+  "generated_at": "2026-07-17T15:21:14+0100",
+  "study": {
+    "title": "DARWIN EU® – Proof-of-concept: Preparedness for annual seasonal influenza vaccine effectiveness studies - Vaccine coverage and incidence of influenza-related outcomes",
+    "study_code": "P4-C1-016",
+    "authors": ["Anna Saura-Lazaro", "Amy Lam"],
+    "version": "1.0",
+    "date": "2026-07-16",
+    "background": "During the revision of the European Medicines Agency (EMA) Guideline on Influenza Vaccines, it was agreed that the optimal way to monitor the performance of influenza vaccines was to generate high-quality vaccine effectiveness data. However, there are identified challenges to generating annual influenza vaccine effectiveness (IVE) evidence from previous European initiatives. With the need for real-world evidence on influenza vaccines, the current study will contribute to informing EMA on the opportunities and challenges of conducting IVE studies within the DARWIN EU® network. Such IVE studies aim to provide robust evidence to support decision-making by EMA.",
+    "aim": "The aim of this study is to assess the availability, quality, and completeness of fit-for-purpose data sources that record seasonal influenza vaccine exposure, including brand where available, as well as influenzarelated clinical outcomes and covariates relevant for IVE studies.",
+    "objectives": ["To estimate the period prevalence of influenza vaccination in the general population for each influenza season from 2015/16 to 2023/24, overall and stratified by age group and sex.", "To characterise influenza vaccine use within each influenza season by month of vaccination, vaccine brand, and route of administration, stratified by age group and sex.", "To describe the baseline demographic characteristics, comorbidities, immunocompromised status, and receipt of other vaccinations of individuals receiving any influenza vaccine in each influenza season.", "To describe the background incidence rates of influenza-related clinical outcomes, hospitalisations, and deaths in the general population, and crude incidence rates of influenza-related clinical outcomes, hospitalisations, and deaths in the vaccinated and unvaccinated populations, overall and stratified by age group and sex in each influenza season."],
+    "amendments": []
+  },
+  "cdm_sources": [
+    {
+      "name": "Croatian National Public Health Information System",
+      "source_key": "NAJS",
+      "country": "Croatia"
+    },
+    {
+      "name": "Danish Data Health Registries",
+      "source_key": "DK-DHR",
+      "country": "Denmark"
+    },
+    {
+      "name": "Finnish Care Register for Health Care",
+      "source_key": "FinOMOP-THL",
+      "country": "Finland"
+    },
+    {
+      "name": "Norwegian Linked Health Registry data",
+      "source_key": "NLHR",
+      "country": "Norway"
+    },
+    {
+      "name": "The Information System for Research in Primary Care",
+      "source_key": "SIDIAP",
+      "country": "Spain"
+    },
+    {
+      "name": "Clinical Practice Research Datalink GOLD",
+      "source_key": "CPRD GOLD",
+      "country": "United Kingdom"
+    }
+  ],
+  "cdm_changes": [
+    {
+      "change_type": "Limit observation periods",
+      "data_sources": ["CPRD GOLD", "NAJS"],
+      "description": "data available only from 07/2018 onwards"
+    }
+  ],
+  "codelists": [
+    {
+      "name": "cs_influenza_vaccine",
+      "description": "Influenza vaccine (ATC J07BB)",
+      "source_file": null,
+      "codes": []
+    }
+  ],
+  "cohorts": [
+    {
+      "name": "General population",
+      "kind": "denominator",
+      "data_sources": ["CPRD GOLD", "DK-DHR", "FinOMOP-THL", "NAJS", "NLHR", "SIDIAP"],
+      "cohortDateRange": ["2015-08-01", "2024-07-31"],
+      "ageGroup": [
+        [0, 5],
+        [6, 17],
+        [18, 64],
+        [65, 150]
+      ],
+      "sex": ["Both"],
+      "daysPriorObservation": [0],
+      "requirementInteractions": true
+    },
+    {
+      "name": "General population (28-day history)",
+      "kind": "denominator",
+      "data_sources": ["CPRD GOLD", "DK-DHR", "FinOMOP-THL", "NAJS", "NLHR", "SIDIAP"],
+      "cohortDateRange": ["2015-08-01", "2024-07-31"],
+      "ageGroup": [
+        [0, 5],
+        [6, 17],
+        [18, 64],
+        [65, 150]
+      ],
+      "sex": ["Both"],
+      "daysPriorObservation": [28],
+      "requirementInteractions": true
+    },
+    {
+      "name": "Influenza vaccine recipients",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "DK-DHR", "FinOMOP-THL", "NAJS", "NLHR", "SIDIAP"],
+      "entry_events": ["Influenza vaccination [cs_influenza_vaccine]"],
+      "inclusion_criteria": ["Index on the first occurrence ever"],
+      "exit_criteria": ["End of continuous observation"]
+    },
+    {
+      "name": "Vaccinated population",
+      "kind": "target_denominator",
+      "data_sources": ["CPRD GOLD", "DK-DHR", "FinOMOP-THL", "NAJS", "NLHR", "SIDIAP"],
+      "targetCohortTable": "Influenza vaccine recipients",
+      "cohortDateRange": [null, null],
+      "timeAtRisk": [
+        [0, null]
+      ],
+      "ageGroup": [
+        [0, 5],
+        [6, 17],
+        [18, 64],
+        [65, 150]
+      ],
+      "sex": ["Both"],
+      "daysPriorObservation": [28],
+      "requirementsAtEntry": true,
+      "requirementInteractions": false
+    }
+  ],
+  "proposed_analyses": []
+}

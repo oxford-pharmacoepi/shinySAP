@@ -37,6 +37,28 @@ amendment_item_server <- function(id, prefill = NULL, on_remove = function() {})
   })
 }
 
+# Problems OF THE STUDY SECTION, shaped like the per-cohort entries in
+# problems_r (see cohort_kinds.R). Warn-not-block, like every other problem here.
+#
+# An unstated minimum cell count is the only one so far, and it is here rather
+# than left to the author's memory because its failure mode is silent: no field,
+# no row in the study table, no suppress() in the generated script, and nothing
+# anywhere that says results will leave unsuppressed. Every other undecided
+# field in this app degrades to a documented package default; this one degrades
+# to exporting small counts. That asymmetry is what earns it a flag.
+study_problems <- function(study) {
+  n <- suppressWarnings(as.numeric(study$min_cell_count %||% NA))
+  if (length(n) == 1 && !is.na(n)) return(list())
+  list(list(
+    name = "Study information",
+    messages = paste(
+      "No minimum cell count. The generated script will apply no suppression,",
+      "and the plan states no export threshold -- set one, or confirm the data",
+      "partners' own disclosure rules govern instead."
+    )
+  ))
+}
+
 study_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -55,13 +77,21 @@ study_ui <- function(id) {
       # per-analysis one: it governs what may leave the data partner at all, so
       # every result this SAP produces is suppressed at the same threshold.
       #
-      # Prefilled with 5, unlike the fields on the cohort cards. 5 is both the
-      # function's own default and the DARWIN reporting convention, so it is a
-      # standing rule the author is confirming rather than a decision only they
-      # can make -- the same footing as the prefilled SAP version and date.
+      # Deliberately NOT prefilled, unlike the SAP version and date. 5 is the
+      # function's own default, but a threshold is a governance decision the
+      # data partners own, and theirs differ -- omopgenerics defaults to 5 while
+      # DARWIN EU's own notice states 100 for the catalogue. A prefilled number
+      # is one an author can tab past without choosing, which is how a plan ends
+      # up stating an export rule nobody actually decided.
+      #
+      # Blank is therefore a real state, not an oversight to paper over -- and
+      # study_problems() flags it, so it cannot leave silently either.
       div(
+        # NULL, not NA: numericInput() renders NA as the literal string "NA" in
+        # the box. NULL omits the value attribute, which is a genuinely empty
+        # field.
         numericInput(ns("min_cell_count"), "Minimum cell count",
-                     value = 5, min = 0, step = 1, width = "100%"),
+                     value = NULL, min = 0, step = 1, width = "100%"),
         div(class = "form-text", "Counts below this are suppressed before export.")
       ),
       dateInput(ns("date"), "Date", value = Sys.Date(), width = "100%")
@@ -129,17 +159,21 @@ study_server <- function(id) {
       updateTextInput(session, "study_code", value = study$study_code %||% "")
       updateTextInput(session, "authors", value = paste(unlist(study$authors), collapse = ", "))
       updateTextInput(session, "version", value = study$version %||% "1.0")
-      # A file with no threshold gets the convention, 5 -- the same value a new
-      # SAP starts at -- rather than a blank, which would read as a deliberate
-      # "export everything".
+      # A file with no threshold loads blank, and stays blank: the preview says
+      # Not stated, the script emits no suppress(), and study_problems() says so
+      # on the Review tab. Substituting 5 here would invent an export rule the
+      # plan never contained and hide the gap behind a plausible number -- the
+      # one failure this field cannot afford, because nothing downstream would
+      # ever show that the threshold was the app's guess rather than the
+      # author's decision.
       #
-      # A cleared field saves as null and so also returns as 5, because JSON
-      # cannot tell an absent key from an explicit null and this is the direction
-      # that fails safe. Clearing it therefore states "no threshold" for the
-      # current session -- the preview says Not stated and the script emits no
-      # suppress() -- but does not survive a reload. Disclosure control is the one
-      # setting where reverting to the convention beats honouring a blank.
-      updateNumericInput(session, "min_cell_count", value = study$min_cell_count %||% 5)
+      # "" clears the box, and it is the only value that does. NA would write the
+      # string "NA" into it, and NULL is dropped from the update message
+      # entirely -- which would leave the PREVIOUS SAP's threshold sitting there,
+      # the one way this field could show a number belonging to another study.
+      mcc <- suppressWarnings(as.numeric(study$min_cell_count %||% NA))
+      updateNumericInput(session, "min_cell_count",
+                         value = if (is.na(mcc)) "" else mcc)
       if (!is.null(study$date)) {
         updateDateInput(session, "date", value = as.Date(study$date))
       }

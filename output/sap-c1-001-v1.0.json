@@ -1,0 +1,581 @@
+{
+  "sap_schema_version": "0.4.18",
+  "generated_at": "2026-07-20T10:51:10+0100",
+  "study": {
+    "title": "Prevalence of rare blood cancers in Europe",
+    "study_code": "C1-001",
+    "authors": ["Edward Burn", "Martí Català"],
+    "version": "1.0",
+    "min_cell_count": 5,
+    "date": "2026-07-17",
+    "background": "Substantial uncertainty surrounds the prevalence of rare blood cancers. Using real-world data, brought together as part of DARWIN EU®, we aim to estimate the prevalence of rare blood cancers in order to see if they still meet the condition to be classified as a rare disease.",
+    "aim": "What is the prevalence of rare blood cancers in Europe?",
+    "objectives": ["To estimate the prevalence of follicular lymphoma between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex", "To estimate the prevalence of diffuse Large B-Cell Lymphoma between 1 st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex", "To estimate the prevalence of multiple myeloma between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex", "To estimate the prevalence of chronic lymphocytic leukaemia between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex", "To estimate the prevalence of acute myeloid leukaemia between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex and sex", "To estimate the prevalence of acute lymphocytic leukaemia between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex"],
+    "amendments": []
+  },
+  "cdm_sources": [
+    {
+      "name": "Integrated Primary Care Information Project",
+      "source_key": "IPCI",
+      "country": "The Netherlands"
+    },
+    {
+      "name": "Sistema d’Informació per al Desenvolupament de la Investigació en Atenció Primària",
+      "source_key": "SIDIAP",
+      "country": "Spain"
+    },
+    {
+      "name": "The Clinical Practice Research Datalink GOLD",
+      "source_key": "CPRD GOLD",
+      "country": "United Kingdom"
+    },
+    {
+      "name": "IQVIA Belgium",
+      "source_key": "IQVIA Belgium",
+      "country": "Belgium"
+    },
+    {
+      "name": "IQVIA DA Germany",
+      "source_key": "IQVIA DA Germany",
+      "country": "Germany"
+    }
+  ],
+  "cdm_changes": [],
+  "codelists": [
+    {
+      "name": "cs_follicular_lymphoma",
+      "category": "Condition / observation",
+      "description": "Preliminary follicular lymphoma concept set from DARWIN EU C1-001 v2.0, Appendix I. Includes Condition and Observation concepts; no descendants. Clinical review required before final use.",
+      "source_file": "follicular_lymphoma_codelist_protocol_v2.csv",
+      "codes": [
+        {
+          "code": "35610325",
+          "name": "Follicular lymphoma, cutaneous follicle centre"
+        },
+        {
+          "code": "4002357",
+          "name": "Follicular non-Hodgkin's lymphoma, small cleaved cell (clinical)"
+        },
+        {
+          "code": "4001329",
+          "name": "Follicular non-Hodgkin's lymphoma, mixed small cleaved cell and large cell (clinical)"
+        },
+        {
+          "code": "4003833",
+          "name": "Follicular non-Hodgkin's lymphoma, large cell (clinical)"
+        },
+        {
+          "code": "4097572",
+          "name": "Follicular non-Hodgkin's mixed small cleaved and large cell lymphoma"
+        },
+        {
+          "code": "4079288",
+          "name": "Follicular low grade B-cell lymphoma"
+        },
+        {
+          "code": "4173977",
+          "name": "Follicular malignant lymphoma - mixed cell type"
+        },
+        {
+          "code": "4079289",
+          "name": "Follicular malignant lymphoma - small cleaved cell"
+        },
+        {
+          "code": "4123298",
+          "name": "Malignant lymphoma, follicular center cell"
+        },
+        {
+          "code": "4121853",
+          "name": "Malignant lymphoma, follicular center cell, cleaved"
+        },
+        {
+          "code": "4121970",
+          "name": "Malignant lymphoma, follicular center cell, non-cleaved"
+        },
+        {
+          "code": "4146630",
+          "name": "Malignant lymphoma, centroblastic-centrocytic, follicular"
+        },
+        {
+          "code": "4141258",
+          "name": "Malignant lymphoma, centroblastic type, follicular"
+        },
+        {
+          "code": "4147411",
+          "name": "Follicular non-Hodgkin's lymphoma"
+        },
+        {
+          "code": "36684826",
+          "name": "Follicular non-Hodgkin's lymphoma of lymph nodes of multiple sites"
+        },
+        {
+          "code": "4301668",
+          "name": "Primary cutaneous follicular center B-cell lymphoma"
+        },
+        {
+          "code": "4299152",
+          "name": "Follicular center B-cell lymphoma (nodal/systemic with skin involvement)"
+        },
+        {
+          "code": "40488901",
+          "name": "Follicular non-Hodgkin's lymphoma of prostate"
+        },
+        {
+          "code": "40488917",
+          "name": "Follicular non-Hodgkin's lymphoma of nose"
+        },
+        {
+          "code": "40489407",
+          "name": "Follicular non-Hodgkin's lymphoma of soft tissue"
+        },
+        {
+          "code": "40490467",
+          "name": "Follicular non-Hodgkin's lymphoma of extranodal site"
+        },
+        {
+          "code": "40490991",
+          "name": "Follicular non-Hodgkin's lymphoma of bone"
+        },
+        {
+          "code": "40490998",
+          "name": "Follicular non-Hodgkin's lymphoma of lung"
+        },
+        {
+          "code": "40492018",
+          "name": "Follicular non-Hodgkin's lymphoma of skin"
+        },
+        {
+          "code": "40492940",
+          "name": "Follicular non-Hodgkin's lymphoma of central nervous system"
+        },
+        {
+          "code": "40493011",
+          "name": "Follicular non-Hodgkin's lymphoma of tonsil"
+        },
+        {
+          "code": "40493012",
+          "name": "Follicular non-Hodgkin's lymphoma of uterine cervix"
+        },
+        {
+          "code": "40493017",
+          "name": "Follicular non-Hodgkin's lymphoma of oral cavity"
+        },
+        {
+          "code": "40486169",
+          "name": "Follicular non-Hodgkin's lymphoma of nasopharynx"
+        },
+        {
+          "code": "40486173",
+          "name": "Follicular non-Hodgkin's lymphoma of stomach"
+        },
+        {
+          "code": "40486654",
+          "name": "Follicular non-Hodgkin's lymphoma of ovary"
+        },
+        {
+          "code": "40487141",
+          "name": "Follicular non-Hodgkin's lymphoma of testis"
+        },
+        {
+          "code": "40487142",
+          "name": "Follicular non-Hodgkin's lymphoma of intestine"
+        },
+        {
+          "code": "45765770",
+          "name": "Follicular non-Hodgkin's lymphoma diffuse follicle center sub-type grade 1"
+        },
+        {
+          "code": "45765919",
+          "name": "Follicular non-Hodgkin's lymphoma diffuse follicle center cell sub-type grade 2"
+        },
+        {
+          "code": "36715795",
+          "name": "Follicular lymphoma of small intestine"
+        },
+        {
+          "code": "42537145",
+          "name": "Pediatric follicular lymphoma"
+        },
+        {
+          "code": "44808015",
+          "name": "Follicular lymphoma grade 1"
+        },
+        {
+          "code": "44814156",
+          "name": "Follicular lymphoma grade 2"
+        },
+        {
+          "code": "44808028",
+          "name": "Follicular lymphoma grade 3"
+        },
+        {
+          "code": "44808117",
+          "name": "Follicular lymphoma grade 3a"
+        },
+        {
+          "code": "44808118",
+          "name": "Follicular lymphoma grade 3b"
+        },
+        {
+          "code": "4146024",
+          "name": "Malignant lymphoma - centrocytic"
+        },
+        {
+          "code": "4119131",
+          "name": "Nodular malignant lymphoma, lymphocytic - well differentiated"
+        },
+        {
+          "code": "4121331",
+          "name": "Nodular malignant lymphoma, lymphocytic - intermediate differentiation"
+        },
+        {
+          "code": "4146027",
+          "name": "Malignant lymphoma, mixed lymphocytic-histiocytic, nodular"
+        },
+        {
+          "code": "4146031",
+          "name": "Malignant lymphoma, lymphocytic, poorly differentiated, nodular"
+        },
+        {
+          "code": "438698",
+          "name": "Malignant lymphoma of lymph nodes of head, face AND/OR neck"
+        },
+        {
+          "code": "435753",
+          "name": "Malignant lymphoma of intrathoracic lymph nodes"
+        },
+        {
+          "code": "200349",
+          "name": "Malignant lymphoma of intra-abdominal lymph nodes"
+        },
+        {
+          "code": "441521",
+          "name": "Malignant lymphoma of lymph nodes of axilla AND/OR upper limb"
+        },
+        {
+          "code": "192560",
+          "name": "Malignant lymphoma of lymph nodes of inguinal region AND/OR lower limb"
+        },
+        {
+          "code": "195195",
+          "name": "Malignant lymphoma of intrapelvic lymph nodes"
+        },
+        {
+          "code": "200343",
+          "name": "Malignant lymphoma of spleen"
+        },
+        {
+          "code": "132841",
+          "name": "Malignant lymphoma of lymph nodes of multiple sites"
+        },
+        {
+          "code": "435492",
+          "name": "Nodular lymphoma of intrathoracic lymph nodes"
+        },
+        {
+          "code": "200338",
+          "name": "Nodular lymphoma of intra-abdominal lymph nodes"
+        },
+        {
+          "code": "198088",
+          "name": "Nodular lymphoma of intrapelvic lymph nodes"
+        },
+        {
+          "code": "198374",
+          "name": "Nodular lymphoma of spleen"
+        },
+        {
+          "code": "320347",
+          "name": "Nodular lymphoma of lymph nodes of multiple sites"
+        },
+        {
+          "code": "440058",
+          "name": "Malignant lymphoma of extranodal AND/OR solid organ site"
+        },
+        {
+          "code": "194878",
+          "name": "Nodular lymphoma of extranodal AND/OR solid organ site"
+        },
+        {
+          "code": "4038838",
+          "name": "Non-Hodgkin's lymphoma (clinical)"
+        },
+        {
+          "code": "4149840",
+          "name": "Nodular lymphoma"
+        },
+        {
+          "code": "4017277",
+          "name": "Malignant lymphoma, follicular AND/OR nodular"
+        },
+        {
+          "code": "4200880",
+          "name": "Follicular low grade B-cell lymphoma morphology"
+        },
+        {
+          "code": "4265301",
+          "name": "Follicular lymphoma, cutaneous follicle center sub-type"
+        },
+        {
+          "code": "4265735",
+          "name": "Follicular lymphoma, diffuse follicle center sub-type, grade 1"
+        },
+        {
+          "code": "4288232",
+          "name": "Follicular lymphoma, diffuse follicle center cell sub-type, grade 2"
+        },
+        {
+          "code": "4230587",
+          "name": "Follicular lymphoma, grade 3"
+        },
+        {
+          "code": "4188203",
+          "name": "Follicular lymphoma, grade 1"
+        },
+        {
+          "code": "4204524",
+          "name": "Follicular lymphoma, grade 2"
+        },
+        {
+          "code": "4205271",
+          "name": "Follicular lymphoma"
+        },
+        {
+          "code": "37116892",
+          "name": "Pediatric follicular lymphoma"
+        },
+        {
+          "code": "37203899",
+          "name": "Nodal peripheral T-cell lymphoma with T follicular helper phenotype"
+        }
+      ]
+    },
+    {
+      "name": "cs_diffuse_large_b_cell_lymphoma",
+      "category": "Index event",
+      "description": "Diffuse large B-cell lymphoma protocol codelist",
+      "source_file": null,
+      "codes": []
+    },
+    {
+      "name": "cs_multiple_myeloma",
+      "category": "Index event",
+      "description": "Multiple myeloma protocol codelist",
+      "source_file": null,
+      "codes": []
+    },
+    {
+      "name": "cs_chronic_lymphocytic_leukaemia",
+      "category": "Index event",
+      "description": "Chronic lymphocytic leukaemia protocol codelist",
+      "source_file": null,
+      "codes": []
+    },
+    {
+      "name": "cs_acute_myeloid_leukaemia",
+      "category": "Index event",
+      "description": "Acute myeloid leukaemia protocol codelist",
+      "source_file": null,
+      "codes": []
+    },
+    {
+      "name": "cs_acute_lymphocytic_leukaemia",
+      "category": "Index event",
+      "description": "Acute lymphocytic leukaemia protocol codelist",
+      "source_file": null,
+      "codes": []
+    }
+  ],
+  "cohorts": [
+    {
+      "name": "General population denominator",
+      "kind": "denominator",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "cohortDateRange": ["2010-01-01", null],
+      "ageGroup": [
+        [0, 150],
+        [0, 9],
+        [10, 19],
+        [20, 29],
+        [30, 39],
+        [40, 49],
+        [50, 59],
+        [60, 69],
+        [70, 79],
+        [80, 89],
+        [90, 99],
+        [100, 150],
+        [0, 44],
+        [45, 64],
+        [65, 150]
+      ],
+      "sex": ["Both"],
+      "daysPriorObservation": [365, 0, 1095],
+      "requirementInteractions": true
+    },
+    {
+      "name": "Follicular lymphoma",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of follicular lymphoma [cs_follicular_lymphoma]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for follicular lymphoma", "Index on the first occurrence ever"],
+      "exit_criteria": ["End of continuous observation"]
+    },
+    {
+      "name": "Follicular lymphoma 5-year partial prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of follicular lymphoma [cs_follicular_lymphoma]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for follicular lymphoma", "Index on the first occurrence ever"],
+      "exit_criteria": ["1825 days after index", "End of continuous observation"]
+    },
+    {
+      "name": "Follicular lymphoma 2-year partial prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of follicular lymphoma [cs_follicular_lymphoma]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for follicular lymphoma", "Index on the first occurrence ever"],
+      "exit_criteria": ["730 days after index", "End of continuous observation"]
+    },
+    {
+      "name": "Diffuse large B-cell lymphoma complete prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of diffuse large B-cell lymphoma [cs_diffuse_large_b_cell_lymphoma]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for diffuse large B-cell lymphoma", "Index on the first occurrence ever"],
+      "exit_criteria": ["End of continuous observation"]
+    },
+    {
+      "name": "Diffuse large B-cell lymphoma 5-year partial prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of diffuse large B-cell lymphoma [cs_diffuse_large_b_cell_lymphoma]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for diffuse large B-cell lymphoma", "Index on the first occurrence ever"],
+      "exit_criteria": ["1825 days after index", "End of continuous observation"]
+    },
+    {
+      "name": "Diffuse large B-cell lymphoma 2-year partial prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of diffuse large B-cell lymphoma [cs_diffuse_large_b_cell_lymphoma]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for diffuse large B-cell lymphoma", "Index on the first occurrence ever"],
+      "exit_criteria": ["730 days after index", "End of continuous observation"]
+    },
+    {
+      "name": "Multiple myeloma complete prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of multiple myeloma [cs_multiple_myeloma]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for multiple myeloma", "Index on the first occurrence ever"],
+      "exit_criteria": ["End of continuous observation"]
+    },
+    {
+      "name": "Multiple myeloma 5-year partial prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of multiple myeloma [cs_multiple_myeloma]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for multiple myeloma", "Index on the first occurrence ever"],
+      "exit_criteria": ["1825 days after index", "End of continuous observation"]
+    },
+    {
+      "name": "Multiple myeloma 2-year partial prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of multiple myeloma [cs_multiple_myeloma]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for multiple myeloma", "Index on the first occurrence ever"],
+      "exit_criteria": ["730 days after index", "End of continuous observation"]
+    },
+    {
+      "name": "Chronic lymphocytic leukaemia complete prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of chronic lymphocytic leukaemia [cs_chronic_lymphocytic_leukaemia]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for chronic lymphocytic leukaemia", "Index on the first occurrence ever"],
+      "exit_criteria": ["End of continuous observation"]
+    },
+    {
+      "name": "Chronic lymphocytic leukaemia 5-year partial prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of chronic lymphocytic leukaemia [cs_chronic_lymphocytic_leukaemia]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for chronic lymphocytic leukaemia", "Index on the first occurrence ever"],
+      "exit_criteria": ["1825 days after index", "End of continuous observation"]
+    },
+    {
+      "name": "Chronic lymphocytic leukaemia 2-year partial prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of chronic lymphocytic leukaemia [cs_chronic_lymphocytic_leukaemia]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for chronic lymphocytic leukaemia", "Index on the first occurrence ever"],
+      "exit_criteria": ["730 days after index", "End of continuous observation"]
+    },
+    {
+      "name": "Acute myeloid leukaemia complete prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of acute myeloid leukaemia [cs_acute_myeloid_leukaemia]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for acute myeloid leukaemia", "Index on the first occurrence ever"],
+      "exit_criteria": ["End of continuous observation"]
+    },
+    {
+      "name": "Acute myeloid leukaemia 5-year partial prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of acute myeloid leukaemia [cs_acute_myeloid_leukaemia]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for acute myeloid leukaemia", "Index on the first occurrence ever"],
+      "exit_criteria": ["1825 days after index", "End of continuous observation"]
+    },
+    {
+      "name": "Acute myeloid leukaemia 2-year partial prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of acute myeloid leukaemia [cs_acute_myeloid_leukaemia]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for acute myeloid leukaemia", "Index on the first occurrence ever"],
+      "exit_criteria": ["730 days after index", "End of continuous observation"]
+    },
+    {
+      "name": "Acute lymphocytic leukaemia complete prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of acute lymphocytic leukaemia [cs_acute_lymphocytic_leukaemia]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for acute lymphocytic leukaemia", "Index on the first occurrence ever"],
+      "exit_criteria": ["End of continuous observation"]
+    },
+    {
+      "name": "Acute lymphocytic leukaemia 5-year partial prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of acute lymphocytic leukaemia [cs_acute_lymphocytic_leukaemia]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for acute lymphocytic leukaemia", "Index on the first occurrence ever"],
+      "exit_criteria": ["1825 days after index", "End of continuous observation"]
+    },
+    {
+      "name": "Acute lymphocytic leukaemia 2-year partial prevalence",
+      "kind": "target",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "entry_events": ["Diagnosis or observation record of acute lymphocytic leukaemia [cs_acute_lymphocytic_leukaemia]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for acute lymphocytic leukaemia", "Index on the first occurrence ever"],
+      "exit_criteria": ["730 days after index", "End of continuous observation"]
+    }
+  ],
+  "proposed_analyses": [
+    {
+      "name": "Follicular lymphoma – 5-year partial point prevalence – 365d prior observation",
+      "analysis_type": "estimatePointPrevalence",
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "parameters": {
+        "denominatorTable": "General population denominator",
+        "outcomeTable": "Follicular lymphoma 5-year partial prevalence",
+        "denominatorCohortId": null,
+        "outcomeCohortId": null,
+        "interval": "years",
+        "timePoint": "start",
+        "strata": [
+          ["sex"],
+          ["age_group"]
+        ],
+        "includeOverallStrata": true
+      }
+    }
+  ]
+}

@@ -110,3 +110,17 @@ test_that("validate: a prevalence outcome cannot be a generated denominator",
                                   list(denominatorTable = "Metformin denominator",
                                        outcomeTable = "Men only"),
                                   cohorts_idx)))))
+
+# An unstated minimum cell count degrades to exporting small counts, unlike every
+# other undecided field, which degrades to a documented package default.
+test_that("validate: an unstated minimum cell count is a problem", {
+  found <- study_problems(list(title = "T"))
+  expect_length(found, 1)
+  expect_equal(found[[1]]$name, "Study information")
+  expect_match(found[[1]]$messages, "No minimum cell count")
+})
+
+test_that("validate: a stated minimum cell count raises no problem", {
+  expect_length(study_problems(list(min_cell_count = 5)), 0)
+  expect_length(study_problems(list(min_cell_count = 0)), 0)   # 0 is a decision
+})
