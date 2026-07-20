@@ -41,7 +41,8 @@ cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
                                cohort_names = reactive(character(0)),
                                on_rename = function(old, new) {},
                                renames = reactive(NULL),
-                               source_names = reactive(character(0))) {
+                               source_names = reactive(character(0)),
+                               cohort_index = reactive(list())) {
   moduleServer(id, function(input, output, session) {
     observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
 
@@ -135,7 +136,7 @@ cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # A target denominator names the cohort it is built from, so the cohort
     # pickers on a cohort card are fed by the cohort list itself.
     sync_pickers(session, function() cohort_template(kind_r())$pickers$cohorts %||% character(0),
-                 cohort_names, base_pf)
+                 reactive(grouped_cohort_choices(cohort_index())), base_pf)
     sync_pickers(session, "data_sources", source_names, base_pf)
 
     # Rename propagation, the FOLLOW half: another cohort's rename lands on any
@@ -202,6 +203,14 @@ cohorts_server <- function(id, source_names = reactive(character(0))) {
     settled <- debounce(reactive(names_v()), 600)
     settled_sources <- debounce(source_names, 600)
 
+    # The same cycle-breaking trick for the picker's OPTGROUPS, which need each
+    # cohort's kind as well as its name. Deriving this from by_name_r() would put
+    # the whole cohort back in the loop, so every keystroke in an entry-event box
+    # would re-trigger every picker on the tab. Name and kind are all the grouping
+    # reads, so only those invalidate it.
+    kinds_v <- reactiveVal(list())
+    settled_index <- debounce(reactive(kinds_v()), 600)
+
     # Rename propagation, the GATE. A card reports {old -> new}; if no OTHER
     # card still holds the old name, one event goes out and every cohort picker
     # in the app follows it (the observers in the item servers, here and in
@@ -225,7 +234,8 @@ cohorts_server <- function(id, source_names = reactive(character(0))) {
     item_server <- function(iid, prefill, on_remove) {
       cohort_item_server(iid, prefill, on_remove, settled,
                          on_rename = emit_rename, renames = rename_ev,
-                         source_names = settled_sources)
+                         source_names = settled_sources,
+                         cohort_index = settled_index)
     }
     items <- dynamic_items("cohort", "items", cohort_item_ui, item_server,
                            to_prefill = function(x) cohort_to_prefill(x$data),
@@ -239,9 +249,16 @@ cohorts_server <- function(id, source_names = reactive(character(0))) {
     data_r <- reactive(lapply(items$data(), function(x) x$data))
 
     observe({
-      nms <- vapply(data_r(), function(x) as.character(x$name %||% ""), character(1))
-      nms <- sort(unique(nms[nzchar(nms)]))
+      d    <- data_r()
+      raw  <- vapply(d, function(x) as.character(x$name %||% ""), character(1))
+      keep <- nzchar(raw)
+      nms  <- sort(unique(raw[keep]))
       if (!identical(nms, isolate(names_v()))) names_v(nms)
+
+      idx <- stats::setNames(
+        lapply(which(keep), function(i) list(kind = canonical_cohort_kind(d[[i]]$kind))),
+        raw[keep])
+      if (!identical(idx, isolate(kinds_v()))) kinds_v(idx)
     })
 
     load <- function(cohorts) {

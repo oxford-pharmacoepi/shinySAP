@@ -40,7 +40,33 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
   x
 }
 
+# The document renders the IncidencePrevalence calls the SAP describes, so it
+# needs the generator that builds them (R/sap_code.R) and the cohort-kind helpers
+# it stands on. Sourced rather than copied: the SAP and the code it generates must
+# never be able to drift apart, which is the whole reason this section exists.
+#
+# knitr runs with the working directory set to this file's own, so R/ is one
+# level up; the second candidate lets the document render from the repo root too.
+# local = knit_global() puts the definitions where the chunks can see them,
+# instead of inside this helper's frame.
+source_app <- function(file) {
+  cand <- c(file.path("..", "R", file), file.path("R", file))
+  hit  <- cand[file.exists(cand)]
+  if (!length(hit)) {
+    stop("sap_preview.Rmd cannot find R/", file, " (working directory: ", getwd(), ")")
+  }
+  source(hit[[1]], local = knitr::knit_global())
+}
+for (f in c("utils.R", "cohort_kinds.R", "analysis_registry.R", "sap_code.R")) source_app(f)
+
 is_word <- isTRUE(knitr::opts_knit$get("rmarkdown.pandoc.to") == "docx")
+
+# A fenced R block. Word gets the same fence: pandoc's docx writer renders it as
+# a monospaced source-code paragraph, which is what the reference SAPs look like.
+code_block <- function(code) {
+  if (is.null(code) || !nzchar(code)) return(invisible(NULL))
+  cat("\n``` r\n", code, "\n```\n\n", sep = "")
+}
 
 sap   <- params$sap
 study <- sap$study %||% list()
@@ -118,7 +144,14 @@ rows <- list(
   c("Study code",  study$study_code %||% ""),
   c("Authors",     paste(unlist(study$authors %||% list()), collapse = ", ")),
   c("SAP version", study$version %||% ""),
-  c("Date",        study$date %||% "")
+  c("Date",        study$date %||% ""),
+  # Stated even though it is usually the conventional 5: a reader must be able to
+  # see the export threshold without inferring it, and a plan that states none is
+  # a different claim from one that states 5.
+  c("Minimum cell count",
+    if (is.null(study$min_cell_count %||% NULL)) "Not stated"
+    else sprintf("%s (results below this are suppressed before export)",
+                 format(study$min_cell_count)))
 )
 field_table(rows)
 ```
@@ -214,20 +247,14 @@ codelists <- sap$codelists %||% list()
 if (!length(codelists)) {
   cat("_No codelists defined._\n")
 } else {
-  # How many codes a cell lists before folding; the remainder is counted out
-  # loud, never silently dropped.
-  codes_shown <- 40
+  # The codes themselves are NOT in this table. Listing them one per line inside
+  # a single cell made one row 41 lines tall for a 75-code list, and still cut it
+  # off at 40 -- so the section was both bulky and incomplete. They now live in
+  # full, untruncated, in the codelist appendix; this cell says how many to expect.
   codes_cell <- function(cl) {
-    codes <- cl$codes %||% list()
-    n <- length(codes)
+    n <- length(cl$codes %||% list())
     if (!n) return("— not yet uploaded")
-    shown <- utils::head(codes, codes_shown)
-    txt <- paste(vapply(shown, function(cd) paste(c(cd$code, cd$name), collapse = " — "),
-                        character(1)), collapse = "\n")
-    if (n > length(shown)) {
-      txt <- paste0(txt, "\n… and ", n - length(shown), " more (all carried in the SAP)")
-    }
-    txt
+    sprintf("%d (listed in full in the appendix)", n)
   }
   describe <- function(cl) {
     d   <- chr(cl$description)
@@ -258,7 +285,7 @@ if (!length(codelists)) {
     df <- data.frame(
       `Codelist`    = vapply(codelists[idx], function(cl) chr(cl$name), character(1)),
       `Description` = vapply(codelists[idx], describe, character(1)),
-      `Codes`       = vapply(codelists[idx], codes_cell, character(1)),
+      `Concepts`    = vapply(codelists[idx], codes_cell, character(1)),
       check.names = FALSE, stringsAsFactors = FALSE
     )
     flextable::flextable_to_rmd(items_table(df))
@@ -306,27 +333,88 @@ if (!length(cohorts)) {
         hi <- if (is.null(w[2]) || is.na(w[2]) || is.infinite(as.numeric(w[2]))) "∞" else w[2]
         sprintf("[%s, %s]", w[1], hi)
       }, character(1)), collapse = "; "))
+
+    # The RULE that combines the axes above, and so how many cohorts the card
+    # generates. Without it the age / sex / prior-observation lists are ambiguous:
+    # 4 age groups and 2 sexes is 8 cohorts with interactions and 5 without. The
+    # default matches denominator_cohort_set(), so a legacy file reads the same
+    # way here as it does everywhere else.
+    add("Requirements combined", if (isTRUE(co$requirementInteractions %||% TRUE)) {
+      "every combination (requirementInteractions = TRUE)"
+    } else {
+      "each factor against the first value of the others, so order matters (requirementInteractions = FALSE)"
+    })
+    if (identical(canonical_cohort_kind(co$kind), "target_denominator")) {
+      add("Requirements at entry", if (isTRUE(co$requirementsAtEntry)) {
+        "must be met on the target cohort start date (requirementsAtEntry = TRUE)"
+      } else {
+        "may be met part-way through time in the target cohort (requirementsAtEntry = FALSE)"
+      })
+    }
+    add("Cohorts generated", sprintf("%d", length(denominator_cohort_set(co))))
+
     paste(parts, collapse = "\n")
   }
 
   # A plain cohort's logic, IN ORDER, numbered: the entry event is step 1 --
   # it is the index event -- then the inclusion / exclusion criteria; exit on
   # a final line. flextable turns \n into real line breaks in HTML and Word.
+  # Entry and inclusion are ONE ordered sequence -- the numbering runs straight
+  # through -- but they are not the same kind of step, and until 0.4.19 this cell
+  # ran them together unlabelled so the difference was invisible in the document.
+  #
+  # The entry event is the INDEX event: it decides the cohort start date. An
+  # inclusion criterion filters people who already have one. A reader who cannot
+  # tell which line set the index date cannot check the cohort definition at all,
+  # and the two are separate fields on the card precisely because they are
+  # separate operations.
   cohort_logic <- function(co) {
-    steps <- c(unlist(co$entry_events %||% list()),
-               unlist(co$inclusion_criteria %||% list()))
-    txt <- if (length(steps)) sprintf("%d. %s", seq_along(steps), steps) else character(0)
-    # Exit criteria on their own lines, one per bullet, to match the numbered
-    # steps above -- a single exit stays inline. No "earliest of" gloss: these
-    # are the author's free-text lines, so let their wording carry the meaning.
+    entry <- unlist(co$entry_events %||% list())
+    incl  <- unlist(co$inclusion_criteria %||% list())
     exits <- unlist(co$exit_criteria %||% list())
-    if (length(exits) == 1) {
-      txt <- c(txt, paste0("Exit: ", exits))
-    } else if (length(exits) > 1) {
-      txt <- c(txt, "Exit:", paste0("• ", exits))
+    txt   <- character(0)
+    if (length(entry)) {
+      txt <- c(txt, "Entry:", sprintf("%d. %s", seq_along(entry), entry))
     }
+    if (length(incl)) {
+      txt <- c(txt, "Inclusion / exclusion:",
+               sprintf("%d. %s", length(entry) + seq_along(incl), incl))
+    }
+    # Exit criteria are bulleted, not numbered: they are alternatives that end an
+    # episode, not further steps in the sequence above. No "earliest of" gloss --
+    # these are the author's free-text lines, so let their wording carry it.
+    if (length(exits)) txt <- c(txt, "Exit:", paste0("• ", exits))
     if (!length(txt)) return(denominator_facts(co))
     paste(txt, collapse = "\n")
+  }
+
+  # The same cell, as bold-labelled chunks instead of one flat string.
+  #
+  # A flextable cell is plain text unless it is COMPOSED from chunks, so styling
+  # only the three labels means building the cell piece by piece and writing it
+  # back with compose(). Kept beside cohort_logic() rather than replacing it: the
+  # plain version still decides what a denominator cohort shows (its facts), and
+  # having both means the styled and unstyled forms cannot say different things.
+  logic_paragraph <- function(co) {
+    entry <- unlist(co$entry_events %||% list())
+    incl  <- unlist(co$inclusion_criteria %||% list())
+    exits <- unlist(co$exit_criteria %||% list())
+    if (!length(entry) && !length(incl) && !length(exits)) {
+      return(as_paragraph(as_chunk(denominator_facts(co))))
+    }
+    chunks <- list()
+    section <- function(label, lines) {
+      if (!length(lines)) return()
+      lead <- if (length(chunks)) "\n" else ""
+      chunks[[length(chunks) + 1]] <<-
+        as_chunk(paste0(lead, label), props = fp_text_default(bold = TRUE))
+      chunks[[length(chunks) + 1]] <<- as_chunk(paste0("\n", paste(lines, collapse = "\n")))
+    }
+    section("Entry:", sprintf("%d. %s", seq_along(entry), entry))
+    section("Inclusion / exclusion:",
+            sprintf("%d. %s", length(entry) + seq_along(incl), incl))
+    section("Exit:", paste0("• ", exits))
+    do.call(as_paragraph, chunks)
   }
 
   # The [bracketed] codelist references cited anywhere in the cohort's text --
@@ -348,8 +436,41 @@ if (!length(cohorts)) {
     `Logic (in order)` = vapply(cohorts, cohort_logic, character(1)),
     check.names = FALSE, stringsAsFactors = FALSE
   )
-  flextable::flextable_to_rmd(items_table(df))
+  # compose() takes one row at a time, because each cell has a different number of
+  # chunks -- as_paragraph() on its own is vectorised across rows and cannot vary
+  # its structure per row.
+  ft <- items_table(df)
+  for (i in seq_along(cohorts)) {
+    ft <- compose(ft, i = i, j = "Logic (in order)", value = logic_paragraph(cohorts[[i]]))
+  }
+  flextable::flextable_to_rmd(ft)
   cat("\n\n")
+}
+```
+
+```{r cohort-sets, results='asis'}
+# The generator call each denominator card describes, so the SAP a reviewer signs
+# off and the code the study runs are the same object.
+#
+# The cohorts this expands INTO are deliberately not listed. The expansion is
+# derived, not authored: the table above already carries the age groups, sex,
+# prior-observation values, the rule that combines them and the resulting count,
+# so a reader has everything needed to derive it. Printing the rows restated the
+# author's own inputs back at them, and it did not scale -- one denominator here
+# reaches 45 rows, and 135 once a sex axis is added.
+#
+# It was also shinySAP's MODEL of the generator rather than the generator itself,
+# so it could quietly disagree with the package in a way the call below cannot:
+# a call is just the arguments the author chose. The live expansion still belongs
+# on the cards, where denominator_cohort_set_ui() shows it as an authoring check
+# rather than as a statement in a signed plan.
+dens <- Filter(function(co) is_denominator_kind(co$kind), sap$cohorts %||% list())
+if (length(dens)) {
+  cat("## Denominator cohort generation\n\n")
+  for (co in dens) {
+    cat("### ", chr(co$name), "\n\n", sep = "")
+    code_block(cohort_r_code(co))
+  }
 }
 ```
 
@@ -371,37 +492,183 @@ if (!length(analyses)) {
       if (nzchar(value)) parts <<- c(parts, sprintf("%s: %s", label, value))
     }
 
-    denom <- p$denominatorTable %||% p$denominator_cohort %||% p$denominatorCohortId
-    if (!is.null(denom)) add("Denominator", chr(denom))
+    # Cohort NAMES only. The *CohortId keys used to be a fallback here, which
+    # would have labelled a numeric id array as if it were the cohort's name --
+    # the ids say which cohorts OF A SET to use, and get their own entry below.
+    add("Denominator", chr(p$denominatorTable %||% p$denominator_cohort))
+    add("Outcome",     chr(p$outcomeTable %||% p$outcome_cohort))
+    add("Censoring",   chr(p$censorTable))
 
-    outcome <- p$outcomeTable %||% p$outcome_cohort %||% p$outcomeCohortId
-    if (!is.null(outcome)) add("Outcome", chr(outcome))
+    # Absent means "every cohort in the set" -- the estimators' own default -- so
+    # only a RESTRICTED selection is worth stating.
+    ids <- function(label, x) {
+      v <- suppressWarnings(as.numeric(unlist(x %||% list())))
+      v <- v[!is.na(v)]
+      if (length(v)) add(label, paste(v, collapse = ", "))
+    }
+    ids("Denominator cohort IDs", p$denominatorCohortId)
+    ids("Outcome cohort IDs",     p$outcomeCohortId)
+    ids("Censor cohort IDs",      p$censorCohortId)
 
-    if (!is.null(p$interval))
-      add("Interval", paste(unlist(p$interval), collapse = ", "))
-
-    if (!is.null(p$outcomeWashout))
-      add("Outcome washout", sprintf("%s days", p$outcomeWashout))
+    if (!is.null(p[["interval"]]))
+      add("Interval", paste(unlist(p[["interval"]]), collapse = ", "))
 
     if (!is.null(p$timePoint))
       add("Time point", paste(unlist(p$timePoint), collapse = ", "))
 
-    strata <- unlist(p$strata %||% list())
-    if (length(strata)) add("Strata", paste(strata, collapse = ", "))
+    # Period prevalence only. Both change WHO is counted in an interval, so a SAP
+    # that omitted them read identically to one run with the opposite settings.
+    if (!is.null(p$fullContribution))
+      add("Full interval contribution required", if (isTRUE(p$fullContribution)) "yes" else "no")
+    if (!is.null(p$completeDatabaseIntervals))
+      add("Complete database intervals only", if (isTRUE(p$completeDatabaseIntervals)) "yes" else "no")
+    if (!is.null(p$level))
+      add("Estimation level", chr(p$level))
 
-    paste(parts, collapse = " · ")
+    # Incidence only.
+    w <- washout_days(p$outcomeWashout)
+    if (!is.null(w))
+      add("Outcome washout", if (is.infinite(w)) "unbounded" else sprintf("%s days", format(w)))
+    if (!is.null(p$repeatedEvents))
+      add("Repeated events", if (isTRUE(p$repeatedEvents)) "counted" else "first event only")
+
+    # `strata` is a list of variable GROUPS, and the grouping is the meaning:
+    # list("sex", "age_group") is two separate stratifications, while
+    # list(c("sex", "age_group")) is a single stratification by their cross. The
+    # old unlist() here flattened both to the same string, so two materially
+    # different analyses previewed identically. Crossed variables join with ×;
+    # separate stratifications are listed one per line.
+    groups <- p$strata %||% list()
+    if (length(groups)) {
+      add("Strata", paste(vapply(groups, function(g)
+        paste(as.character(unlist(g)), collapse = " × "), character(1)), collapse = "\n"))
+      # Inert without strata, so it is stated only where it does something.
+      add("Overall (unstratified) result", if (isTRUE(p$includeOverallStrata)) "also reported" else "not reported")
+    }
+
+    paste(parts, collapse = "\n")
   }
 
+  # No Description column: it reads as prose under the analysis's own heading
+  # below, immediately above the call it describes, and printing it in both
+  # places was pure duplication -- the same fault as the analysis-code appendix.
+  # The table is the at-a-glance index; the specification carries the sentences.
   df <- data.frame(
     `Name`          = vapply(analyses, function(a) chr(a$name), character(1)),
     `Analysis type` = vapply(analyses, function(a) chr(a$analysis_type), character(1)),
     `Data sources`  = vapply(analyses, sources_cell, character(1)),
-    `Description`   = vapply(analyses, function(a) chr(a$description), character(1)),
     `Details`       = vapply(analyses, analysis_details, character(1)),
     check.names = FALSE, stringsAsFactors = FALSE
   )
   flextable::flextable_to_rmd(items_table(df))
   cat("\n\n")
+
+  # The call each analysis describes, beside the analysis itself. The table above
+  # is the at-a-glance view; this is the specification -- every argument the
+  # estimator takes, in the signature's own order.
+  cat("## Analysis specifications\n\n")
+  for (a in analyses) {
+    cat("### ", chr(a$name), "\n\n", sep = "")
+    desc <- chr(a$description)
+    if (nzchar(desc)) cat(desc, "\n\n", sep = "")
+    code <- analysis_r_code(a, sap$cohorts %||% list())
+    if (is.null(code)) {
+      cat(sprintf(paste("_No IncidencePrevalence function corresponds to the analysis type",
+                        "'%s', so this analysis has no generated call._\n\n"),
+                  chr(a$analysis_type)))
+    } else {
+      code_block(code)
+    }
+  }
+}
+```
+
+`r if (is_word) "\\newpage"`
+
+---
+
+# Appendix: codelist contents
+
+```{r codelist-contents, results='asis'}
+# Every code the SAP carries, in full and untruncated -- the summary table above
+# gives only the counts. Here rather than beside the summary because this is bulk
+# a reader consults, not reads: the same reason DARWIN SAPs put their codelists in
+# an appendix. Nothing is repeated between the two.
+with_codes <- Filter(function(cl) length(cl$codes %||% list()), sap$codelists %||% list())
+
+# One codelist as the densest table its codes allow. Concept ids alone tile
+# several to a row; named concepts need a line each, because an OMOP concept name
+# runs to sixty-odd characters and even two per row would overrun the page.
+codes_table <- function(codes, per_row = 5) {
+  code <- vapply(codes, function(cd) chr(cd$code), character(1))
+  name <- vapply(codes, function(cd) chr(cd$name), character(1))
+  if (any(nzchar(name))) {
+    return(data.frame(`Concept ID` = code, `Concept name` = name,
+                      check.names = FALSE, stringsAsFactors = FALSE))
+  }
+  rows <- ceiling(length(code) / per_row)
+  grid <- matrix(c(code, rep("", rows * per_row - length(code))),
+                 nrow = rows, byrow = TRUE)
+  df <- as.data.frame(grid, stringsAsFactors = FALSE)
+  names(df) <- rep("Concept IDs", per_row)
+  df
+}
+
+# Smaller and tighter than items_table(): a code list is reference material, read
+# by lookup rather than straight through, so it earns a denser setting than the
+# tables in the body.
+codes_ft <- function(df) {
+  ft <- flextable(df) |>
+    bold(part = "header") |>
+    border_remove() |>
+    hline(border = officer::fp_border(color = "#DDDDDD", width = 0.5)) |>
+    set_table_properties(layout = "autofit", width = 1) |>
+    padding(padding = 1.5) |>
+    # part = "all": fontsize() defaults to the body, which would leave a 10pt
+    # header sitting above 8pt rows.
+    fontsize(size = 8, part = "all")
+  if (nrow(df) >= 2) ft <- bg(ft, i = seq(2, nrow(df), 2), bg = "#F5F5F5")
+  ft
+}
+
+if (!length(with_codes)) {
+  cat("_No codes have been uploaded yet._\n")
+} else {
+  for (cl in with_codes) {
+    codes <- cl$codes %||% list()
+    cat("\n\n## ", chr(cl$name), "\n\n", sep = "")
+    src <- chr(cl$source_file)
+    cat(sprintf("%d concept%s%s.\n\n", length(codes),
+                if (length(codes) == 1) "" else "s",
+                if (nzchar(src)) sprintf(", from `%s`", src) else ""))
+    flextable::flextable_to_rmd(codes_ft(codes_table(codes)))
+    cat("\n\n")
+  }
+}
+```
+
+`r if (is_word) "\\newpage"`
+
+---
+
+# Appendix: analysis code
+
+```{r script, results='asis'}
+# The whole plan as one script, in the order it has to run: every denominator
+# cohort set generated before the estimates that point at it. This is the
+# executable form of the document -- the sections above are the same calls, shown
+# beside the thing they describe.
+#
+# `cdm` is the live database connection the study opens; every other argument
+# comes from this SAP. An argument the plan does not decide is absent, and the
+# package's documented default applies.
+script <- sap_r_script(sap)
+if (!nzchar(script)) {
+  cat("_No cohorts or analyses map onto IncidencePrevalence functions yet._\n")
+} else {
+  cat("Plain cohorts (target, outcome, comparator, censoring) are instantiated",
+      "outside IncidencePrevalence and are referred to here by table name only.\n\n")
+  code_block(script)
 }
 ```
 

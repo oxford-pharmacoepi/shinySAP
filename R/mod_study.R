@@ -48,9 +48,22 @@ study_ui <- function(id) {
       textInput(ns("study_code"), "Study code", width = "100%")
     ),
     layout_columns(
-      col_widths = c(6, 3, 3),
+      col_widths = c(5, 2, 2, 3),
       textInput(ns("authors"), "Authors (comma separated)", width = "100%"),
       textInput(ns("version"), "SAP version", value = "1.0", width = "100%"),
+      # omopgenerics::suppress(minCellCount =). A study-level rule, not a
+      # per-analysis one: it governs what may leave the data partner at all, so
+      # every result this SAP produces is suppressed at the same threshold.
+      #
+      # Prefilled with 5, unlike the fields on the cohort cards. 5 is both the
+      # function's own default and the DARWIN reporting convention, so it is a
+      # standing rule the author is confirming rather than a decision only they
+      # can make -- the same footing as the prefilled SAP version and date.
+      div(
+        numericInput(ns("min_cell_count"), "Minimum cell count",
+                     value = 5, min = 0, step = 1, width = "100%"),
+        div(class = "form-text", "Counts below this are suppressed before export.")
+      ),
       dateInput(ns("date"), "Date", value = Sys.Date(), width = "100%")
     ),
     textAreaInput(ns("background"), "Rationale and background", rows = 4, width = "100%"),
@@ -100,6 +113,10 @@ study_server <- function(id) {
       study_code = blank_to_na(input$study_code),
       authors    = as_array(trimws(split_lines(gsub(",", "\n", input$authors %||% "")))),
       version    = blank_to_na(input$version),
+      # A cleared field sends NA, which stays NA: "no suppression stated" is a
+      # different claim from "suppress at 0", and only one of them is safe to
+      # silently write into a plan that governs what leaves a data partner.
+      min_cell_count = suppressWarnings(as.numeric(input$min_cell_count %||% NA)),
       date       = as.character(input$date %||% NA),
       background = blank_to_na(input$background),
       aim        = blank_to_na(input$aim),
@@ -112,6 +129,17 @@ study_server <- function(id) {
       updateTextInput(session, "study_code", value = study$study_code %||% "")
       updateTextInput(session, "authors", value = paste(unlist(study$authors), collapse = ", "))
       updateTextInput(session, "version", value = study$version %||% "1.0")
+      # A file with no threshold gets the convention, 5 -- the same value a new
+      # SAP starts at -- rather than a blank, which would read as a deliberate
+      # "export everything".
+      #
+      # A cleared field saves as null and so also returns as 5, because JSON
+      # cannot tell an absent key from an explicit null and this is the direction
+      # that fails safe. Clearing it therefore states "no threshold" for the
+      # current session -- the preview says Not stated and the script emits no
+      # suppress() -- but does not survive a reload. Disclosure control is the one
+      # setting where reverting to the convention beats honouring a blank.
+      updateNumericInput(session, "min_cell_count", value = study$min_cell_count %||% 5)
       if (!is.null(study$date)) {
         updateDateInput(session, "date", value = as.Date(study$date))
       }

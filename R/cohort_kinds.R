@@ -105,6 +105,34 @@ is_denominator_kind <- function(kind) {
   canonical_cohort_kind(kind) %in% c("denominator", "target_denominator")
 }
 
+# The cohort list as selectize optgroups, one group per kind, in COHORT_KINDS
+# order.
+#
+# The pickers are deliberately NOT filtered by kind. Filtering would fight two
+# things that already work: free text (an author may name a cohort before
+# defining it) and the debounced cohort list (a cohort mid-kind-switch would
+# flicker out of the menu). Grouping instead puts the constraint at the point of
+# choice -- an author picking a denominator can see which entries are actually
+# denominators -- while the template validators stay the thing that enforces it.
+#
+# Kindless cohorts get their own trailing group rather than being dropped: they
+# are a validation problem elsewhere, and hiding them here would make a picker
+# silently unable to reach a cohort that exists.
+grouped_cohort_choices <- function(index) {
+  index <- index %||% list()
+  nms <- names(index)
+  if (!length(nms)) return(list())
+  kinds <- vapply(index, function(ch) canonical_cohort_kind(ch$kind), character(1))
+  out <- list()
+  for (kind in COHORT_KINDS) {
+    in_kind <- nms[kinds == kind]
+    if (length(in_kind)) out[[names(COHORT_KINDS)[COHORT_KINDS == kind]]] <- in_kind
+  }
+  kindless <- nms[!nzchar(kinds)]
+  if (length(kindless)) out[["No kind chosen"]] <- kindless
+  out
+}
+
 # One saved (or live) cohort -> the prefill its card is rebuilt from. Shared by
 # cohorts load() and the Duplicate button, so the two can never drift.
 cohort_to_prefill <- function(ch) {

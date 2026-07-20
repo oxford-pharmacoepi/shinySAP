@@ -259,6 +259,23 @@ apply_rename_to_pickers <- function(session, input, fields, old, new,
 # `fields` may be a function, for a caller whose set of pickers depends on
 # another input: reading that input inside it makes the observer re-run when the
 # set changes, and pick up the pickers that have just been rendered.
+# The choices one picker gets: everything on offer, plus whatever it currently
+# holds. A selectize silently drops a selection it cannot find among its options,
+# so the current value must always be in there.
+#
+# `available` may be a flat vector or, for the cohort pickers, a named list of
+# optgroups (grouped_cohort_choices). A free-text value matching no defined
+# cohort then gets a group of its own, which says plainly what it is instead of
+# sitting unlabelled among real cohorts.
+picker_choices <- function(available, current) {
+  if (!is.list(available)) return(unique(c("", available, current)))
+  known <- as.character(unlist(available, use.names = FALSE))
+  extra <- setdiff(as.character(current), c(known, ""))
+  out <- c(list(""), available)
+  if (length(extra)) out[["Not defined on the Cohorts tab"]] <- extra
+  out
+}
+
 sync_pickers <- function(session, fields, choices, pf) {
   reported <- new.env(parent = emptyenv())
   observe({
@@ -273,7 +290,7 @@ sync_pickers <- function(session, fields, choices, pf) {
       if (is.null(current)) current <- character(0)
       updateSelectizeInput(
         session, field,
-        choices = unique(c("", available, current)),
+        choices = picker_choices(available, current),
         selected = current
       )
     }

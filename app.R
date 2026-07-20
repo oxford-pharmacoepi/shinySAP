@@ -68,7 +68,12 @@ library(jsonlite)
 # 0.4.17 gave codelists an optional category (Index event, Comorbidity, ...):
 #        the document groups the codelist appendix by it, the way DARWIN SAPs
 #        do. Uncategorised codelists fall into "Other".
-SAP_SCHEMA_VERSION <- "0.4.17"
+# 0.4.18 added study$min_cell_count, the omopgenerics::suppress(minCellCount =)
+#        threshold every result is suppressed at before export. Study-level, not
+#        per-analysis: it governs what may leave the data partner at all. A file
+#        without it loads at 5 -- the function's own default and the DARWIN
+#        convention -- rather than blank, which would read as no suppression.
+SAP_SCHEMA_VERSION <- "0.4.18"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")
@@ -289,8 +294,14 @@ server <- function(input, output, session) {
 
   # The bracket convention as a contract: every [cs_x] a cohort cites must
   # resolve to a codelist on the Codelists tab, and idle codelists get a nudge.
+  #
+  # table_name_collisions() guards the generated code rather than the JSON: two
+  # cohort names that differ only in punctuation collapse to one CDM table name,
+  # and the script would then create that table twice and quietly estimate
+  # everything against the second.
   problems <- reactive(c(cohorts$problems(), analyses$problems(),
-                         codelist_reference_problems(cohorts$data(), codelists$names())))
+                         codelist_reference_problems(cohorts$data(), codelists$names()),
+                         table_name_collisions(cohorts$data())))
 
   # A clicked Save: once the working file exists it simply rewrites it (with
   # the title guard and the problems warning). Only the FIRST save has a

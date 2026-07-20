@@ -95,8 +95,12 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
 
     # A function, not a vector, so the observer re-runs on a type change and
     # picks up the freshly rendered pickers.
+    # Grouped by kind, not filtered by it: an author picking a denominator can
+    # see at a glance which entries actually are denominators, while free text
+    # and not-yet-defined cohorts keep working and the template validators stay
+    # the thing that enforces the rule.
     sync_pickers(session, function() analysis_template(type_r())$pickers$cohorts %||% character(0),
-                 cohort_names, base_pf)
+                 reactive(grouped_cohort_choices(cohort_index())), base_pf)
     sync_pickers(session, function() analysis_template(type_r())$pickers$sources %||% character(0),
                  source_names, base_pf)
     sync_pickers(session, "data_sources", source_names, base_pf)
