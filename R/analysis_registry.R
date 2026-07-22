@@ -134,13 +134,6 @@ washout_days_value <- function(w) {
   if (is.null(d) || is.infinite(d)) NULL else d
 }
 
-format_washout <- function(w) {
-  d <- washout_days(w)
-  if (is.null(d)) return("not stated")
-  if (is.infinite(d)) return("unbounded")
-  paste(d, "days")
-}
-
 # The registry ----------------------------------------------------------------
 #
 # Populated at source time by the analysis_type_*.R files. Lookup is by key, so
@@ -175,15 +168,21 @@ analysis_registry_env <- environment()
 #             `cohorts` is the named list from cohorts$by_name(). An analysis can
 #             name a cohort nobody defined (the pickers allow free text), so look
 #             one up with cohort_by_name() and handle NULL.
+#   package   which library the generated estimator call comes from. Defaulted
+#             rather than required, because every template so far is an
+#             IncidencePrevalence estimator -- but declared here so one that is
+#             not can say so, and the script header follows automatically.
 register_analysis_template <- function(type, hint = NULL, ui, collect,
                                        pickers = list(), denominator = "denominator_cohort",
                                        subcohorts = list(), serialised_type = NULL,
                                        flatten = function(p) p,
-                                       validate = function(params, cohorts) character(0)) {
+                                       validate = function(params, cohorts) character(0),
+                                       package = "IncidencePrevalence") {
   analysis_registry_env$ANALYSIS_TEMPLATES[[type]] <- list(
     hint = hint, ui = ui, collect = collect, pickers = pickers,
     denominator = denominator, subcohorts = subcohorts,
-    serialised_type = serialised_type, flatten = flatten, validate = validate
+    serialised_type = serialised_type, flatten = flatten, validate = validate,
+    package = package
   )
 }
 

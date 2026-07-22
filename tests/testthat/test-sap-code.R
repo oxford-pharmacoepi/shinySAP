@@ -250,12 +250,28 @@ test_that("the script's blocks are labelled, ordered, and skip plain cohorts", {
       parameters = list(denominatorTable = "General population",
                         outcomeTable = "Flu vaccine")))))
 
+  # Libraries leads, derived from what the blocks after it call.
   expect_identical(vapply(secs, function(s) s$group, character(1)),
-                   c("Denominator cohort sets", "Estimates", "Result suppression"))
+                   c("Libraries", "Denominator cohort sets", "Estimates",
+                     "Result suppression"))
   expect_identical(vapply(secs, function(s) s$title, character(1)),
-                   c("General population", "Point prevalence", NA_character_))
+                   c(NA_character_, "General population", "Point prevalence",
+                     NA_character_))
   # The estimate is assigned, so the suppression block can name it.
-  expect_match(secs[[2]]$code, "point_prevalence_1 <- estimatePointPrevalence\\(", perl = TRUE)
+  expect_match(secs[[3]]$code, "point_prevalence_1 <- estimatePointPrevalence\\(", perl = TRUE)
+})
+
+# The header is a block, not something sap_r_script() adds on the way out --
+# otherwise the flat script would carry it and the appendix, which renders the
+# blocks, would not. That drift is what sap_script_sections() exists to prevent.
+test_that("the library header is a block, so both forms of the script show it", {
+  sap <- list(cohorts = list(list(
+    name = "FL", kind = "target",
+    operations = list(list(op = "concept_cohort", codelist = "cs_fl")))))
+  secs <- sap_script_sections(sap)
+  expect_identical(secs[[1]]$group, "Libraries")
+  expect_match(secs[[1]]$code, "library(CohortConstructor)", fixed = TRUE)
+  expect_match(sap_r_script(sap), "library(CohortConstructor)", fixed = TRUE)
 })
 
 # An analysis the package cannot express must still get a block: dropping it
@@ -329,4 +345,22 @@ test_that("a free-text value is kept, in a group that says what it is", {
   expect_null(picker_choices(list("Outcome" = "Flu"), "Flu")[["Not defined on the Cohorts tab"]])
   # Flat choices (data sources, strata) keep the old behaviour exactly.
   expect_identical(picker_choices(c("a", "b"), "c"), c("", "a", "b", "c"))
+})
+
+# The two packages return different things, so they take different idioms.
+# generateDenominatorCohortSet() returns a CDM REFERENCE, so a bare call would
+# discard the new table and every estimate pointing at it would fail at run time.
+test_that("the script assigns the denominator back into cdm", {
+  script <- sap_r_script(list(cohorts = list(list(
+    name = "General population", kind = "denominator", sex = list("Both"),
+    ageGroup = list(c(0, 150)), daysPriorObservation = list(0)))))
+  expect_match(script, "cdm <- generateDenominatorCohortSet(", fixed = TRUE)
+})
+
+# conceptCohort() returns a cohort TABLE, which goes into a cdm slot instead.
+test_that("the script assigns a typed cohort into its cdm slot", {
+  script <- sap_r_script(list(cohorts = list(list(
+    name = "FL", kind = "target",
+    operations = list(list(op = "concept_cohort", codelist = "cs_fl"))))))
+  expect_match(script, "cdm$fl <- conceptCohort(", fixed = TRUE)
 })

@@ -59,13 +59,14 @@ shiny::runApp("path/to/shinySAP")
 
 ## Output
 
-Files are named `sap-<study-title-slug>-<timestamp>.json`. The shape is stable:
+Files are named `sap-<study-code-or-title-slug>-v<version>.json`, one file per
+SAP, rewritten in place by every save and autosave. The shape is stable:
 optional text fields serialise to `null` when blank, and list fields are always
 JSON arrays even when they hold a single entry.
 
 ```json
 {
-  "sap_schema_version": "0.4.19",
+  "sap_schema_version": "0.4.22",
   "generated_at": "2026-07-09T14:02:11+0100",
   "study": {
     "title": "Metformin and lactic acidosis",
@@ -76,7 +77,9 @@ JSON arrays even when they hold a single entry.
     "date": "2026-07-09",
     "background": "...",
     "aim": "The aim of this study is to ...",
-    "objectives": ["Estimate the incidence of lactic acidosis"],
+    "objectives": [
+      { "id": "obj_1", "text": "Estimate the incidence of lactic acidosis" }
+    ],
     "amendments": [
       { "version": "1.1", "date": "2026-07-09",
         "description": "Added the SIDIAP data source." }
@@ -102,6 +105,11 @@ JSON arrays even when they hold a single entry.
       "category": "Medicine",
       "description": "CodelistGenerator, ATC A10BA02",
       "source_file": "metformin_codes.csv",
+      "vocabulary_version": "v5.0 31-AUG-23",
+      "concept_set_expression": [
+        { "concept_id": "1503297", "excluded": false,
+          "descendants": true, "mapped": false }
+      ],
       "codes": [
         { "code": "1503297", "name": "metformin" },
         { "code": "40164929", "name": "metformin hydrochloride 500 MG Oral Tablet" }
@@ -116,7 +124,13 @@ JSON arrays even when they hold a single entry.
       "entry_events": ["Metformin dispensation [cs_metformin]"],
       "inclusion_criteria": ["Index on the first occurrence ever",
                              "Aged 18 or over at index"],
-      "exit_criteria": ["End of continuous observation"]
+      "exit_criteria": ["End of continuous observation"],
+      "operations": [
+        { "op": "concept_cohort", "codelist": "cs_metformin" },
+        { "op": "require_first_entry" },
+        { "op": "require_demographics", "age_range": [[18, 150]] },
+        { "op": "exit_at_observation_end" }
+      ]
     },
     {
       "name": "Metformin denominator",
@@ -136,6 +150,7 @@ JSON arrays even when they hold a single entry.
     {
       "name": "Incidence of lactic acidosis",
       "analysis_type": "Incidence",
+      "objectives": ["obj_1"],
       "data_sources": ["cprd"],
       "parameters": {
         "denominatorTable": "Metformin denominator",
@@ -156,8 +171,9 @@ JSON arrays even when they hold a single entry.
 }
 ```
 
-An analysis carries three keys of its own — `name`, `analysis_type` and
-`data_sources` — and everything else under `parameters`. Which keys appear there
+An analysis carries four keys of its own — `name`, `analysis_type`, `objectives`
+(the objectives it answers, many-to-many) and `data_sources` — and everything
+else under `parameters`. Which keys appear there
 is decided by `analysis_type`, so a reader can tell "no comparator, because this
 is an incidence analysis" from "the comparator was left blank".
 

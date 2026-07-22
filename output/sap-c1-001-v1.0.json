@@ -1,6 +1,6 @@
 {
-  "sap_schema_version": "0.4.19",
-  "generated_at": "2026-07-22T13:12:23+0100",
+  "sap_schema_version": "0.4.22",
+  "generated_at": "2026-07-22T15:30:39+0100",
   "study": {
     "title": "Prevalence of rare blood cancers in Europe",
     "study_code": "C1-001",
@@ -10,7 +10,32 @@
     "date": "2026-07-17",
     "background": "Substantial uncertainty surrounds the prevalence of rare blood cancers. Using real-world data, brought together as part of DARWIN EU®, we aim to estimate the prevalence of rare blood cancers in order to see if they still meet the condition to be classified as a rare disease.",
     "aim": "What is the prevalence of rare blood cancers in Europe?",
-    "objectives": ["To estimate the prevalence of follicular lymphoma between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex", "To estimate the prevalence of diffuse Large B-Cell Lymphoma between 1 st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex", "To estimate the prevalence of multiple myeloma between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex", "To estimate the prevalence of chronic lymphocytic leukaemia between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex", "To estimate the prevalence of acute myeloid leukaemia between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex and sex", "To estimate the prevalence of acute lymphocytic leukaemia between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex"],
+    "objectives": [
+      {
+        "id": "obj_1",
+        "text": "To estimate the prevalence of follicular lymphoma between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex"
+      },
+      {
+        "id": "obj_2",
+        "text": "To estimate the prevalence of diffuse Large B-Cell Lymphoma between 1 st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex"
+      },
+      {
+        "id": "obj_3",
+        "text": "To estimate the prevalence of multiple myeloma between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex"
+      },
+      {
+        "id": "obj_4",
+        "text": "To estimate the prevalence of chronic lymphocytic leukaemia between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex"
+      },
+      {
+        "id": "obj_5",
+        "text": "To estimate the prevalence of acute myeloid leukaemia between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex and sex"
+      },
+      {
+        "id": "obj_6",
+        "text": "To estimate the prevalence of acute lymphocytic leukaemia between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex"
+      }
+    ],
     "amendments": []
   },
   "cdm_sources": [
@@ -47,6 +72,459 @@
       "category": "Condition / observation",
       "description": "Preliminary follicular lymphoma concept set from DARWIN EU C1-001 v2.0, Appendix I. Includes Condition and Observation concepts; no descendants. Clinical review required before final use.",
       "source_file": "follicular_lymphoma_codelist_protocol_v2.csv",
+      "vocabulary_version": null,
+      "concept_set_expression": [
+        {
+          "concept_id": "35610325",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4002357",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4001329",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4003833",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4097572",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4079288",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4173977",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4079289",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4123298",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4121853",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4121970",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4146630",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4141258",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4147411",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36684826",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4301668",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4299152",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40488901",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40488917",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40489407",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40490467",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40490991",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40490998",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40492018",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40492940",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40493011",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40493012",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40493017",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40486169",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40486173",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40486654",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40487141",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40487142",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "45765770",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "45765919",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36715795",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42537145",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44808015",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44814156",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44808028",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44808117",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44808118",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4146024",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4119131",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4121331",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4146027",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4146031",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "438698",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "435753",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "200349",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "441521",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "192560",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "195195",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "200343",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "132841",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "435492",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "200338",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "198088",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "198374",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "320347",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "440058",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "194878",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4038838",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4149840",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4017277",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4200880",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4265301",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4265735",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4288232",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4230587",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4188203",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4204524",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4205271",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37116892",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37203899",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        }
+      ],
       "codes": [
         {
           "code": "35610325",
@@ -355,6 +833,8 @@
       "category": "Index event",
       "description": "Diffuse large B-cell lymphoma protocol codelist",
       "source_file": null,
+      "vocabulary_version": null,
+      "concept_set_expression": [],
       "codes": []
     },
     {
@@ -362,6 +842,8 @@
       "category": "Index event",
       "description": "Multiple myeloma protocol codelist",
       "source_file": null,
+      "vocabulary_version": null,
+      "concept_set_expression": [],
       "codes": []
     },
     {
@@ -369,6 +851,8 @@
       "category": "Index event",
       "description": "Chronic lymphocytic leukaemia protocol codelist",
       "source_file": null,
+      "vocabulary_version": null,
+      "concept_set_expression": [],
       "codes": []
     },
     {
@@ -376,6 +860,8 @@
       "category": "Index event",
       "description": "Acute myeloid leukaemia protocol codelist",
       "source_file": null,
+      "vocabulary_version": null,
+      "concept_set_expression": [],
       "codes": []
     },
     {
@@ -383,6 +869,8 @@
       "category": "Index event",
       "description": "Acute lymphocytic leukaemia protocol codelist",
       "source_file": null,
+      "vocabulary_version": null,
+      "concept_set_expression": [],
       "codes": []
     }
   ],
@@ -419,7 +907,19 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of follicular lymphoma [cs_follicular_lymphoma]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for follicular lymphoma", "Index on the first occurrence ever"],
-      "exit_criteria": ["End of continuous observation"]
+      "exit_criteria": ["End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_follicular_lymphoma"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "exit_at_observation_end"
+        }
+      ]
     },
     {
       "name": "Follicular lymphoma 5-year partial prevalence",
@@ -427,7 +927,21 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of follicular lymphoma [cs_follicular_lymphoma]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for follicular lymphoma", "Index on the first occurrence ever"],
-      "exit_criteria": ["1825 days after index", "End of continuous observation"]
+      "exit_criteria": ["1825 days after index", "End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_follicular_lymphoma",
+          "exit": "event_start_date"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "pad_cohort_end",
+          "days": 1825
+        }
+      ]
     },
     {
       "name": "Follicular lymphoma 2-year partial prevalence",
@@ -435,7 +949,21 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of follicular lymphoma [cs_follicular_lymphoma]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for follicular lymphoma", "Index on the first occurrence ever"],
-      "exit_criteria": ["730 days after index", "End of continuous observation"]
+      "exit_criteria": ["730 days after index", "End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_follicular_lymphoma",
+          "exit": "event_start_date"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "pad_cohort_end",
+          "days": 730
+        }
+      ]
     },
     {
       "name": "Diffuse large B-cell lymphoma complete prevalence",
@@ -443,7 +971,19 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of diffuse large B-cell lymphoma [cs_diffuse_large_b_cell_lymphoma]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for diffuse large B-cell lymphoma", "Index on the first occurrence ever"],
-      "exit_criteria": ["End of continuous observation"]
+      "exit_criteria": ["End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_diffuse_large_b_cell_lymphoma"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "exit_at_observation_end"
+        }
+      ]
     },
     {
       "name": "Diffuse large B-cell lymphoma 5-year partial prevalence",
@@ -451,7 +991,21 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of diffuse large B-cell lymphoma [cs_diffuse_large_b_cell_lymphoma]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for diffuse large B-cell lymphoma", "Index on the first occurrence ever"],
-      "exit_criteria": ["1825 days after index", "End of continuous observation"]
+      "exit_criteria": ["1825 days after index", "End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_diffuse_large_b_cell_lymphoma",
+          "exit": "event_start_date"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "pad_cohort_end",
+          "days": 1825
+        }
+      ]
     },
     {
       "name": "Diffuse large B-cell lymphoma 2-year partial prevalence",
@@ -459,7 +1013,21 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of diffuse large B-cell lymphoma [cs_diffuse_large_b_cell_lymphoma]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for diffuse large B-cell lymphoma", "Index on the first occurrence ever"],
-      "exit_criteria": ["730 days after index", "End of continuous observation"]
+      "exit_criteria": ["730 days after index", "End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_diffuse_large_b_cell_lymphoma",
+          "exit": "event_start_date"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "pad_cohort_end",
+          "days": 730
+        }
+      ]
     },
     {
       "name": "Multiple myeloma complete prevalence",
@@ -467,7 +1035,19 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of multiple myeloma [cs_multiple_myeloma]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for multiple myeloma", "Index on the first occurrence ever"],
-      "exit_criteria": ["End of continuous observation"]
+      "exit_criteria": ["End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_multiple_myeloma"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "exit_at_observation_end"
+        }
+      ]
     },
     {
       "name": "Multiple myeloma 5-year partial prevalence",
@@ -475,7 +1055,21 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of multiple myeloma [cs_multiple_myeloma]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for multiple myeloma", "Index on the first occurrence ever"],
-      "exit_criteria": ["1825 days after index", "End of continuous observation"]
+      "exit_criteria": ["1825 days after index", "End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_multiple_myeloma",
+          "exit": "event_start_date"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "pad_cohort_end",
+          "days": 1825
+        }
+      ]
     },
     {
       "name": "Multiple myeloma 2-year partial prevalence",
@@ -483,7 +1077,21 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of multiple myeloma [cs_multiple_myeloma]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for multiple myeloma", "Index on the first occurrence ever"],
-      "exit_criteria": ["730 days after index", "End of continuous observation"]
+      "exit_criteria": ["730 days after index", "End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_multiple_myeloma",
+          "exit": "event_start_date"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "pad_cohort_end",
+          "days": 730
+        }
+      ]
     },
     {
       "name": "Chronic lymphocytic leukaemia complete prevalence",
@@ -491,7 +1099,19 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of chronic lymphocytic leukaemia [cs_chronic_lymphocytic_leukaemia]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for chronic lymphocytic leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["End of continuous observation"]
+      "exit_criteria": ["End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_chronic_lymphocytic_leukaemia"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "exit_at_observation_end"
+        }
+      ]
     },
     {
       "name": "Chronic lymphocytic leukaemia 5-year partial prevalence",
@@ -499,7 +1119,21 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of chronic lymphocytic leukaemia [cs_chronic_lymphocytic_leukaemia]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for chronic lymphocytic leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["1825 days after index", "End of continuous observation"]
+      "exit_criteria": ["1825 days after index", "End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_chronic_lymphocytic_leukaemia",
+          "exit": "event_start_date"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "pad_cohort_end",
+          "days": 1825
+        }
+      ]
     },
     {
       "name": "Chronic lymphocytic leukaemia 2-year partial prevalence",
@@ -507,7 +1141,21 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of chronic lymphocytic leukaemia [cs_chronic_lymphocytic_leukaemia]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for chronic lymphocytic leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["730 days after index", "End of continuous observation"]
+      "exit_criteria": ["730 days after index", "End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_chronic_lymphocytic_leukaemia",
+          "exit": "event_start_date"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "pad_cohort_end",
+          "days": 730
+        }
+      ]
     },
     {
       "name": "Acute myeloid leukaemia complete prevalence",
@@ -515,7 +1163,19 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of acute myeloid leukaemia [cs_acute_myeloid_leukaemia]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for acute myeloid leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["End of continuous observation"]
+      "exit_criteria": ["End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_acute_myeloid_leukaemia"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "exit_at_observation_end"
+        }
+      ]
     },
     {
       "name": "Acute myeloid leukaemia 5-year partial prevalence",
@@ -523,7 +1183,21 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of acute myeloid leukaemia [cs_acute_myeloid_leukaemia]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for acute myeloid leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["1825 days after index", "End of continuous observation"]
+      "exit_criteria": ["1825 days after index", "End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_acute_myeloid_leukaemia",
+          "exit": "event_start_date"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "pad_cohort_end",
+          "days": 1825
+        }
+      ]
     },
     {
       "name": "Acute myeloid leukaemia 2-year partial prevalence",
@@ -531,7 +1205,21 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of acute myeloid leukaemia [cs_acute_myeloid_leukaemia]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for acute myeloid leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["730 days after index", "End of continuous observation"]
+      "exit_criteria": ["730 days after index", "End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_acute_myeloid_leukaemia",
+          "exit": "event_start_date"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "pad_cohort_end",
+          "days": 730
+        }
+      ]
     },
     {
       "name": "Acute lymphocytic leukaemia complete prevalence",
@@ -539,7 +1227,19 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of acute lymphocytic leukaemia [cs_acute_lymphocytic_leukaemia]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for acute lymphocytic leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["End of continuous observation"]
+      "exit_criteria": ["End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_acute_lymphocytic_leukaemia"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "exit_at_observation_end"
+        }
+      ]
     },
     {
       "name": "Acute lymphocytic leukaemia 5-year partial prevalence",
@@ -547,7 +1247,21 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of acute lymphocytic leukaemia [cs_acute_lymphocytic_leukaemia]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for acute lymphocytic leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["1825 days after index", "End of continuous observation"]
+      "exit_criteria": ["1825 days after index", "End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_acute_lymphocytic_leukaemia",
+          "exit": "event_start_date"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "pad_cohort_end",
+          "days": 1825
+        }
+      ]
     },
     {
       "name": "Acute lymphocytic leukaemia 2-year partial prevalence",
@@ -555,13 +1269,28 @@
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "entry_events": ["Diagnosis or observation record of acute lymphocytic leukaemia [cs_acute_lymphocytic_leukaemia]"],
       "inclusion_criteria": ["Relevant diagnosis or observation code for acute lymphocytic leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["730 days after index", "End of continuous observation"]
+      "exit_criteria": ["730 days after index", "End of continuous observation"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": "cs_acute_lymphocytic_leukaemia",
+          "exit": "event_start_date"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "pad_cohort_end",
+          "days": 730
+        }
+      ]
     }
   ],
   "proposed_analyses": [
     {
       "name": "Follicular lymphoma – 5-year partial point prevalence – 365d prior observation",
       "analysis_type": "estimatePointPrevalence",
+      "objectives": [],
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "parameters": {
         "denominatorTable": "General population denominator",

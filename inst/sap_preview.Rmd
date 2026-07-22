@@ -57,7 +57,8 @@ source_app <- function(file) {
   }
   source(hit[[1]], local = knitr::knit_global())
 }
-for (f in c("utils.R", "cohort_kinds.R", "analysis_registry.R", "sap_code.R")) source_app(f)
+for (f in c("utils.R", "cohort_kinds.R", "analysis_registry.R", "sap_code.R",
+            "cohort_operations.R")) source_app(f)
 
 is_word <- isTRUE(knitr::opts_knit$get("rmarkdown.pandoc.to") == "docx")
 
@@ -180,7 +181,7 @@ if (!is.na(bg_text) && nzchar(trimws(bg_text))) {
 
 ```{r objectives, results='asis'}
 aim  <- chr(study$aim)
-objs <- unlist(study$objectives %||% list())
+objs <- vapply(study$objectives %||% list(), objective_text, character(1))
 if (nzchar(trimws(aim)) || length(objs)) {
   cat("\n**Research question and objectives**\n\n")
   if (nzchar(trimws(aim))) cat(aim, "\n\n")
@@ -251,10 +252,18 @@ if (!length(codelists)) {
   # a single cell made one row 41 lines tall for a 75-code list, and still cut it
   # off at 40 -- so the section was both bulky and incomplete. They now live in
   # full, untruncated, in the codelist appendix; this cell says how many to expect.
+  #
+  # Counted from the EXPRESSION, which is what the author chose. An expression
+  # that pulls in descendants resolves to more concepts than it names, so the
+  # count is stated as a floor rather than as a total the SAP cannot know without
+  # a vocabulary to resolve against.
   codes_cell <- function(cl) {
-    n <- length(cl$codes %||% list())
-    if (!n) return("— not yet uploaded")
-    sprintf("%d (listed in full in the appendix)", n)
+    expr <- cl$concept_set_expression %||% list()
+    if (!length(expr)) return("— not yet uploaded")
+    if (concept_set_expands(expr)) {
+      return(sprintf("%d named, plus descendants (listed in the appendix)", length(expr)))
+    }
+    sprintf("%d (listed in full in the appendix)", length(expr))
   }
   describe <- function(cl) {
     d   <- chr(cl$description)
@@ -386,7 +395,17 @@ if (!length(cohorts)) {
   # tell which line set the index date cannot check the cohort definition at all,
   # and the two are separate fields on the card precisely because they are
   # separate operations.
+  # Typed operations win when a cohort has them, and the sentences are GENERATED
+  # from them (cohort_operations_prose) rather than written beside them. That is
+  # the inversion the operations exist for: one source, so the logic a reviewer
+  # reads and the code the study runs cannot describe different cohorts. A cohort
+  # authored as free text is unaffected and renders exactly as before.
   cohort_logic <- function(co) {
+    ops <- cohort_operations_prose(co)
+    if (length(ops)) {
+      return(paste(c("Generated from typed steps, in order:",
+                     sprintf("%d. %s", seq_along(ops), ops)), collapse = "\n"))
+    }
     entry <- unlist(co$entry_events %||% list())
     incl  <- unlist(co$inclusion_criteria %||% list())
     exits <- unlist(co$exit_criteria %||% list())
@@ -414,6 +433,14 @@ if (!length(cohorts)) {
   # plain version still decides what a denominator cohort shows (its facts), and
   # having both means the styled and unstyled forms cannot say different things.
   logic_paragraph <- function(co) {
+    ops <- cohort_operations_prose(co)
+    if (length(ops)) {
+      return(as_paragraph(
+        as_chunk("Generated from typed steps, in order:",
+                 props = fp_text_default(bold = TRUE)),
+        as_chunk(paste0("\n", paste(sprintf("%d. %s", seq_along(ops), ops),
+                                    collapse = "\n")))))
+    }
     entry <- unlist(co$entry_events %||% list())
     incl  <- unlist(co$inclusion_criteria %||% list())
     exits <- unlist(co$exit_criteria %||% list())
@@ -555,6 +582,32 @@ if (!length(analyses)) {
   )
   flextable::flextable_to_rmd(items_table(df))
   cat("\n\n")
+
+  # Which analyses answer which objective. The plan states objectives at the top
+  # and analyses in the middle, and until 0.4.22 nothing joined the two -- a
+  # reviewer checking that the study answers what it set out to answer had to do
+  # it by eye. Derived from the analyses' own objective references, so it cannot
+  # disagree with them.
+  objs <- study$objectives %||% list()
+  if (length(objs)) {
+    cat("## Objectives answered\n\n")
+    answered <- function(i) {
+      id <- objective_id(objs[[i]])
+      nm <- vapply(analyses, function(a) {
+        if (id %in% as.character(unlist(a$objectives %||% list()))) chr(a$name) else ""
+      }, character(1))
+      nm <- nm[nzchar(nm)]
+      if (!length(nm)) "— no analysis yet" else paste(nm, collapse = "\n")
+    }
+    df <- data.frame(
+      `#`         = as.character(seq_along(objs)),
+      `Objective` = vapply(objs, objective_text, character(1)),
+      `Analyses`  = vapply(seq_along(objs), answered, character(1)),
+      check.names = FALSE, stringsAsFactors = FALSE
+    )
+    flextable::flextable_to_rmd(items_table(df))
+    cat("\n\n")
+  }
 }
 ```
 
@@ -613,22 +666,68 @@ codes_ft <- function(df) {
   ft
 }
 
+# An EXPANDING expression is shown as the expression, flags and all, because
+# then the flags are the meaning: "include descendants" is the difference
+# between one concept and a whole subtree, and a reader cannot check the
+# codelist without seeing which concepts carry it. A flat expression has nothing
+# to show but its ids, so it keeps the denser tiled table.
+expression_table <- function(expr, codes) {
+  named <- vapply(codes, function(cd) chr(cd$name), character(1))
+  names(named) <- vapply(codes, function(cd) chr(cd$code), character(1))
+  ids <- vapply(expr, function(e) chr(e$concept_id), character(1))
+  nm  <- unname(named[ids])
+  nm[is.na(nm)] <- ""
+  yn  <- function(f) vapply(expr, function(e) if (isTRUE(e[[f]])) "yes" else "", character(1))
+  data.frame(
+    `Concept ID`   = ids,
+    `Concept name` = nm,
+    `Descendants`  = yn("descendants"),
+    `Mapped`       = yn("mapped"),
+    `Excluded`     = yn("excluded"),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+}
+
 if (!length(all_codelists)) {
   cat("_No codelists defined._\n")
 } else {
   for (cl in all_codelists) {
+    expr  <- cl$concept_set_expression %||% list()
     codes <- cl$codes %||% list()
     cat("\n\n## ", chr(cl$name), "\n\n", sep = "")
-    if (!length(codes)) {
+    if (!length(expr) && !length(codes)) {
       # Stated, not implied by an empty section: this is the plan admitting the
       # codes are still to come, which is a reviewable fact about the SAP.
       cat("_No codes uploaded yet._\n\n")
       next
     }
-    src <- chr(cl$source_file)
-    cat(sprintf("%d concept%s%s.\n\n", length(codes),
-                if (length(codes) == 1) "" else "s",
-                if (nzchar(src)) sprintf(", from `%s`", src) else ""))
+    src   <- chr(cl$source_file)
+    vocab <- chr(cl$vocabulary_version)
+    from  <- if (nzchar(src)) sprintf(", from `%s`", src) else ""
+    if (concept_set_expands(expr)) {
+      n_desc <- sum(vapply(expr, function(e) isTRUE(e$descendants), logical(1)))
+      n_excl <- sum(vapply(expr, function(e) isTRUE(e$excluded), logical(1)))
+      cat(sprintf(paste("%d concept%s named%s%s%s. This is a concept set",
+                        "expression, not a fixed list: the codelist it resolves to",
+                        "is produced against each data source's own vocabulary when",
+                        "the study runs.\n\n"),
+                  length(expr), if (length(expr) == 1) "" else "s",
+                  if (n_desc) sprintf(", %d including descendants", n_desc) else "",
+                  if (n_excl) sprintf(", %d excluded", n_excl) else "", from))
+      flextable::flextable_to_rmd(codes_ft(expression_table(expr, codes)))
+      cat("\n\n")
+      next
+    }
+    # A flat expression resolves to exactly the concepts it names, so the
+    # snapshot IS the codelist -- and the vocabulary it came from is worth
+    # stating, since another version may resolve the same ids differently.
+    cat(sprintf("%d concept%s%s.%s\n\n", length(codes),
+                if (length(codes) == 1) "" else "s", from,
+                if (nzchar(vocab)) sprintf(" Vocabulary version: %s.", vocab) else ""))
+    if (!length(codes)) {
+      cat("_Every concept named is excluded, so this codelist resolves to nothing._\n\n")
+      next
+    }
     flextable::flextable_to_rmd(codes_ft(codes_table(codes)))
     cat("\n\n")
   }
