@@ -227,3 +227,39 @@ test_that("migrate_sap: old snake_case denominator keys are renamed onto the arg
     expect_null(ch[[old]], info = old)
   }
 })
+
+# Concept set expressions -------------------------------------------------------
+#
+# 0.4.20 made the concept set expression canonical. A pre-0.4.20 codelist has
+# only its resolved codes, which is not a lossy starting point: a flat list of
+# concept ids IS an expression with nothing excluded and no descendants.
+test_that("migrate_sap: a codes-only codelist gains the expression it implies", {
+  cl <- migrate_sap(list(codelists = list(list(
+    name = "cs_x",
+    codes = list(list(code = "111", name = "a"), list(code = "222"))
+  ))))$codelists[[1]]
+  expect_length(cl$concept_set_expression, 2)
+  expect_identical(cl$concept_set_expression[[1]],
+                   list(concept_id = "111", excluded = FALSE,
+                        descendants = FALSE, mapped = FALSE))
+  # The snapshot is untouched: it was always the resolved list.
+  expect_length(cl$codes, 2)
+})
+
+# Regenerating an expression from the snapshot would flatten a subtree back to
+# its seed concept, silently narrowing a codelist the author uploaded from Atlas.
+test_that("migrate_sap: an existing expression is never rebuilt from the codes", {
+  cl <- migrate_sap(list(codelists = list(list(
+    name = "cs_x",
+    concept_set_expression = list(list(concept_id = "111", excluded = FALSE,
+                                       descendants = TRUE, mapped = FALSE)),
+    codes = list(list(code = "111"), list(code = "222"))
+  ))))$codelists[[1]]
+  expect_length(cl$concept_set_expression, 1)
+  expect_true(cl$concept_set_expression[[1]]$descendants)
+})
+
+test_that("migrate_sap: a codelist with no codes yet gains an empty expression", {
+  cl <- migrate_sap(list(codelists = list(list(name = "cs_x", codes = list()))))$codelists[[1]]
+  expect_length(cl$concept_set_expression, 0)
+})

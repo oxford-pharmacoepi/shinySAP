@@ -184,16 +184,40 @@ read_sap <- function(path) {
 
 # Codelist uploads --------------------------------------------------------------
 #
+# A concept set EXPRESSION and a codelist are different objects, and the SAP
+# carries both because they answer different questions.
+#
+# The expression is the SPECIFICATION: per concept, whether it is excluded,
+# whether its descendants come with it, whether mapped concepts do. It is small,
+# stable, and vocabulary-independent. The codelist is what that expression
+# BECOMES when applied to one vocabulary version -- so it is an output, and a
+# different data partner on a different vocabulary resolves the same expression
+# to a different list. A study running in five countries that shipped resolved
+# codes would be imposing the authoring machine's vocabulary on all five.
+#
+# So the expression is canonical -- it is what the study resolves at run time --
+# and `codes` is a resolved SNAPSHOT, kept because a reviewer signing a plan has
+# to see concepts, not a rule. The snapshot is never an input to anything.
+#
+# The field names are omopgenerics' own (concept_id / excluded / descendants /
+# mapped), so the SAP speaks the standard rather than a private dialect and the
+# generated study code can hand the expression straight to
+# omopgenerics::newConceptSetExpression() without a translation step.
+CONCEPT_SET_DEFAULTS <- list(excluded = FALSE, descendants = FALSE, mapped = FALSE)
+
 # The shapes codelist tools actually produce: a CSV with a concept_id column
 # (CodelistGenerator, Atlas exports), a text file with one code per line, or
 # JSON -- a plain array of codes, an array of {concept_id/code, concept_name/
 # name} objects, or an Atlas concept-set expression ({items: [{concept: ...}]}).
-# Returns a list of list(code, name?) with codes as CHARACTER -- concept ids can
-# exceed integer range, and a code is an identifier, not a quantity. Stops with
-# a plain message on anything unreadable; the caller shows it as a notification.
-read_codelist <- function(path, filename = path) {
-  ext <- tolower(tools::file_ext(filename))
-  nms <- NULL
+#
+# Returns list(expression =, codes =). Codes are CHARACTER throughout -- concept
+# ids can exceed integer range, and a code is an identifier, not a quantity.
+# Stops with a plain message on anything unreadable; the caller shows it as a
+# notification.
+read_concept_set <- function(path, filename = path) {
+  ext   <- tolower(tools::file_ext(filename))
+  nms   <- NULL
+  flags <- NULL
   if (ext == "csv") {
     df <- utils::read.csv(path, stringsAsFactors = FALSE, check.names = FALSE)
     if (!nrow(df)) stop("the file has no rows")
@@ -205,13 +229,25 @@ read_codelist <- function(path, filename = path) {
     if (!is.na(nm_col)) nms <- as.character(df[[nm_col]])
   } else if (ext == "json") {
     x <- jsonlite::fromJSON(path, simplifyVector = FALSE)
-    if (!is.null(x$items)) x <- lapply(x$items, function(it) it$concept %||% it)
-    if (!length(x)) stop("the file holds no codes")
     one <- function(el, key) {
       v <- el[[key[1]]]
       for (k in key[-1]) v <- v %||% el[[k]]
       v
     }
+    # An Atlas export nests its items under `items`, or one level further down
+    # under `expression`. THE FLAGS ARE THE POINT: the previous reader kept only
+    # `concept` and dropped isExcluded / includeDescendants / includeMapped, so
+    # an expression covering a whole SNOMED subtree arrived as the single seed
+    # concept and the SAP silently understated its own codelist.
+    items <- x$items %||% x$expression$items
+    if (!is.null(items)) {
+      flags <- lapply(items, function(it) list(
+        excluded    = isTRUE(one(it, c("isExcluded", "IS_EXCLUDED"))),
+        descendants = isTRUE(one(it, c("includeDescendants", "INCLUDE_DESCENDANTS"))),
+        mapped      = isTRUE(one(it, c("includeMapped", "INCLUDE_MAPPED")))))
+      x <- lapply(items, function(it) it$concept %||% it)
+    }
+    if (!length(x)) stop("the file holds no codes")
     codes <- vapply(x, function(el) {
       if (!is.list(el)) return(as.character(el))
       as.character(one(el, c("concept_id", "conceptId", "code", "CONCEPT_ID")) %||% NA)
@@ -223,16 +259,140 @@ read_codelist <- function(path, filename = path) {
   } else {   # txt, or anything line-based
     codes <- trimws(readLines(path, warn = FALSE))
   }
-  if (is.null(nms)) nms <- rep(NA_character_, length(codes))
+  if (is.null(nms))   nms   <- rep(NA_character_, length(codes))
+  # A format carrying no flags is not silent about them: a bare list of concept
+  # ids means exactly these concepts, nothing excluded and no descendants.
+  if (is.null(flags)) flags <- rep(list(CONCEPT_SET_DEFAULTS), length(codes))
   keep  <- !is.na(codes) & nzchar(codes)
   codes <- codes[keep]
   nms   <- nms[keep]
+  flags <- flags[keep]
   if (!length(codes)) stop("no codes found in the file")
-  unname(Map(function(cd, nm) {
+
+  expression <- unname(Map(function(cd, fl) c(list(concept_id = cd), fl), codes, flags))
+  # An EXCLUDED concept belongs in the expression and not in the snapshot: the
+  # expression says "not this one", so a resolved list containing it would state
+  # the opposite of what the author uploaded.
+  keep_resolved <- !vapply(flags, function(fl) isTRUE(fl$excluded), logical(1))
+  codes_out <- unname(Map(function(cd, nm) {
     out <- list(code = cd)
     if (!is.na(nm) && nzchar(nm)) out$name <- nm
     out
-  }, codes, nms))
+  }, codes[keep_resolved], nms[keep_resolved]))
+
+  list(expression = expression, codes = codes_out)
+}
+
+# The resolved snapshot alone, for callers that only want the codes.
+read_codelist <- function(path, filename = path) {
+  read_concept_set(path, filename)$codes
+}
+
+# TRUE when the expression reaches beyond the concepts it names, so the snapshot
+# is a SEED rather than the resolved list and the document has to say so.
+concept_set_expands <- function(expression) {
+  any(vapply(expression %||% list(),
+             function(e) isTRUE(e$descendants) || isTRUE(e$mapped), logical(1)))
+}
+
+# Objectives --------------------------------------------------------------------
+#
+# An objective is what an analysis EXISTS FOR, so an analysis has to be able to
+# point at one. That needs an identity, and until 0.4.22 the only identity an
+# objective had was its position in the list -- which is exactly what the
+# document prints as "1., 2., 3.". Position is the one identity that cannot be
+# referenced safely: insert an objective at the top and every reference below it
+# silently means something else.
+#
+# So an objective is {id, text}. The id is opaque and never shown; the document
+# still numbers by position, because that is what a reader wants.
+#
+#   "To estimate the prevalence of X"  ->  {"id": "obj_1", "text": "To estimate ..."}
+#
+# The link is MANY-TO-MANY, not one-per-objective: one objective ("estimate the
+# prevalence of follicular lymphoma") is typically served by several analyses
+# (complete, 5-year and 2-year prevalence), and one analysis can serve several
+# objectives. So an analysis carries a LIST of objective ids.
+
+objective_text <- function(o) {
+  v <- if (is.list(o)) o$text else o
+  v <- as.character(v %||% "")[1]
+  if (is.na(v)) "" else v
+}
+
+objective_id <- function(o) {
+  v <- if (is.list(o)) as.character(o$id %||% "")[1] else NA_character_
+  if (is.na(v) || !nzchar(v)) NA_character_ else v
+}
+
+# One past the highest obj_<n> in use -- NOT the lowest free one.
+#
+# Reuse is the hazard here. If a deleted objective's id were handed to the next
+# new objective, an analysis still referencing the deleted one would silently
+# start pointing at a different objective, which is precisely the silent repoint
+# ids exist to prevent. Counting up leaves gaps, and gaps are harmless: the id is
+# opaque and the document numbers by position anyway.
+#
+# The residual case this does not cover: delete the HIGHEST objective, save,
+# reload, add a new one -- the high-water mark is gone with it, so the id can be
+# reissued. Closing that needs a counter persisted in the SAP, which is not worth
+# a field; in the meantime objective_coverage_problems() reports a reference to a
+# missing objective, so the break is visible in the window where it matters.
+next_objective_id <- function(taken) {
+  taken <- as.character(taken %||% character(0))
+  used  <- suppressWarnings(as.integer(sub("^obj_", "", grep("^obj_\\d+$", taken, value = TRUE))))
+  used  <- used[!is.na(used)]
+  sprintf("obj_%d", if (length(used)) max(used) + 1L else 1L)
+}
+
+# Objective texts (from the textarea) reconciled against the objectives already
+# held, so an id survives everything except a rewording.
+#
+# Matched BY TEXT, and by position among equal texts, which is what makes
+# reordering safe: the same sentence keeps its id wherever it moves to. Rewriting
+# an objective's wording does mint a new id and orphan any analysis pointing at
+# the old one -- deliberately, because a reworded objective may be a different
+# objective, and objective_coverage_problems() surfaces the break rather than
+# letting a stale link quietly persist.
+reconcile_objectives <- function(texts, existing) {
+  texts    <- trimws(as.character(texts %||% character(0)))
+  texts    <- texts[nzchar(texts)]
+  existing <- existing %||% list()
+  taken    <- vapply(existing, function(o) objective_id(o) %||% "", character(1))
+  taken    <- taken[!is.na(taken) & nzchar(taken)]
+  unused   <- existing
+  out <- vector("list", length(texts))
+  for (i in seq_along(texts)) {
+    hit <- which(vapply(unused, function(o) identical(objective_text(o), texts[[i]]),
+                        logical(1)))
+    if (length(hit)) {
+      out[[i]] <- list(id = objective_id(unused[[hit[[1]]]]), text = texts[[i]])
+      unused[[hit[[1]]]] <- list(id = NA_character_, text = NA_character_)
+    } else {
+      id    <- next_objective_id(taken)
+      taken <- c(taken, id)
+      out[[i]] <- list(id = id, text = texts[[i]])
+    }
+  }
+  out
+}
+
+# Before 0.4.22 an objective was a bare string, identified by its position. That
+# is a lossless starting point -- position WAS the identity -- so ids are minted
+# in order rather than the author being asked to re-enter anything.
+migrate_objectives <- function(objs) {
+  objs <- objs %||% list()
+  if (!length(objs)) return(list())
+  taken <- vapply(objs, function(o) objective_id(o) %||% "", character(1))
+  taken <- taken[!is.na(taken) & nzchar(taken)]
+  lapply(objs, function(o) {
+    id <- objective_id(o)
+    if (is.na(id)) {
+      id    <- next_objective_id(taken)
+      taken <<- c(taken, id)
+    }
+    list(id = id, text = objective_text(o))
+  })
 }
 
 # Cross-section migrations, run once on a loaded SAP before any section sees it.
@@ -259,8 +419,10 @@ migrate_sap <- function(sap) {
   if (!is.null(sap$study)) {
     sap$study$study_code <- sap$study$study_code %||% sap$study$acronym
     sap$study$acronym    <- NULL
+    sap$study$objectives <- migrate_objectives(sap$study$objectives)
   }
   sap$cdm_changes <- lapply(sap$cdm_changes %||% list(), migrate_cdm_change)
+  sap$codelists   <- lapply(sap$codelists %||% list(), migrate_codelist)
   analyses <- coalesce_key(sap, "proposed_analyses", "analyses")
   cohorts  <- lapply(sap$cohorts %||% list(), migrate_cohort)
   if (!length(analyses)) {
@@ -306,6 +468,25 @@ migrate_sap <- function(sap) {
   sap$proposed_analyses <- analyses
   sap$analyses <- NULL
   sap
+}
+
+# Before 0.4.20 a codelist carried only its resolved `codes`. That is not a lossy
+# starting point: a flat list of concept ids IS a concept set expression -- one
+# with nothing excluded, no descendants and no mapping -- so the expression is
+# derived from the codes rather than left empty for the author to re-enter. The
+# codes stay put as the resolved snapshot they always were.
+#
+# An expression already present is never rebuilt: after one upload of an Atlas
+# export the expression carries flags the codes cannot express, and regenerating
+# it from the snapshot would flatten a subtree back to its seed concept.
+migrate_codelist <- function(cl) {
+  if (!is.null(cl$concept_set_expression)) return(cl)
+  ids <- vapply(cl$codes %||% list(),
+                function(cd) as.character(cd$code %||% cd$concept_id %||% ""), character(1))
+  ids <- ids[!is.na(ids) & nzchar(ids)]
+  cl$concept_set_expression <- unname(lapply(
+    ids, function(id) c(list(concept_id = id), CONCEPT_SET_DEFAULTS)))
+  cl
 }
 
 # Before 0.4.4 a CDM change named one `data_source`; now it holds a

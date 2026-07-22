@@ -1,14 +1,18 @@
 # Section: Codelists ----------------------------------------------------------
 #
 # The codelists a SAP's cohorts cite in [square brackets]: first-class entities
-# with a name, a provenance line, and the CODES THEMSELVES, uploaded from the
-# files codelist tools produce (see read_codelist in utils.R). The codes live
-# in the SAP JSON, so the plan stays self-contained -- a reviewer reads the
+# with a name, a provenance line, and the concept set itself, uploaded from the
+# files codelist tools produce (see read_concept_set in utils.R). Both live in
+# the SAP JSON, so the plan stays self-contained -- a reviewer reads the
 # document, an executor reads the file, and neither needs a side-channel.
 #
-# An upload cannot be "prefilled" back into a fileInput on load, so the codes
-# are card STATE: seeded from the saved SAP, replaced wholesale by the next
-# upload, and reported alongside the other fields.
+# A card holds the concept set EXPRESSION (canonical -- what the study resolves
+# against each data partner's vocabulary) and the resolved CODES (a snapshot,
+# for review). See the header on read_concept_set() for why both.
+#
+# An upload cannot be "prefilled" back into a fileInput on load, so both are card
+# STATE: seeded from the saved SAP, replaced wholesale by the next upload, and
+# reported alongside the other fields.
 
 # The roles DARWIN SAPs group their codelist appendix by (Index events,
 # Comorbidities, Medicines, ...). Canonical, but the picker takes free text --
@@ -36,8 +40,16 @@ codelist_item_ui <- function(id, prefill = NULL) {
                 placeholder = "e.g. CodelistGenerator, ATC J07BB")
     ),
     fileInput(ns("upload"),
-              "Upload codes (.csv with a concept_id column, .txt one code per line, or .json)",
+              paste("Upload a concept set (.json Atlas export keeps its",
+                    "descendant / excluded / mapped flags; .csv with a concept_id",
+                    "column, or .txt one code per line)"),
               accept = c(".csv", ".txt", ".json"), width = "100%"),
+    # The vocabulary the snapshot below was resolved against. Typed, not
+    # detected: shinySAP has no CDM connection, and a snapshot whose vocabulary
+    # is unknown cannot be checked against the one a data partner runs.
+    textInput(ns("vocabulary_version"), "Vocabulary version of these codes",
+              pf("vocabulary_version"), width = "100%",
+              placeholder = "e.g. v5.0 31-AUG-23 (optional)"),
     uiOutput(ns("codes_status"))
   )
 }
@@ -50,42 +62,68 @@ codelist_item_server <- function(id, prefill = NULL, on_remove = function() {}) 
   moduleServer(id, function(input, output, session) {
     observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
 
-    # Seeded from the saved SAP; an upload replaces the whole list.
+    # Seeded from the saved SAP; an upload replaces both wholesale. A SAP old
+    # enough to carry codes and no expression has already been through
+    # migrate_codelist() by the time a card is built.
     codes       <- reactiveVal(prefill$codes %||% list())
+    expression  <- reactiveVal(prefill$concept_set_expression %||% list())
     source_file <- reactiveVal(prefill$source_file %||% NA)
 
     observeEvent(input$upload, {
-      parsed <- tryCatch(read_codelist(input$upload$datapath, input$upload$name),
+      parsed <- tryCatch(read_concept_set(input$upload$datapath, input$upload$name),
                          error = function(e) e)
       if (inherits(parsed, "error")) {
         showNotification(paste("Could not read that codelist:", conditionMessage(parsed)),
                          type = "error")
         return()
       }
-      codes(parsed)
+      codes(parsed$codes)
+      expression(parsed$expression)
       source_file(input$upload$name)
-      showNotification(sprintf("Loaded %d codes from %s.", length(parsed), input$upload$name),
-                       type = "message")
+      showNotification(
+        sprintf("Loaded %d concept%s from %s.%s",
+                length(parsed$expression), if (length(parsed$expression) == 1) "" else "s",
+                input$upload$name,
+                if (concept_set_expands(parsed$expression)) {
+                  " Descendants are included, so the full codelist resolves at run time."
+                } else ""),
+        type = "message")
     })
 
-    # What a collapsed card says it is: the codelist's name and its size.
+    # What a collapsed card says it is: the codelist's name and its size. The
+    # count is the EXPRESSION's, since that is what the author chose; a "+"
+    # marks one that expands to more than it names.
     item_card_label(output, reactive({
-      nm <- trimws(input$name %||% "")
-      n  <- length(codes())
-      paste0(if (nzchar(nm)) nm else "Untitled", " — ", n, " code", if (n == 1) "" else "s")
+      nm   <- trimws(input$name %||% "")
+      n    <- length(expression())
+      more <- if (concept_set_expands(expression())) "+" else ""
+      paste0(if (nzchar(nm)) nm else "Untitled", " — ", n, more,
+             " concept", if (n == 1 && !nzchar(more)) "" else "s")
     }))
 
     output$codes_status <- renderUI({
       all_codes <- codes()
+      expr      <- expression()
       n <- length(all_codes)
-      if (!n) return(p(class = "text-muted small mb-0", "No codes uploaded yet."))
+      if (!n && !length(expr)) {
+        return(p(class = "text-muted small mb-0", "No concept set uploaded yet."))
+      }
       shown <- utils::head(all_codes, CODELIST_SHOWN)
       src   <- source_file()
       div(
         class = "small",
         div(class = "text-muted mb-1",
-            sprintf("%d code%s%s:", n, if (n == 1) "" else "s",
+            sprintf("%d concept%s%s:", length(expr), if (length(expr) == 1) "" else "s",
                     if (!is.null(src) && !is.na(src)) paste0(" from ", src) else "")),
+        # An expanding expression is stated on the card, not just in the
+        # document: the author has to know the list they are looking at is a
+        # seed before they sign anything that says how many concepts it has.
+        if (concept_set_expands(expr)) {
+          div(class = "text-muted fst-italic mb-1",
+              "Includes descendants or mapped concepts, so these are the seed",
+              "concepts -- the full codelist resolves against each data source's",
+              "vocabulary when the study runs.")
+        },
         tags$ul(class = "mb-0 ps-3 font-monospace",
                 lapply(shown, function(cd) {
                   tags$li(paste(c(cd$code, cd$name), collapse = " — "))
@@ -99,11 +137,13 @@ codelist_item_server <- function(id, prefill = NULL, on_remove = function() {}) 
     outputOptions(output, "codes_status", suspendWhenHidden = FALSE)
 
     reactive(list(
-      name        = blank_to_na(input$name),
-      category    = blank_to_na(input$category),
-      description = blank_to_na(input$description),
-      source_file = blank_to_na(as.character(source_file() %||% ""))[1],
-      codes       = codes()
+      name                   = blank_to_na(input$name),
+      category               = blank_to_na(input$category),
+      description            = blank_to_na(input$description),
+      source_file            = blank_to_na(as.character(source_file() %||% ""))[1],
+      vocabulary_version     = blank_to_na(input$vocabulary_version),
+      concept_set_expression = expression(),
+      codes                  = codes()
     ))
   })
 }

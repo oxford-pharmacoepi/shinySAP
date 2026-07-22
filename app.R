@@ -80,7 +80,37 @@ library(jsonlite)
 #        number to prefill. A file without the key now loads blank and stays
 #        blank; study_problems() reports it on Review so the gap is visible
 #        rather than papered over with a plausible guess.
-SAP_SCHEMA_VERSION <- "0.4.19"
+# 0.4.20 made the concept set EXPRESSION canonical for a codelist, in
+#        omopgenerics' own field names (concept_id / excluded / descendants /
+#        mapped), and demoted `codes` to a resolved snapshot with an optional
+#        vocabulary_version stamp. The two answer different questions: an
+#        expression is the specification and resolves differently against each
+#        data partner's vocabulary, so a study running in five countries that
+#        shipped resolved codes would impose the authoring machine's vocabulary
+#        on all five. Speaking the standard's field names also means the
+#        generated study code can pass the expression straight to
+#        omopgenerics::newConceptSetExpression() with no translation step.
+#        A pre-0.4.20 file migrates losslessly: a flat list of concept ids is an
+#        expression with nothing excluded and no descendants.
+# 0.4.21 gave a plain cohort optional typed `operations`: an ordered list of
+#        CohortConstructor verbs (see R/cohort_operations.R), which is what
+#        finally lets cohort code be generated rather than described. Free text
+#        is untouched and NEVER auto-converted -- prose does not carry the facts
+#        a call needs, which is the whole reason for the type. A cohort with
+#        operations renders its logic and its code from them; one without renders
+#        exactly as before.
+# 0.4.22 gave each objective a stable {id, text} and let an analysis name the
+#        objectives it answers. Position was the only identity an objective had,
+#        and position is the one identity that cannot be referenced: inserting an
+#        objective silently repoints every reference below it. The link is
+#        many-to-many -- one objective is usually answered by several analyses
+#        (complete, 5-year and 2-year prevalence of the same disease) -- so an
+#        analysis carries a list. objective_coverage_problems() then reports an
+#        objective nothing implements and an analysis serving nothing, which is
+#        the check that makes an incomplete plan visible rather than inferable.
+#        A pre-0.4.22 file migrates losslessly: position WAS the identity, so
+#        ids are minted in order.
+SAP_SCHEMA_VERSION <- "0.4.22"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")
@@ -91,6 +121,16 @@ ui <- page_navbar(
   theme = bs_theme(version = 5, preset = "shiny"),
   window_title = "shinySAP",
   header = tags$head(tags$style(HTML("
+    /* The objectives picker carries whole sentences, so its options and its
+       selected chips wrap rather than overflowing on one line. Scoped: every
+       other selectize on the page holds short names and is better left alone. */
+    .objectives-picker .selectize-dropdown .option,
+    .objectives-picker .selectize-input .item {
+      white-space: normal;
+      line-height: 1.35;
+    }
+    .objectives-picker .selectize-input { height: auto; }
+
     /* item_card(): the header toggles the body. The chevron points down when the
        card is open and right when it is shut; Bootstrap flips aria-expanded. */
     .item-card-toggle .item-card-chevron { transition: transform .15s ease-in-out; }
@@ -169,13 +209,33 @@ server <- function(input, output, session) {
   cohorts  <- cohorts_server("cohorts", source_names = sources$names)
   # by_name, not just names: the templates echo what the denominator cohort
   # already fixes, and validate against it.
+  # Objective ids, labelled with their text, for the analysis cards' picker.
+  # Numbered as the document numbers them, so the label an author picks from is
+  # the "Objective 3" they see in the preview.
+  #
+  # NOT truncated. A real objective is a full sentence ("To estimate the
+  # prevalence of X between 1st January 2010 and the end of available data in
+  # data sources from across Europe, stratified by age and sex"), and six of them
+  # differ only in the disease named a third of the way in -- so a label cut at
+  # 80 characters makes every option identical. The picker wraps instead; see
+  # .objectives-picker in the header CSS.
+  objective_choices <- reactive({
+    objs <- study$data()$objectives %||% list()
+    if (!length(objs)) return(character(0))
+    stats::setNames(
+      vapply(objs, function(o) objective_id(o) %||% "", character(1)),
+      vapply(seq_along(objs), function(i) sprintf(
+        "%d. %s", i, objective_text(objs[[i]])), character(1)))
+  })
+
   analyses <- analyses_server("analyses",
                               cohort_names = cohorts$names,
                               cohort_index = cohorts$by_name,
                               source_names = sources$names,
                               # Renaming a cohort walks every analysis picker
                               # still holding the old name (see cohorts_server).
-                              cohort_renames = cohorts$renames)
+                              cohort_renames = cohorts$renames,
+                              objective_choices = objective_choices)
 
   # The single source of truth for what gets serialised.
   sap <- reactive(list(
@@ -307,6 +367,7 @@ server <- function(input, output, session) {
   # and the script would then create that table twice and quietly estimate
   # everything against the second.
   problems <- reactive(c(study_problems(study$data()),
+                         objective_coverage_problems(study$data(), analyses$data()),
                          cohorts$problems(), analyses$problems(),
                          codelist_reference_problems(cohorts$data(), codelists$names()),
                          table_name_collisions(cohorts$data())))

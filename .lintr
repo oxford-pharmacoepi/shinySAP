@@ -7,3 +7,9 @@ linters: linters_with_defaults(
     indentation_linter = NULL,
     brace_linter = NULL
   )
+exclusions: list(
+    # Generated study directories are artefacts of an export, not source. Their
+    # object names come from whatever the SAP called its cohorts, so linting them
+    # would fail CI on a study's vocabulary rather than on this project's code.
+    "sampleStudy"
+  )

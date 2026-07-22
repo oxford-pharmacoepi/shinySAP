@@ -372,20 +372,70 @@ estimate_var_names <- function(analyses) {
 #   code   the R, or NULL when the SAP asks for something with no package call
 #   note   why, when code is NULL -- so an unmappable analysis is still listed
 #          rather than silently dropped
+#   pkgs   the libraries this block's calls come from, so sap_r_script() can head
+#          the script with exactly the ones it uses. Carried per block rather
+#          than assumed for the whole script: a SAP with no analyses must not
+#          load IncidencePrevalence, and a new op or analysis type brings its own
+#          declaration with it (see the two registries).
+# The libraries a set of blocks actually calls, in the order they are first used.
+# Derived, never listed: a SAP that generates no cohorts must not tell its reader
+# to load CohortConstructor, and a plan is not a place to carry a dependency it
+# does not have.
+sap_script_packages <- function(secs) {
+  unique(unlist(lapply(secs, function(s) as.character(s$pkgs %||% character(0)))))
+}
+
 sap_script_sections <- function(sap) {
-  cohorts  <- sap$cohorts %||% list()
-  analyses <- sap$proposed_analyses %||% list()
+  cohorts   <- sap$cohorts %||% list()
+  analyses  <- sap$proposed_analyses %||% list()
+  codelists <- sap$codelists %||% list()
   out <- list()
-  add <- function(group, title, code = NULL, note = NULL) {
-    out[[length(out) + 1]] <<- list(group = group, title = title, code = code, note = note)
+  add <- function(group, title, code = NULL, note = NULL, pkgs = character(0)) {
+    out[[length(out) + 1]] <<- list(group = group, title = title, code = code,
+                                    note = note, pkgs = pkgs)
+  }
+
+  # Dependency order, which is why the groups run in this sequence: a concept set
+  # is built before the cohort that enters on it, a plain cohort before the
+  # denominator generated from it, and every cohort before the estimates that
+  # point at it.
+  #
+  # Only codelists a cohort's operations actually cite are emitted; see
+  # cited_codelist_names() for why free-text citations do not count.
+  cited <- cited_codelist_names(cohorts)
+  for (cl in codelists) {
+    nm <- as.character(cl$name %||% "")[1]
+    if (!nm %in% cited) next
+    code <- concept_set_r_code(cl)
+    if (!is.null(code)) add("Concept sets", nm, code = code)
+  }
+
+  for (co in cohorts) {
+    code <- cohort_operations_code(
+      co,
+      vapply(codelists, function(cl) as.character(cl$name %||% "")[1], character(1)),
+      vapply(cohorts, function(x) as.character(x$name %||% "")[1], character(1)))
+    if (!is.null(code)) {
+      add("Cohorts", as.character(co$name %||% ""), code = code,
+          pkgs = cohort_operations_packages(co))
+    }
   }
 
   for (co in cohorts) {
     code <- cohort_r_code(co)
-    # NULL is a plain cohort, instantiated outside IncidencePrevalence: there is
-    # no call to show, and inventing a heading for one would imply otherwise.
+    # NULL is a plain cohort. One with typed operations was emitted above; one
+    # without is instantiated outside IncidencePrevalence, so there is no call to
+    # show and inventing a heading for it would imply otherwise.
     if (!is.null(code)) {
-      add("Denominator cohort sets", as.character(co$name %||% ""), code = code)
+      # `cdm <- `, not `cdm$name <- `: the two packages return different things
+      # and so take different idioms. generateDenominatorCohortSet() returns A CDM
+      # REFERENCE with the new table attached, so its result must go back into
+      # `cdm`; conceptCohort() returns a cohort table, which is why the cohort
+      # pipelines above assign into `cdm$<table>`. Emitted as a bare call until
+      # 0.4.21, which discarded the result -- the denominator was never attached,
+      # and every estimate pointing at it would have failed at run time.
+      add("Denominator cohort sets", as.character(co$name %||% ""),
+          code = sprintf("cdm <- %s", code), pkgs = "IncidencePrevalence")
     }
   }
 
@@ -404,14 +454,30 @@ sap_script_sections <- function(sap) {
       # estimates can be bound and suppressed together at the end, which is a
       # fact about the script as a whole rather than about the call.
       bound <- c(bound, vars[[i]])
-      add("Estimates", nm, code = sprintf("%s <- %s", vars[[i]], code))
+      tmpl  <- analysis_template(canonical_analysis_type(a$analysis_type))
+      add("Estimates", nm, code = sprintf("%s <- %s", vars[[i]], code),
+          pkgs = as.character(tmpl$package %||% character(0)))
     }
   }
 
   supp <- suppression_r_code(sap$study$min_cell_count, bound)
   # No title: suppression is one step over every estimate above, not a step
   # belonging to any one of them.
+  # No package: suppression_r_code() writes omopgenerics::suppress() namespaced,
+  # so the script needs no library() for it.
   if (!is.null(supp)) add("Result suppression", NA_character_, code = supp)
+
+  # The header is a BLOCK like any other, prepended once the blocks below it are
+  # known, because what it loads is derived from what they call. Emitting it only
+  # in sap_r_script() would have made the flat script and the appendix disagree,
+  # which is the drift sap_script_sections() exists to make impossible.
+  pkgs <- sap_script_packages(out)
+  if (length(pkgs)) {
+    out <- c(list(list(group = "Libraries", title = NA_character_,
+                       code  = paste(sprintf("library(%s)", pkgs), collapse = "\n"),
+                       note  = NULL, pkgs = character(0))),
+             out)
+  }
 
   out
 }

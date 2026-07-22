@@ -1,0 +1,523 @@
+# Cohort operations: a plain cohort's logic as data ----------------------------
+#
+# A denominator cohort has always been typed -- its "logic" IS the generator's
+# arguments -- which is why cohort_r_code() can turn one into a call. A plain
+# cohort (target, outcome, comparator, censor) was the opposite: three textareas
+# of sentences, which is why cohort_r_code() returns NULL for one.
+#
+# The blocker was never that CohortConstructor lacks the verbs. It is that prose
+# does not carry the facts a call needs. Two exit criteria -- "1825 days after
+# index" and "End of continuous observation" -- do not say whether the cohort
+# ends at the EARLIER or the LATER of them, and no parser recovers a fact nobody
+# wrote down. Typed operations force that choice at authoring time, the same way
+# study_problems() forces a minimum cell count rather than guessing one.
+#
+# So a cohort may carry `operations`: an ORDERED list of typed steps, each one
+# CohortConstructor verb. Order is the meaning -- requiring first entry before
+# and after a date restriction give different cohorts -- so it is a list, not an
+# object.
+#
+#   {"op": "concept_cohort", "codelist": "cs_follicular_lymphoma"}
+#   {"op": "require_first_entry"}
+#   {"op": "pad_cohort_end", "days": 1825}
+#
+# Free text is NOT replaced and is never auto-converted: entry_events /
+# inclusion_criteria / exit_criteria stay exactly as they are, and a cohort
+# carrying operations renders from them instead. Converting sentences into
+# operations behind an author's back would be the guess this design exists to
+# avoid.
+#
+# Signatures these emit against (verified against the package reference):
+#
+#   conceptCohort(cdm, conceptSet, name, exit, overlap, table,
+#     useRecordsBeforeObservation, useSourceFields, subsetCohort, subsetCohortId)
+#   requireIsFirstEntry(cohort, cohortId, indexDate, name)
+#   requireDemographics(cohort, cohortId, indexDate, ageRange, sex,
+#     minPriorObservation, minFutureObservation, atFirst, name)
+#   requireInDateRange(cohort, dateRange, cohortId, indexDate, atFirst, name)
+#   exitAtObservationEnd(cohort, cohortId, limitToCurrentPeriod, name)
+#   exitAtDeath(cohort, cohortId, requireDeath, name)
+#   padCohortEnd(cohort, days, collapse, requireFullContribution, cohortId, name)
+#
+# Depends on `%||%` (utils.R) and cohort_table_name() (sap_code.R). No Shiny.
+
+# The registry -----------------------------------------------------------------
+#
+# Same shape as analysis_registry.R and cohort_kinds.R: a partial registry keyed
+# by op, and an "unknown op" answer that reports rather than guesses.
+#
+# prose     function(o) -> one English line for the document
+# code      function(o, ctx) -> the R call, or NULL when the op emits none
+# validate  function(o, ctx) -> character() of problems
+# entry     TRUE for an op that CREATES the cohort rather than transforming one
+# package   which library the emitted call comes from, so the generated script
+#           can load exactly what it uses. Declared per op rather than assumed:
+#           an op added later that reaches for a different package says so here
+#           and the script header follows, with nothing else to remember.
+COHORT_OP_TEMPLATES <- list()
+cohort_op_registry_env <- environment()
+
+register_cohort_op <- function(op, prose, code = function(o, ctx) NULL,
+                               validate = function(o, ctx) character(0),
+                               entry = FALSE, package = "CohortConstructor") {
+  cohort_op_registry_env$COHORT_OP_TEMPLATES[[op]] <- list(
+    prose = prose, code = code, validate = validate,
+    entry = entry, package = package
+  )
+}
+
+cohort_op_type <- function(o) {
+  v <- as.character(o$op %||% "")[1]
+  if (is.na(v)) "" else trimws(v)
+}
+
+cohort_op_template <- function(op) COHORT_OP_TEMPLATES[[op]]
+
+# Rendering helpers ------------------------------------------------------------
+
+# A pipeline step on one line when it fits. r_call() always breaks a call across
+# lines, which reads well for a ten-argument generator and badly for
+# `padCohortEnd(days = 1825)` sitting indented under a pipe.
+r_call_inline <- function(fn, args, width = 76) {
+  args <- args[!vapply(args, is.null, logical(1))]
+  if (!length(args)) return(paste0(fn, "()"))
+  one <- sprintf("%s(%s)", fn, paste(sprintf("%s = %s", names(args), unlist(args)),
+                                     collapse = ", "))
+  if (nchar(one) <= width) one else r_call(fn, args)
+}
+
+# A long vector of concept ids, wrapped to a readable width. r_wrap_value() only
+# breaks a list(), and a codelist is one c() of seventy-odd numbers -- which
+# arrived as a single 900-character line.
+r_id_vector <- function(ids, indent = "    ", width = 88) {
+  if (!length(ids)) return("c()")
+  lines <- character(0)
+  cur   <- indent
+  for (i in seq_along(ids)) {
+    piece <- paste0(ids[[i]], if (i < length(ids)) "," else "")
+    if (nchar(cur) > nchar(indent) && nchar(cur) + 1 + nchar(piece) > width) {
+      lines <- c(lines, cur)
+      cur   <- paste0(indent, piece)
+    } else {
+      cur <- if (nchar(cur) > nchar(indent)) paste(cur, piece) else paste0(cur, piece)
+    }
+  }
+  sprintf("c(\n%s\n%s)", paste(c(lines, cur), collapse = "\n"), substr(indent, 1, nchar(indent) - 2))
+}
+
+# Field readers ----------------------------------------------------------------
+#
+# An operation arrives from JSON, so every field is untyped until read. These
+# return NULL for absent rather than a default: an op that omitted a field left
+# the package's own default in force, exactly as an omitted argument does in
+# cohort_r_code().
+
+op_num <- function(o, key) {
+  v <- suppressWarnings(as.numeric(o[[key]] %||% NA))
+  if (length(v) != 1 || is.na(v)) NULL else v
+}
+
+op_chr <- function(o, key) {
+  v <- as.character(o[[key]] %||% NA)[1]
+  if (is.na(v) || !nzchar(trimws(v))) NULL else trimws(v)
+}
+
+# A [lower, upper] pair, or a list of them. Indexed with [[ ]] and never
+# unlist()ed, for the reason in cohort_kinds.R: a null bound would collapse and
+# the pair would silently become length 1.
+op_pairs <- function(o, key) {
+  v <- o[[key]]
+  if (!length(v)) return(NULL)
+  # A bare pair ([0, 17]) and a list of pairs ([[0, 17], [18, 150]]) are both
+  # accepted, because both read naturally in JSON and ageRange takes a list.
+  if (!is.list(v[[1]]) && length(v) == 2) v <- list(v)
+  v
+}
+
+# The operations ---------------------------------------------------------------
+
+# The one op that CREATES a cohort. Its codelist is a name on the Codelists tab,
+# not codes: the concept set lives there once and every cohort citing it refers
+# to the same object, which is also what the generated script assigns.
+register_cohort_op(
+  "concept_cohort",
+  entry = TRUE,
+  prose = function(o) sprintf(
+    "Entry: a record of any concept in [%s]%s%s.", op_chr(o, "codelist") %||% "?",
+    if (!is.null(op_chr(o, "subset_cohort"))) {
+      sprintf(", among people in the %s cohort", op_chr(o, "subset_cohort"))
+    } else "",
+    if (identical(op_chr(o, "exit"), "event_start_date")) {
+      ", with the episode ending on the record's start date"
+    } else ""),
+  code = function(o, ctx) {
+    cl <- op_chr(o, "codelist")
+    r_call("conceptCohort", list(
+      cdm        = "cdm",
+      # The R name the concept set was assigned under, not a string: the script
+      # builds the codelist object above and hands it in here.
+      conceptSet = if (is.null(cl)) NULL else concept_set_var(cl),
+      name       = r_string(ctx$table),
+      # Only when the author chose the non-default. Where the episode ENDS is
+      # what a later pad_cohort_end counts from, so the two decide together
+      # whether "N days after index" means what it says.
+      exit       = if (identical(op_chr(o, "exit"), "event_start_date")) {
+        r_string("event_start_date")
+      } else NULL,
+      # Build the cohort only among people already in another cohort. A study
+      # looking for outcomes AFTER an exposure has no use for the outcome in
+      # everyone else, and restricting at creation is far cheaper than creating
+      # the whole thing and intersecting afterwards. Named by cohort, resolved to
+      # its table name, exactly as a denominator references its target.
+      subsetCohort = {
+        sub <- op_chr(o, "subset_cohort")
+        if (is.null(sub)) NULL else {
+          t <- cohort_table_name(sub)
+          if (is.na(t)) NULL else r_string(t)
+        }
+      }
+    ))
+  },
+  validate = function(o, ctx) {
+    cl <- op_chr(o, "codelist")
+    if (is.null(cl)) {
+      return("An entry operation must name the codelist its concepts come from.")
+    }
+    if (length(ctx$codelists) && !cl %in% ctx$codelists) {
+      return(sprintf("Entry cites [%s], which is not on the Codelists tab.", cl))
+    }
+    ex <- op_chr(o, "exit")
+    if (!is.null(ex) && !ex %in% c("event_end_date", "event_start_date")) {
+      return('Entry `exit` must be "event_end_date" or "event_start_date".')
+    }
+    sub <- op_chr(o, "subset_cohort")
+    if (!is.null(sub) && length(ctx$cohorts) && !sub %in% ctx$cohorts) {
+      return(sprintf("Restricted to the cohort '%s', which this SAP does not define.", sub))
+    }
+    character(0)
+  }
+)
+
+register_cohort_op(
+  "require_first_entry",
+  prose = function(o) "Keep only each person's first entry ever.",
+  code = function(o, ctx) "requireIsFirstEntry()"
+)
+
+register_cohort_op(
+  "require_demographics",
+  prose = function(o) {
+    parts <- character(0)
+    ages <- op_pairs(o, "age_range")
+    if (!is.null(ages)) {
+      parts <- c(parts, sprintf("aged %s", paste(vapply(ages, function(a)
+        sprintf("%s to %s", a[[1]], if (length(a) >= 2) a[[2]] else "any"),
+        character(1)), collapse = " or ")))
+    }
+    sex <- op_chr(o, "sex")
+    if (!is.null(sex) && !identical(sex, "Both")) parts <- c(parts, tolower(sex))
+    prior <- op_num(o, "min_prior_observation")
+    if (!is.null(prior)) {
+      parts <- c(parts, sprintf("with at least %s days of prior observation",
+                                format(prior)))
+    }
+    if (!length(parts)) return("Require demographics (none specified).")
+    sprintf("Require people to be %s at index.", paste(parts, collapse = ", "))
+  },
+  code = function(o, ctx) {
+    ages <- op_pairs(o, "age_range")
+    r_call_inline("requireDemographics", list(
+      ageRange            = if (is.null(ages)) NULL else r_bound_list(ages, always_list = TRUE),
+      sex                 = r_chr_vec(op_chr(o, "sex")),
+      minPriorObservation = r_num_vec(op_num(o, "min_prior_observation"))
+    ))
+  },
+  validate = function(o, ctx) {
+    if (is.null(op_pairs(o, "age_range")) && is.null(op_chr(o, "sex")) &&
+        is.null(op_num(o, "min_prior_observation"))) {
+      return(paste("A demographics requirement that sets nothing does nothing;",
+                   "give an age range, a sex, or a prior observation minimum."))
+    }
+    sex <- op_chr(o, "sex")
+    if (!is.null(sex) && !sex %in% COHORT_SEXES) {
+      return(sprintf("Sex must be one of %s.", paste(COHORT_SEXES, collapse = ", ")))
+    }
+    character(0)
+  }
+)
+
+register_cohort_op(
+  "require_in_date_range",
+  prose = function(o) sprintf(
+    "Require the index date to fall between %s and %s.",
+    op_chr(o, "start") %||% "the start of available data",
+    op_chr(o, "end") %||% "the end of available data"),
+  code = function(o, ctx) {
+    # The argument is one two-element vector whose missing bound is NA, exactly
+    # like cohortDateRange -- so it reuses the same renderer.
+    r_call_inline("requireInDateRange", list(
+      dateRange = r_date_range(list(op_chr(o, "start"), op_chr(o, "end")))))
+  },
+  validate = function(o, ctx) {
+    start <- op_chr(o, "start")
+    end   <- op_chr(o, "end")
+    if (is.null(start) && is.null(end)) {
+      return("A date range requirement needs at least one of a start or an end.")
+    }
+    bad <- Filter(function(d) is.na(suppressWarnings(as.Date(d, optional = TRUE))),
+                  Filter(Negate(is.null), list(start, end)))
+    if (length(bad)) {
+      return(sprintf("'%s' is not a date the package can read (use YYYY-MM-DD).", bad[[1]]))
+    }
+    if (!is.null(start) && !is.null(end) && as.Date(start) > as.Date(end)) {
+      return(sprintf("The date range starts (%s) after it ends (%s).", start, end))
+    }
+    character(0)
+  }
+)
+
+register_cohort_op(
+  "exit_at_observation_end",
+  prose = function(o) "Exit at the end of continuous observation.",
+  code = function(o, ctx) "exitAtObservationEnd()"
+)
+
+register_cohort_op(
+  "exit_at_death",
+  prose = function(o) "Exit at death.",
+  code = function(o, ctx) "exitAtDeath()"
+)
+
+# The op that answers the "earliest of" question the free-text form could not.
+# padCohortEnd() documents that "if the days added means that cohort end would be
+# after observation period end date, then observation period end date will be
+# used for cohort exit" -- so the clamp is the function's own behaviour, not
+# something the generated script has to arrange, and the plan can say so.
+#
+# It adds days to the cohort END, not to entry. "1825 days after index" is
+# therefore this op PLUS an entry that exits on the record's start date
+# (conceptCohort(exit = "event_start_date")), and the prose says "extend the exit
+# date" rather than "after entry" so the two are not confused for one another.
+register_cohort_op(
+  "pad_cohort_end",
+  prose = function(o) sprintf(
+    paste("Extend the exit date by %s days, or to the end of continuous",
+          "observation, whichever comes first."),
+    format(op_num(o, "days") %||% NA)),
+  code = function(o, ctx) r_call_inline("padCohortEnd", list(days = r_num_vec(op_num(o, "days")))),
+  validate = function(o, ctx) {
+    d <- op_num(o, "days")
+    if (is.null(d)) return("An exit-after-days operation must say how many days.")
+    if (d < 0) return("Days after entry cannot be negative.")
+    character(0)
+  }
+)
+
+# The escape hatch, and the reason the vocabulary can stay small. An operation
+# the registry does not cover is written out as free text and emitted as a TODO
+# comment -- visible in the script, never silently dropped. The same answer the
+# "Other" analysis type gives.
+register_cohort_op(
+  "custom",
+  package = NULL,
+  prose = function(o) op_chr(o, "text") %||% "Custom step (not described).",
+  code = function(o, ctx) NULL,
+  validate = function(o, ctx) {
+    if (is.null(op_chr(o, "text"))) "A custom step must describe what it does."
+    else character(0)
+  }
+)
+
+# Concept sets in the generated script -----------------------------------------
+
+# The R variable a codelist is assigned to. Derived from the codelist's own name
+# so the script reads as the SAP does, and deterministic so the assignment above
+# and the reference below cannot disagree.
+concept_set_var <- function(name) {
+  v <- cohort_table_name(name)
+  if (is.na(v)) "concept_set" else v
+}
+
+# One codelist as the object conceptCohort(conceptSet =) takes.
+#
+# conceptCohort() documents that conceptSet accepts a plain codelist -- a named
+# list of concept ids -- which is exactly what a FLAT concept set expression is.
+# An EXPANDING expression (descendants or mapped) is deliberately NOT rendered as
+# one: emitting the seed ids as if they were the whole list would silently narrow
+# the codelist the author chose, which is the one failure this file exists to
+# prevent. It becomes a TODO instead, carrying the expression so the gap is
+# visible and fillable.
+concept_set_r_code <- function(cl) {
+  expr <- cl$concept_set_expression %||% list()
+  nm   <- as.character(cl$name %||% "")[1]
+  if (!length(expr)) return(NULL)
+  var <- concept_set_var(nm)
+  if (concept_set_expands(expr)) {
+    return(sprintf(paste0(
+      "# TODO: %s is a concept set EXPRESSION, not a fixed list -- %d of its %d\n",
+      "#   concepts pull in descendants or mapped concepts. Resolve it against the\n",
+      "#   vocabulary with omopgenerics::newConceptSetExpression() and\n",
+      "#   CodelistGenerator, then assign the result to `%s`."),
+      nm,
+      sum(vapply(expr, function(e) isTRUE(e$descendants) || isTRUE(e$mapped), logical(1))),
+      length(expr), var))
+  }
+  ids <- vapply(expr, function(e) as.character(e$concept_id %||% ""), character(1))
+  ids <- ids[nzchar(ids)]
+  if (!length(ids)) return(NULL)
+  # The named list conceptCohort(conceptSet =) documents, with the codelist's own
+  # name as the element name -- so the cohort table and the concept set it came
+  # from read the same in the script as they do in the SAP.
+  sprintf("%s <- list(\n  %s = %s\n)", var, var, r_id_vector(ids))
+}
+
+# Rendering --------------------------------------------------------------------
+
+# A cohort's operations as the pipeline that builds it, or NULL when it carries
+# none (which is every cohort authored as free text -- see the header).
+#
+# The entry op seeds the pipeline and the rest are piped onto it, which is how
+# CohortConstructor is written: verbs take a cohort and return one. Assigned into
+# `cdm$<table>` so the table the estimators point at is the one this created.
+cohort_operations_code <- function(ch, codelists = list(), cohorts = character(0)) {
+  ops <- ch$operations %||% list()
+  if (!length(ops)) return(NULL)
+  tbl <- cohort_table_name(ch$name)
+  ctx <- list(table = if (is.na(tbl)) "cohort" else tbl,
+              codelists = codelists, cohorts = cohorts)
+
+  rendered <- lapply(ops, function(o) {
+    tmpl <- cohort_op_template(cohort_op_type(o))
+    if (is.null(tmpl)) {
+      return(list(code = NULL, note = sprintf(
+        "No cohort operation is registered as '%s'.", cohort_op_type(o))))
+    }
+    note <- if (identical(cohort_op_type(o), "custom")) op_chr(o, "text") else NULL
+    list(code = tmpl$code(o, ctx), note = note, entry = isTRUE(tmpl$entry))
+  })
+
+  # An operation with no call becomes a comment in place, so a step the author
+  # asked for is never silently missing from the script.
+  as_line <- function(r) {
+    if (!is.null(r$code)) return(r$code)
+    sprintf("# TODO: %s", r$note %||% "this step has no generated call.")
+  }
+
+  first  <- rendered[[1]]
+  head_line <- as_line(first)
+  # Without an entry op there is no cohort to pipe onto: the script says so
+  # rather than emitting a pipeline that starts from nothing.
+  if (!isTRUE(first$entry)) {
+    head_line <- paste0(
+      "# TODO: this cohort has no entry operation, so nothing creates it.\n",
+      head_line)
+  }
+  # A step that did not fit on one line is a multi-line call, and every line of
+  # it sits inside the pipeline -- so the continuations are indented too. Without
+  # this the closing paren of a wrapped requireDemographics() lands in column 1,
+  # under the pipe rather than inside it.
+  rest <- vapply(rendered[-1], function(r) {
+    sprintf("  %s", gsub("\n", "\n  ", as_line(r), fixed = TRUE))
+  }, character(1))
+
+  body <- if (length(rest)) {
+    paste0(head_line, " |>\n", paste(rest, collapse = " |>\n"))
+  } else {
+    head_line
+  }
+  sprintf("cdm$%s <- %s", ctx$table, body)
+}
+
+# The codelists a cohort's typed entries actually enter on.
+#
+# A codelist cited only in free text is documentation, not an input: it earns a
+# mention in the document and no assignment in the code. Both the standalone
+# script and the study directory need this same answer, which is why it lives
+# here rather than being worked out again at each call site.
+cited_codelist_names <- function(cohorts) {
+  refs <- unlist(lapply(cohorts %||% list(), function(co) {
+    vapply(Filter(function(o) identical(cohort_op_type(o), "concept_cohort"),
+                  co$operations %||% list()),
+           function(o) op_chr(o, "codelist") %||% "", character(1))
+  }))
+  refs <- as.character(refs %||% character(0))
+  unique(refs[nzchar(refs)])
+}
+
+# The packages a cohort's operations actually call, so the script header loads
+# what it uses and nothing more. An op that emits no call contributes none.
+cohort_operations_packages <- function(ch) {
+  ops <- ch$operations %||% list()
+  if (!length(ops)) return(character(0))
+  pkgs <- unlist(lapply(ops, function(o) {
+    tmpl <- cohort_op_template(cohort_op_type(o))
+    if (is.null(tmpl) || is.null(tmpl$code(o, list(table = "x", codelists = NULL)))) {
+      return(NULL)
+    }
+    tmpl$package
+  }))
+  unique(as.character(pkgs %||% character(0)))
+}
+
+# The same operations as prose, for the document.
+#
+# THE DIRECTION MATTERS: the readable description is generated FROM the typed
+# operations, not parsed out of a written one. That is the whole inversion --
+# denominator_facts() in the preview already does it for denominators, and this
+# is the same move for plain cohorts. One source, so the sentences a reviewer
+# reads and the code the study runs cannot describe different cohorts.
+cohort_operations_prose <- function(ch) {
+  ops <- ch$operations %||% list()
+  if (!length(ops)) return(character(0))
+  vapply(ops, function(o) {
+    tmpl <- cohort_op_template(cohort_op_type(o))
+    if (is.null(tmpl)) {
+      return(sprintf("Unrecognised step '%s'.", cohort_op_type(o)))
+    }
+    as.character(tmpl$prose(o))[1]
+  }, character(1))
+}
+
+# Everything wrong with one cohort's operations. Shaped like the other
+# validators: character() of messages, warn-not-block.
+cohort_operations_problems <- function(ch, codelist_names = character(0),
+                                       cohort_names = character(0)) {
+  ops <- ch$operations %||% list()
+  if (!length(ops)) return(character(0))
+  ctx  <- list(table = cohort_table_name(ch$name), codelists = codelist_names,
+               cohorts = cohort_names)
+  errs <- character(0)
+
+  for (i in seq_along(ops)) {
+    o    <- ops[[i]]
+    type <- cohort_op_type(o)
+    tmpl <- cohort_op_template(type)
+    if (is.null(tmpl)) {
+      errs <- c(errs, sprintf(
+        "Step %d is '%s', which is not a cohort operation this app knows.", i, type))
+      next
+    }
+    found <- tryCatch(as.character(tmpl$validate(o, ctx)),
+                      error = function(e) paste("Could not validate step", i))
+    if (length(found)) errs <- c(errs, sprintf("Step %d: %s", i, found))
+  }
+
+  # An entry op is what creates the cohort, so exactly one belongs at the front.
+  entries <- which(vapply(ops, function(o) {
+    tmpl <- cohort_op_template(cohort_op_type(o))
+    !is.null(tmpl) && isTRUE(tmpl$entry)
+  }, logical(1)))
+  if (!length(entries)) {
+    errs <- c(errs, "These operations never create the cohort; the first step should be an entry.")
+  } else {
+    if (length(entries) > 1) {
+      errs <- c(errs, sprintf(
+        "Steps %s each create the cohort; only the first step can.",
+        paste(entries, collapse = " and ")))
+    } else if (entries[[1]] != 1) {
+      errs <- c(errs, sprintf(
+        "Step %d creates the cohort, so it has to come first.", entries[[1]]))
+    }
+  }
+  errs
+}

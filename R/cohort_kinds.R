@@ -165,9 +165,15 @@ extract_codelist_refs <- function(cohort) {
            unlist(cohort$inclusion_criteria %||% list()),
            unlist(cohort$exit_criteria %||% list()))
   txt <- as.character(txt[!is.na(txt)])
-  if (!length(txt)) return(character(0))
   refs <- unlist(regmatches(txt, gregexpr("\\[[^][]+\\]", txt)))
-  unique(gsub("^\\[|\\]$", "", refs))
+  refs <- gsub("^\\[|\\]$", "", refs)
+  # A typed entry operation names its codelist in a FIELD, not in brackets, so it
+  # is read directly. Both forms feed the same reference check: an operation
+  # citing a codelist nobody defined is the same problem as a sentence doing it.
+  ops <- Filter(function(o) !is.null(o$codelist), cohort$operations %||% list())
+  refs <- c(refs, vapply(ops, function(o) as.character(o$codelist)[1], character(1)))
+  refs <- refs[!is.na(refs) & nzchar(refs)]
+  unique(refs)
 }
 
 # The contract behind the convention: every reference resolves to a codelist on
@@ -512,14 +518,70 @@ cohort_definition_ui <- function(ns, pf) tagList(
   ),
   textAreaInput(ns("inclusion_criteria"), "Inclusion / exclusion criteria (one per line)",
                 join_lines(pf("inclusion_criteria", character(0))), rows = 3, width = "100%",
-                placeholder = "Index on the first occurrence per influenza season\nAged 18 or over at index")
+                placeholder = "Index on the first occurrence per influenza season\nAged 18 or over at index"),
+  cohort_operations_block(ns, pf)
 )
+
+# The typed operations a cohort carries, shown as the sentences they generate.
+#
+# READ-ONLY for now, and deliberately so. Operations are authored upstream (an
+# LLM reading the protocol emits them; see R/cohort_operations.R), and the card's
+# job until there is an editor is to make them VISIBLE and to not lose them --
+# a card that silently dropped a key it could not render would quietly delete the
+# only executable description of the cohort on the next autosave.
+#
+# The hidden field is what round-trips them. It is never typed into, so it always
+# holds JSON this app itself wrote, which is why collect() can parse it without a
+# fallback for text a half-finished edit left behind.
+cohort_operations_block <- function(ns, pf) {
+  ops <- pf("operations", list())
+  tagList(
+    div(
+      style = "display: none;",
+      textAreaInput(ns("operations_json"), NULL,
+                    as.character(sap_json(ops %||% list())))
+    ),
+    if (length(ops)) {
+      lines <- cohort_operations_prose(list(operations = ops))
+      div(
+        class = "border rounded p-2 mb-2 bg-body-tertiary",
+        div(class = "small text-muted mb-1",
+            sprintf("Generated cohort logic — %d step%s, in order:",
+                    length(ops), if (length(ops) == 1) "" else "s")),
+        tags$ol(class = "small mb-1 ps-3", lapply(lines, tags$li)),
+        div(class = "form-text",
+            paste("These steps generate this cohort's R code. They are edited in the",
+                  "SAP file for now; the fields above stay as the description a",
+                  "reader sees."))
+      )
+    }
+  )
+}
 
 cohort_definition_collect <- function(input) list(
   entry_events       = as_array(split_lines(input$entry_events)),
   inclusion_criteria = as_array(split_lines(input$inclusion_criteria)),
-  exit_criteria      = as_array(split_lines(input$exit_criteria))
+  exit_criteria      = as_array(split_lines(input$exit_criteria)),
+  operations         = parse_operations(input$operations_json)
 )
+
+# The hidden field's JSON back into the list it came from. Anything unreadable
+# becomes an empty list rather than an error: this field is written by the app,
+# so unreadable means a hand-edited file, and a broken cohort card would take the
+# whole tab with it.
+parse_operations <- function(x) {
+  s <- as.character(x %||% "")[1]
+  if (is.na(s) || !nzchar(trimws(s))) return(list())
+  out <- tryCatch(jsonlite::fromJSON(s, simplifyVector = FALSE),
+                  error = function(e) list())
+  if (!is.list(out)) list() else out
+}
+
+# The inverse: the saved cohort's operations become the hidden field's value.
+cohort_definition_flatten <- function(p) {
+  p$operations_json <- as.character(sap_json(p$operations %||% list()))
+  p
+}
 
 # Shared validation ------------------------------------------------------------
 
@@ -687,7 +749,10 @@ register_cohort_kind(
                "IncidencePrevalence; a target denominator is generated FROM it,",
                "restricting person-time to those episodes."),
   ui = function(ns, pf) cohort_definition_ui(ns, pf),
-  collect = function(input) cohort_definition_collect(input)
+  collect = function(input) cohort_definition_collect(input),
+  flatten = cohort_definition_flatten,
+  validate = function(cohort, cohorts) cohort_operations_problems(
+    cohort, cohort_names = names(cohorts %||% list()))
 )
 
 # Outcome, comparator, censoring, strata and anything else: a plain cohort. None
@@ -697,5 +762,8 @@ register_cohort_kind(
 register_cohort_kind(
   "other",
   ui = function(ns, pf) cohort_definition_ui(ns, pf),
-  collect = function(input) cohort_definition_collect(input)
+  collect = function(input) cohort_definition_collect(input),
+  flatten = cohort_definition_flatten,
+  validate = function(cohort, cohorts) cohort_operations_problems(
+    cohort, cohort_names = names(cohorts %||% list()))
 )

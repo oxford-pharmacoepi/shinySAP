@@ -25,37 +25,11 @@ jobs:
 
       - uses: r-lib/actions/setup-renv@v2
 
-      - name: Lockfile is in sync with the code
-        run: |
-          Rscript -e 'status <- renv::status()
-                      if (!status$synchronized) quit(status = 1)'
-
-      # The test suite only sources part of R/; this catches syntax errors
-      # in the module files and app.R too.
-      - name: Parse all R sources
-        run: |
-          Rscript -e 'invisible(lapply(c("app.R", list.files("R", full.names = TRUE)), parse))
-                      cat("all files parse\n")'
-
-      - name: Run testthat suite
-        run: Rscript tests/testthat.R
-
-      - name: Smoke test — the app starts and serves HTTP 200
-        run: |
-          Rscript -e 'shiny::runApp(".", port = 8123)' > shiny.log 2>&1 &
-          app_pid=$!
-          for i in $(seq 1 30); do
-            if curl -sf -o /dev/null http://127.0.0.1:8123; then
-              echo "app is up"
-              kill "$app_pid"
-              exit 0
-            fi
-            kill -0 "$app_pid" 2>/dev/null || break
-            sleep 1
-          done
-          echo "app did not come up; log follows"
-          cat shiny.log
-          exit 1
+      # Checks live in scripts/precheck.sh so the same command runs here and on
+      # a laptop. This job owns the ENVIRONMENT (R 4.5.2, renv restored); the
+      # script owns what passing means. The lockfile check is part of it.
+      - name: Checks that need the project library
+        run: scripts/precheck.sh renv parse tests smoke
 
   lint:
     runs-on: ubuntu-latest
@@ -75,17 +49,9 @@ jobs:
         with:
           packages: any::lintr
 
-      - name: Lint (config in .lintr)
-        run: |
-          Rscript -e 'lints <- lintr::lint_dir(".")
-                      print(lints)
-                      quit(status = if (length(lints) > 0) 1 else 0)'
-
-      - name: README documents the current schema version
-        run: |
-          version=$(sed -nE 's/^SAP_SCHEMA_VERSION <- "([0-9.]+)"/\1/p' app.R)
-          echo "app.R schema version: ${version:?not found in app.R}"
-          if ! grep -qF "\"sap_schema_version\": \"$version\"" README.md; then
-            echo "README.md example JSON does not carry sap_schema_version $version"
-            exit 1
-          fi
+      # Same script as the test job, different steps: these two need only a
+      # stock library, and running them here keeps lintr out of renv.lock.
+      # NOTE both step names below are reported by the script, so a failure says
+      # which check failed rather than only that "lint" did.
+      - name: Checks that need only a stock library
+        run: scripts/precheck.sh readme lint

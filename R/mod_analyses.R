@@ -21,6 +21,19 @@ analysis_item_ui <- function(id, prefill = NULL) {
                   selected = canonical_analysis_type(pf("analysis_type")),
                   width = "100%")
     ),
+    # WHY this analysis exists. Many-to-many on purpose: one objective is
+    # usually answered by several analyses, and an analysis can serve more than
+    # one. Ids, not text, so rewording an objective in the study card does not
+    # silently repoint every analysis -- objective_coverage_problems() reports
+    # the break instead.
+    div(
+      class = "objectives-picker",
+      selectizeInput(ns("objectives"), "Objectives this analysis answers",
+                     choices = character(0),
+                     selected = as.character(unlist(pf("objectives", character(0)))),
+                     multiple = TRUE, width = "100%",
+                     options = list(placeholder = "Objectives from the Study tab"))
+    ),
     entity_picker(ns("data_sources"), "CDM sources this analysis runs on",
                   pf("data_sources", character(0)), multiple = TRUE,
                   placeholder = "Select or type one or more CDM sources"),
@@ -30,6 +43,7 @@ analysis_item_ui <- function(id, prefill = NULL) {
 }
 
 analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
+                                 objective_choices = reactive(character(0)),
                                  cohort_names = reactive(character(0)),
                                  source_names = reactive(character(0)),
                                  cohort_index = reactive(list()),
@@ -104,6 +118,26 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     sync_pickers(session, function() analysis_template(type_r())$pickers$sources %||% character(0),
                  source_names, base_pf)
     sync_pickers(session, "data_sources", source_names, base_pf)
+
+    # The objectives picker is NOT a sync_pickers() one: those take free text and
+    # match on the value shown, whereas this shows an objective's TEXT and stores
+    # its id. Choices are therefore a named vector, rebuilt whenever the Study tab
+    # changes, with the selection carried across explicitly.
+    observe({
+      choices <- objective_choices()
+      current <- isolate(input$objectives)
+      if (is.null(current)) current <- as.character(unlist(base_pf("objectives", character(0))))
+      current <- current[!is.na(current) & nzchar(current)]
+      # An id no objective has any more is KEPT in the choices, or shiny would
+      # drop it silently on the next rebuild and the analysis would quietly stop
+      # naming anything. objective_coverage_problems() reports it instead.
+      orphans <- setdiff(current, as.character(choices))
+      if (length(orphans)) {
+        choices <- c(choices, stats::setNames(orphans,
+                                              sprintf("%s (no longer an objective)", orphans)))
+      }
+      updateSelectizeInput(session, "objectives", choices = choices, selected = current)
+    })
 
     # A cohort rename (see cohorts_server) lands on this card's cohort pickers
     # while they still hold the old name. Only the CURRENT template's pickers
@@ -193,6 +227,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
       common <- list(
         name          = blank_to_na(input$name),
         analysis_type = NA,   # overwritten below once a type is chosen
+        objectives    = as_array(input$objectives %||% character(0)),
         data_sources  = as_array(input$data_sources %||% character(0))
       )
       # No type, no parameters: collecting through the fallback template would
@@ -283,18 +318,21 @@ analyses_ui <- function(id) {
 analyses_server <- function(id, cohort_names = reactive(character(0)),
                             source_names = reactive(character(0)),
                             cohort_index = reactive(list()),
-                            cohort_renames = reactive(NULL)) {
+                            cohort_renames = reactive(NULL),
+                            objective_choices = reactive(character(0))) {
   moduleServer(id, function(input, output, session) {
     # These change on every keystroke in the section that owns them; settle first
     # so the pickers are not rebuilt, and the summary not redrawn, mid-word.
     # Renames are NOT debounced: the follow-up must land before the settled
     # name list rebuilds the pickers around the stale value.
+    settled_objectives <- debounce(objective_choices, 600)
     settled_cohorts <- debounce(cohort_names, 600)
     settled_sources <- debounce(source_names, 600)
     settled_index   <- debounce(cohort_index, 600)
 
     item_server <- function(iid, prefill, on_remove) {
-      analysis_item_server(iid, prefill, on_remove, settled_cohorts, settled_sources,
+      analysis_item_server(iid, prefill, on_remove, settled_objectives,
+                           settled_cohorts, settled_sources,
                            settled_index, cohort_renames)
     }
     items <- dynamic_items("analysis", "items", analysis_item_ui, item_server,

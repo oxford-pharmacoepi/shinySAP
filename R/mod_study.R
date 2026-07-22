@@ -59,6 +59,61 @@ study_problems <- function(study) {
   ))
 }
 
+# Objectives and the analyses that answer them, checked BOTH ways.
+#
+# An objective nothing implements is a plan that promises a result it will not
+# produce; an analysis serving no objective is work nobody asked for. Neither is
+# an error -- a SAP is written incrementally, and half-finished is the normal
+# state of one -- so both are warnings, like every other problem here.
+#
+# The link is many-to-many: one objective is usually served by several analyses
+# (complete, 5-year and 2-year prevalence of the same disease), so this counts
+# coverage rather than expecting a one-to-one pairing.
+objective_coverage_problems <- function(study, analyses) {
+  objs <- study$objectives %||% list()
+  analyses <- analyses %||% list()
+  if (!length(objs) && !length(analyses)) return(list())
+
+  ids  <- vapply(objs, function(o) objective_id(o) %||% "", character(1))
+  cited <- unique(unlist(lapply(analyses, function(a)
+    as.character(unlist(a$objectives %||% list())))))
+  cited <- cited[!is.na(cited) & nzchar(cited)]
+  found <- list()
+
+  uncovered <- which(!ids %in% cited & nzchar(ids))
+  if (length(uncovered)) {
+    found[[length(found) + 1]] <- list(
+      name = "Objectives",
+      messages = vapply(uncovered, function(i) sprintf(
+        "Objective %d has no analysis: %s", i, objective_text(objs[[i]])),
+        character(1)))
+  }
+
+  # An id an analysis names that no objective has. Usually a reworded objective:
+  # the wording changed, the id was reminted, and the analysis still points at
+  # the old one -- which is exactly the break worth surfacing.
+  for (a in analyses) {
+    named <- as.character(unlist(a$objectives %||% list()))
+    named <- named[!is.na(named) & nzchar(named)]
+    if (!length(named)) {
+      found[[length(found) + 1]] <- list(
+        name = as.character(a$name %||% "Untitled analysis"),
+        messages = "This analysis answers no objective; say which one it is for.")
+      next
+    }
+    missing <- setdiff(named, ids)
+    if (length(missing)) {
+      found[[length(found) + 1]] <- list(
+        name = as.character(a$name %||% "Untitled analysis"),
+        messages = sprintf(paste("Names an objective that no longer exists (%s) --",
+                                 "an objective reworded after this analysis was",
+                                 "written gets a new id."),
+                           paste(missing, collapse = ", ")))
+    }
+  }
+  found
+}
+
 study_ui <- function(id) {
   ns <- NS(id)
   tagList(
@@ -138,6 +193,15 @@ study_server <- function(id) {
     output$n_amendments <- renderText(amendments$count())
     outputOptions(output, "n_amendments", suspendWhenHidden = FALSE)
 
+    # Objectives are card STATE, not just the textarea's contents, because they
+    # carry ids the analyses reference. The textarea still holds one per line --
+    # that is the authoring UX -- and every edit is reconciled against the ids
+    # already held, so reordering keeps them (see reconcile_objectives()).
+    objectives <- reactiveVal(list())
+    observeEvent(input$objectives, {
+      objectives(reconcile_objectives(split_lines(input$objectives), objectives()))
+    }, ignoreNULL = FALSE)
+
     data <- reactive(list(
       title      = blank_to_na(input$title),
       study_code = blank_to_na(input$study_code),
@@ -150,7 +214,7 @@ study_server <- function(id) {
       date       = as.character(input$date %||% NA),
       background = blank_to_na(input$background),
       aim        = blank_to_na(input$aim),
-      objectives = as_array(split_lines(input$objectives)),
+      objectives = objectives(),
       amendments = amendments$data()
     ))
 
@@ -179,7 +243,13 @@ study_server <- function(id) {
       }
       updateTextAreaInput(session, "background", value = study$background %||% "")
       updateTextAreaInput(session, "aim", value = study$aim %||% "")
-      updateTextAreaInput(session, "objectives", value = join_lines(study$objectives))
+      # Seed the ids first: the textarea update fires the observer above, which
+      # would otherwise mint fresh ids for objectives that already have them and
+      # orphan every analysis pointing at them.
+      objectives(migrate_objectives(study$objectives))
+      updateTextAreaInput(session, "objectives",
+                          value = join_lines(vapply(objectives(), objective_text,
+                                                    character(1))))
       amendments$clear()
       for (a in study$amendments %||% list()) amendments$add(a)
     }
