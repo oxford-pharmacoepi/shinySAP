@@ -35,6 +35,17 @@ for arg in "$@"; do
 done
 [ ${#STEPS[@]} -eq 0 ] && STEPS=("${ALL_STEPS[@]}")
 
+# An unknown step must be an ERROR, never a no-op. Skipping it silently would
+# make a typo in ci.yaml -- `scripts/precheck.sh redme lint` -- report success
+# while checking nothing, which is the one way a green CI can lie.
+for requested in "${STEPS[@]}"; do
+  if [[ " ${ALL_STEPS[*]} " != *" $requested "* ]]; then
+    printf '\033[31munknown step: %s\033[0m\n' "$requested" >&2
+    printf 'known steps: %s\n' "${ALL_STEPS[*]}" >&2
+    exit 2
+  fi
+done
+
 # rmarkdown needs a pandoc; a CI runner ships one, a Mac usually only has
 # RStudio's. Left alone if the environment already names one.
 if [ -z "${RSTUDIO_PANDOC:-}" ]; then
