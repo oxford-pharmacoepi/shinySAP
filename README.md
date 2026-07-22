@@ -65,13 +65,14 @@ JSON arrays even when they hold a single entry.
 
 ```json
 {
-  "sap_schema_version": "0.4.17",
+  "sap_schema_version": "0.4.19",
   "generated_at": "2026-07-09T14:02:11+0100",
   "study": {
     "title": "Metformin and lactic acidosis",
     "study_code": "P3-C1-006",
     "authors": ["A. Researcher"],
     "version": "1.1",
+    "min_cell_count": 5,
     "date": "2026-07-09",
     "background": "...",
     "aim": "The aim of this study is to ...",
