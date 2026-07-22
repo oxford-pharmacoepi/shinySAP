@@ -92,9 +92,18 @@ fi
 # -- the test steps below need renv exactly as the workflow restored it.
 if wants lint; then
   step "Lint (config in .lintr)"
+  # The version is reported because CI installs `any::lintr` and a laptop
+  # installs whatever it installed once. A default that changed between the two
+  # is exactly how a check passes here and fails on GitHub -- .lintr now states
+  # the rules that bit us, but printing the version makes the next such skew
+  # something you can see rather than deduce.
   out=$(RENV_CONFIG_AUTOLOADER_ENABLED=false R_PROFILE_USER=/dev/null \
-        Rscript -e 'l <- lintr::lint_dir("."); print(l); quit(status = if (length(l)) 1 else 0)' 2>&1)
-  if [ $? -eq 0 ]; then ok "no lints"; else printf '%s\n' "$out"; bad "lintr reported problems"; fi
+        Rscript -e 'cat("lintr", as.character(packageVersion("lintr")), "\n")
+                    l <- lintr::lint_dir("."); print(l)
+                    quit(status = if (length(l)) 1 else 0)' 2>&1)
+  code=$?
+  version_line=$(printf '%s' "$out" | head -1)
+  if [ $code -eq 0 ]; then ok "no lints ($version_line)"; else printf '%s\n' "$out"; bad "lintr reported problems"; fi
 fi
 
 if wants renv; then

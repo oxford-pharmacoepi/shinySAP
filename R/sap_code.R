@@ -389,10 +389,18 @@ sap_script_sections <- function(sap) {
   cohorts   <- sap$cohorts %||% list()
   analyses  <- sap$proposed_analyses %||% list()
   codelists <- sap$codelists %||% list()
-  out <- list()
+  # The blocks accumulate in an ENVIRONMENT rather than through `<<-`.
+  #
+  # add() has to reach out of its own frame to append, and super-assignment does
+  # that by walking the scope chain until it finds the name -- so a typo binds
+  # something in the global environment instead of failing. An environment is
+  # the same mutation said out loud: `acc` is passed by reference, so a plain
+  # `<-` into it is unambiguous about what is being changed and where it lives.
+  acc <- new.env(parent = emptyenv())
+  acc$out <- list()
   add <- function(group, title, code = NULL, note = NULL, pkgs = character(0)) {
-    out[[length(out) + 1]] <<- list(group = group, title = title, code = code,
-                                    note = note, pkgs = pkgs)
+    acc$out <- c(acc$out, list(list(group = group, title = title, code = code,
+                                    note = note, pkgs = pkgs)))
   }
 
   # Dependency order, which is why the groups run in this sequence: a concept set
@@ -471,15 +479,15 @@ sap_script_sections <- function(sap) {
   # known, because what it loads is derived from what they call. Emitting it only
   # in sap_r_script() would have made the flat script and the appendix disagree,
   # which is the drift sap_script_sections() exists to make impossible.
-  pkgs <- sap_script_packages(out)
+  pkgs <- sap_script_packages(acc$out)
   if (length(pkgs)) {
-    out <- c(list(list(group = "Libraries", title = NA_character_,
-                       code  = paste(sprintf("library(%s)", pkgs), collapse = "\n"),
-                       note  = NULL, pkgs = character(0))),
-             out)
+    acc$out <- c(list(list(group = "Libraries", title = NA_character_,
+                           code  = paste(sprintf("library(%s)", pkgs), collapse = "\n"),
+                           note  = NULL, pkgs = character(0))),
+                 acc$out)
   }
 
-  out
+  acc$out
 }
 
 # The blocks above as one runnable script, each under its group banner and its

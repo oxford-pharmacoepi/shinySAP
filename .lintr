@@ -2,6 +2,12 @@ linters: linters_with_defaults(
     line_length_linter = line_length_linter(120),
     object_name_linter = object_name_linter(styles = c("snake_case", "SNAKE_CASE", "symbols")),
     object_length_linter = object_length_linter(40L),
+    # Stated explicitly, not inherited: lintr's default for this changed, so an
+    # older local lintr passed what CI's newer one rejected. "<-" only, which is
+    # the stricter of the two defaults -- a plain `x <<- ...` accumulator inside
+    # a closure is still fine, it is super-assignment to a SUBSCRIPT that this
+    # catches.
+    assignment_linter = assignment_linter(operator = "<-"),
     object_usage_linter = NULL,
     commented_code_linter = NULL,
     indentation_linter = NULL,
