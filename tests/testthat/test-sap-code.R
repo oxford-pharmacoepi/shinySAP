@@ -232,6 +232,66 @@ test_that("analyses with no package call still get unique variable names", {
   expect_length(unique(vars), 3)
 })
 
+# Script sections ---------------------------------------------------------------
+
+# The appendix renders these blocks under their own headings while the flat
+# script joins the same ones, so a block missing here is a block missing from
+# both -- and a plain cohort must NOT appear, or the document grows a heading
+# for a call IncidencePrevalence does not have.
+test_that("the script's blocks are labelled, ordered, and skip plain cohorts", {
+  secs <- sap_script_sections(list(
+    study = list(min_cell_count = 5),
+    cohorts = list(
+      list(name = "General population", kind = "denominator", sex = list("Both"),
+           ageGroup = list(c(0, 150)), daysPriorObservation = list(0)),
+      list(name = "Flu vaccine", kind = "outcome")),
+    proposed_analyses = list(list(
+      name = "Point prevalence", analysis_type = "estimatePointPrevalence",
+      parameters = list(denominatorTable = "General population",
+                        outcomeTable = "Flu vaccine")))))
+
+  expect_identical(vapply(secs, function(s) s$group, character(1)),
+                   c("Denominator cohort sets", "Estimates", "Result suppression"))
+  expect_identical(vapply(secs, function(s) s$title, character(1)),
+                   c("General population", "Point prevalence", NA_character_))
+  # The estimate is assigned, so the suppression block can name it.
+  expect_match(secs[[2]]$code, "point_prevalence_1 <- estimatePointPrevalence\\(", perl = TRUE)
+})
+
+# An analysis the package cannot express must still get a block: dropping it
+# would let the appendix look complete while the plan asks for something the
+# generated code never does.
+test_that("an unmappable analysis becomes a block with a note and no code", {
+  secs <- sap_script_sections(list(
+    proposed_analyses = list(list(name = "Bespoke", analysis_type = "Other"))))
+  expect_length(secs, 1)
+  expect_identical(secs[[1]]$title, "Bespoke")
+  expect_null(secs[[1]]$code)
+  expect_match(secs[[1]]$note, "No IncidencePrevalence function maps onto", fixed = TRUE)
+})
+
+# The two forms are one source: whatever the appendix shows as a block is what
+# the flat script contains, so they cannot drift apart.
+test_that("the flat script contains every block's code", {
+  sap <- list(
+    study = list(min_cell_count = 5),
+    cohorts = list(list(name = "General population", kind = "denominator",
+                        sex = list("Both"), ageGroup = list(c(0, 150)),
+                        daysPriorObservation = list(0))),
+    proposed_analyses = list(list(
+      name = "Point prevalence", analysis_type = "estimatePointPrevalence",
+      parameters = list(denominatorTable = "General population", outcomeTable = "O"))))
+  script <- sap_r_script(sap)
+  for (s in sap_script_sections(sap)) {
+    if (!is.null(s$code)) expect_true(grepl(s$code, script, fixed = TRUE))
+  }
+})
+
+test_that("a SAP with nothing to generate yields no blocks and an empty script", {
+  expect_length(sap_script_sections(list()), 0)
+  expect_identical(sap_r_script(list()), "")
+})
+
 # Picker grouping ---------------------------------------------------------------
 
 test_that("cohort choices group by kind, in the registry's order", {

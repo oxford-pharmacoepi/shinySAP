@@ -323,8 +323,26 @@ if (!length(cohorts)) {
     sex <- unlist(co$sex %||% list())
     if (length(sex)) add("Sex", paste(sex, collapse = ", "))
     if (!is.null(co$cohortDateRange)) {
-      dr <- unlist(co$cohortDateRange)
-      add("Cohort date range", sprintf("%s to %s", dr[1] %||% "—", dr[2] %||% "—"))
+      # An absent bound is NOT missing information: NULL on either end means the
+      # cohort runs to the limit of what the database holds, which is what the
+      # generated call's NA does. It used to print as an em-dash -- the same
+      # glyph field_table() uses for "no value worth showing" -- so a deliberate
+      # open end and an unanswered question read identically.
+      #
+      # Indexed with [[ ]] and NOT unlist()ed: unlist drops a NULL rather than
+      # preserving its position, so an open START slid into position 1 and a
+      # range of [null, "2020-01-01"] printed as "2020-01-01 to <open>" -- the
+      # opposite period to the one the SAP states. Position is the whole meaning
+      # of this pair, so it has to survive.
+      dr    <- co$cohortDateRange
+      bound <- function(i, whole) {
+        v <- if (length(dr) >= i) dr[[i]] else NULL
+        v <- as.character(v %||% NA)[1]
+        if (is.na(v) || !nzchar(trimws(v))) whole else v
+      }
+      add("Cohort date range", sprintf("%s to %s",
+                                       bound(1, "start of available data"),
+                                       bound(2, "end of available data")))
     }
     tar_list <- co$timeAtRisk %||% list()
     if (length(tar_list))
@@ -448,32 +466,6 @@ if (!length(cohorts)) {
 }
 ```
 
-```{r cohort-sets, results='asis'}
-# The generator call each denominator card describes, so the SAP a reviewer signs
-# off and the code the study runs are the same object.
-#
-# The cohorts this expands INTO are deliberately not listed. The expansion is
-# derived, not authored: the table above already carries the age groups, sex,
-# prior-observation values, the rule that combines them and the resulting count,
-# so a reader has everything needed to derive it. Printing the rows restated the
-# author's own inputs back at them, and it did not scale -- one denominator here
-# reaches 45 rows, and 135 once a sex axis is added.
-#
-# It was also shinySAP's MODEL of the generator rather than the generator itself,
-# so it could quietly disagree with the package in a way the call below cannot:
-# a call is just the arguments the author chose. The live expansion still belongs
-# on the cards, where denominator_cohort_set_ui() shows it as an authoring check
-# rather than as a statement in a signed plan.
-dens <- Filter(function(co) is_denominator_kind(co$kind), sap$cohorts %||% list())
-if (length(dens)) {
-  cat("## Denominator cohort generation\n\n")
-  for (co in dens) {
-    cat("### ", chr(co$name), "\n\n", sep = "")
-    code_block(cohort_r_code(co))
-  }
-}
-```
-
 `r if (is_word) "\\newpage"`
 
 ---
@@ -549,10 +541,11 @@ if (!length(analyses)) {
     paste(parts, collapse = "\n")
   }
 
-  # No Description column: it reads as prose under the analysis's own heading
-  # below, immediately above the call it describes, and printing it in both
-  # places was pure duplication -- the same fault as the analysis-code appendix.
-  # The table is the at-a-glance index; the specification carries the sentences.
+  # This table is the whole of the Analyses section: every argument the author
+  # decided, one row per analysis. The generated calls are NOT repeated here --
+  # all generated code lives in the analysis-code appendix, which carries each
+  # call under its own `# <analysis name>` comment, including the fallback note
+  # for an analysis type no IncidencePrevalence function maps onto.
   df <- data.frame(
     `Name`          = vapply(analyses, function(a) chr(a$name), character(1)),
     `Analysis type` = vapply(analyses, function(a) chr(a$analysis_type), character(1)),
@@ -562,24 +555,6 @@ if (!length(analyses)) {
   )
   flextable::flextable_to_rmd(items_table(df))
   cat("\n\n")
-
-  # The call each analysis describes, beside the analysis itself. The table above
-  # is the at-a-glance view; this is the specification -- every argument the
-  # estimator takes, in the signature's own order.
-  cat("## Analysis specifications\n\n")
-  for (a in analyses) {
-    cat("### ", chr(a$name), "\n\n", sep = "")
-    desc <- chr(a$description)
-    if (nzchar(desc)) cat(desc, "\n\n", sep = "")
-    code <- analysis_r_code(a, sap$cohorts %||% list())
-    if (is.null(code)) {
-      cat(sprintf(paste("_No IncidencePrevalence function corresponds to the analysis type",
-                        "'%s', so this analysis has no generated call._\n\n"),
-                  chr(a$analysis_type)))
-    } else {
-      code_block(code)
-    }
-  }
 }
 ```
 
@@ -594,7 +569,14 @@ if (!length(analyses)) {
 # gives only the counts. Here rather than beside the summary because this is bulk
 # a reader consults, not reads: the same reason DARWIN SAPs put their codelists in
 # an appendix. Nothing is repeated between the two.
-with_codes <- Filter(function(cl) length(cl$codes %||% list()), sap$codelists %||% list())
+#
+# EVERY codelist gets a heading, including one with no codes yet. Filtering the
+# empty ones out left a plan naming six codelists with one appendix entry, and
+# the summary table promises each is "listed in full in the appendix" -- so a
+# reader had to notice an absence to learn the codes were missing. An empty
+# codelist says so under its own heading instead, the same way an analysis with
+# no package call still gets a block in the analysis-code appendix.
+all_codelists <- sap$codelists %||% list()
 
 # One codelist as the densest table its codes allow. Concept ids alone tile
 # several to a row; named concepts need a line each, because an OMOP concept name
@@ -631,12 +613,18 @@ codes_ft <- function(df) {
   ft
 }
 
-if (!length(with_codes)) {
-  cat("_No codes have been uploaded yet._\n")
+if (!length(all_codelists)) {
+  cat("_No codelists defined._\n")
 } else {
-  for (cl in with_codes) {
+  for (cl in all_codelists) {
     codes <- cl$codes %||% list()
     cat("\n\n## ", chr(cl$name), "\n\n", sep = "")
+    if (!length(codes)) {
+      # Stated, not implied by an empty section: this is the plan admitting the
+      # codes are still to come, which is a reviewable fact about the SAP.
+      cat("_No codes uploaded yet._\n\n")
+      next
+    }
     src <- chr(cl$source_file)
     cat(sprintf("%d concept%s%s.\n\n", length(codes),
                 if (length(codes) == 1) "" else "s",
@@ -654,21 +642,36 @@ if (!length(with_codes)) {
 # Appendix: analysis code
 
 ```{r script, results='asis'}
-# The whole plan as one script, in the order it has to run: every denominator
-# cohort set generated before the estimates that point at it. This is the
-# executable form of the document -- the sections above are the same calls, shown
-# beside the thing they describe.
+# The whole plan as code, in the order it has to run: every denominator cohort
+# set generated before the estimates that point at it. This is the executable
+# form of the document, and the ONLY place generated code appears -- the sections
+# above describe the same analyses in words and arguments.
+#
+# One heading per block rather than one flat listing. The body of the document
+# names every cohort and analysis, so an appendix that ran them together left the
+# reader checking a specific analysis's call with nowhere to jump to and a single
+# long block to scan. The headings put each one in the table of contents; running
+# the plan still means running the blocks in the order they appear.
 #
 # `cdm` is the live database connection the study opens; every other argument
 # comes from this SAP. An argument the plan does not decide is absent, and the
 # package's documented default applies.
-script <- sap_r_script(sap)
-if (!nzchar(script)) {
+secs <- sap_script_sections(sap)
+if (!length(secs)) {
   cat("_No cohorts or analyses map onto IncidencePrevalence functions yet._\n")
 } else {
   cat("Plain cohorts (target, outcome, comparator, censoring) are instantiated",
-      "outside IncidencePrevalence and are referred to here by table name only.\n\n")
-  code_block(script)
+      "outside IncidencePrevalence and are referred to here by table name only.",
+      "The blocks below run in the order they appear.\n\n")
+  group <- NULL
+  for (s in secs) {
+    if (!identical(s$group, group)) {
+      group <- s$group
+      cat("\n\n## ", group, "\n\n", sep = "")
+    }
+    if (!is.na(s$title)) cat("### ", s$title, "\n\n", sep = "")
+    if (is.null(s$code)) cat("_", s$note, "_\n\n", sep = "") else code_block(s$code)
+  }
 }
 ```
 

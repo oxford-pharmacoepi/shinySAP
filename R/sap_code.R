@@ -354,47 +354,86 @@ estimate_var_names <- function(analyses) {
   }, character(1))
 }
 
-# The whole SAP as one script, in the order it has to run: every denominator
-# cohort set generated first, then every estimate, then the one suppression step
-# that governs what may leave the data partner. Analyses that map onto no package
-# function are listed as comments, so the script never silently omits something
-# the SAP asks for.
-sap_r_script <- function(sap) {
+# The whole SAP as its ordered, labelled script BLOCKS: every denominator cohort
+# set generated first, then every estimate, then the one suppression step that
+# governs what may leave the data partner. Running the plan means running the
+# blocks in this order, which is why the order is a property of the list rather
+# than of whoever renders it.
+#
+# This is the single source both forms of the generated code come from:
+# sap_r_script() joins the blocks into one runnable listing, and the document's
+# appendix renders the same blocks under their own headings so every analysis is
+# reachable from the table of contents. Neither form can therefore show code the
+# other does not, or show it in a different order.
+#
+# One entry per block:
+#   group  the section it belongs to
+#   title  the cohort or analysis it came from, NA for a whole-plan step
+#   code   the R, or NULL when the SAP asks for something with no package call
+#   note   why, when code is NULL -- so an unmappable analysis is still listed
+#          rather than silently dropped
+sap_script_sections <- function(sap) {
   cohorts  <- sap$cohorts %||% list()
   analyses <- sap$proposed_analyses %||% list()
-  out <- character(0)
-
-  gen <- Filter(Negate(is.null), lapply(cohorts, function(co) {
-    code <- cohort_r_code(co)
-    if (is.null(code)) NULL else sprintf("# %s\n%s", as.character(co$name %||% ""), code)
-  }))
-  if (length(gen)) {
-    out <- c(out, paste0("# --- Denominator cohort sets ---\n\n",
-                         paste(unlist(gen), collapse = "\n\n")))
+  out <- list()
+  add <- function(group, title, code = NULL, note = NULL) {
+    out[[length(out) + 1]] <<- list(group = group, title = title, code = code, note = note)
   }
 
-  vars <- estimate_var_names(analyses)
+  for (co in cohorts) {
+    code <- cohort_r_code(co)
+    # NULL is a plain cohort, instantiated outside IncidencePrevalence: there is
+    # no call to show, and inventing a heading for one would imply otherwise.
+    if (!is.null(code)) {
+      add("Denominator cohort sets", as.character(co$name %||% ""), code = code)
+    }
+  }
+
+  vars  <- estimate_var_names(analyses)
   bound <- character(0)
-  est <- Filter(Negate(is.null), lapply(seq_along(analyses), function(i) {
+  for (i in seq_along(analyses)) {
     a    <- analyses[[i]]
     nm   <- as.character(a$name %||% "")
     code <- analysis_r_code(a, cohorts)
     if (is.null(code)) {
-      sprintf("# %s\n#   No IncidencePrevalence function maps onto analysis type '%s'.",
-              nm, as.character(a$analysis_type %||% ""))
+      add("Estimates", nm, note = sprintf(
+        "No IncidencePrevalence function maps onto analysis type '%s'.",
+        as.character(a$analysis_type %||% "")))
     } else {
-      bound <<- c(bound, vars[[i]])
-      sprintf("# %s\n%s <- %s", nm, vars[[i]], code)
+      # Assigned here, not in analysis_r_code(): the variable exists so the
+      # estimates can be bound and suppressed together at the end, which is a
+      # fact about the script as a whole rather than about the call.
+      bound <- c(bound, vars[[i]])
+      add("Estimates", nm, code = sprintf("%s <- %s", vars[[i]], code))
     }
-  }))
-  if (length(est)) {
-    out <- c(out, paste0("# --- Estimates ---\n\n",
-                         paste(unlist(est), collapse = "\n\n")))
   }
 
   supp <- suppression_r_code(sap$study$min_cell_count, bound)
-  if (!is.null(supp)) out <- c(out, supp)
+  # No title: suppression is one step over every estimate above, not a step
+  # belonging to any one of them.
+  if (!is.null(supp)) add("Result suppression", NA_character_, code = supp)
 
+  out
+}
+
+# The blocks above as one runnable script, each under its group banner and its
+# own name. The executable form of the document.
+sap_r_script <- function(sap) {
+  secs <- sap_script_sections(sap)
+  if (!length(secs)) return("")
+  out   <- character(0)
+  group <- NULL
+  for (s in secs) {
+    if (!identical(s$group, group)) {
+      group <- s$group
+      out   <- c(out, sprintf("# --- %s ---", group))
+    }
+    label <- if (is.na(s$title)) character(0) else sprintf("# %s", s$title)
+    # The note is indented under its own analysis's name, so a block with no
+    # call still reads as that analysis rather than as a stray remark.
+    body  <- if (is.null(s$code)) sprintf("#   %s", s$note) else s$code
+    out   <- c(out, paste(c(label, body), collapse = "\n"))
+  }
   paste(out, collapse = "\n\n")
 }
 
@@ -413,8 +452,9 @@ suppression_r_code <- function(min_cell_count, vars) {
     sprintf("omopgenerics::bind(\n%s\n)",
             paste(sprintf("  %s", vars), collapse = ",\n"))
   }
+  # No section banner here: the block's own group heading supplies it, in both
+  # the flat script and the appendix.
   paste0(
-    "# --- Result suppression ---\n",
     "# Applied once, to every result above, before anything leaves the data partner.\n",
     sprintf("results <- %s\n", combine),
     sprintf("results <- omopgenerics::suppress(results, minCellCount = %s)", r_number(n))
