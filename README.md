@@ -29,10 +29,25 @@ accept free text, so you can reference something you have not written down yet.
 
 ## Running
 
+Dependencies are pinned with [renv](https://rstudio.github.io/renv/); the exact
+package versions (and the R version they were locked against) live in
+`renv.lock`. First time in a fresh clone, restore them:
+
 ```r
-install.packages(c("shiny", "bslib", "jsonlite"))
+# in R, with the repo root as the working directory
+renv::restore()
+shiny::runApp()
+```
+
+renv activates automatically through the project `.Rprofile` on every later
+session, so after that first restore it is just:
+
+```r
 shiny::runApp("path/to/shinySAP")
 ```
+
+To upgrade dependencies, run `renv::update()` followed by `renv::snapshot()`
+and commit the resulting `renv.lock`.
 
 By default the app writes to `output/` relative to the working directory. Point
 it somewhere else with:
@@ -398,7 +413,8 @@ re-rendered block, so adding or removing one never resets its siblings.
 
 ## Tests
 
-The suite needs `testthat` (`install.packages("testthat")`). From the repo root:
+The suite needs `testthat`, which `renv::restore()` installs along with
+everything else. From the repo root:
 
 ```sh
 Rscript tests/testthat.R

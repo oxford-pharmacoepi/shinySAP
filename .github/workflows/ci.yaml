@@ -12,26 +12,23 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    strategy:
-      fail-fast: false
-      matrix:
-        r-version: ['oldrel', 'release']
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
+      # The R version and every package version come from renv.lock; update
+      # them with renv::update() + renv::snapshot(), not here.
       - uses: r-lib/actions/setup-r@v2
         with:
-          r-version: ${{ matrix.r-version }}
+          r-version: '4.5.2'
           use-public-rspm: true
 
-      - uses: r-lib/actions/setup-r-dependencies@v2
-        with:
-          packages: |
-            any::shiny
-            any::bslib
-            any::jsonlite
-            any::testthat
+      - uses: r-lib/actions/setup-renv@v2
+
+      - name: Lockfile is in sync with the code
+        run: |
+          Rscript -e 'status <- renv::status()
+                      if (!status$synchronized) quit(status = 1)'
 
       # The test suite only sources part of R/; this catches syntax errors
       # in the module files and app.R too.
@@ -63,6 +60,10 @@ jobs:
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      # Lint with a stock library, not the renv project library: keep the
+      # project .Rprofile from activating renv (lintr is not a runtime dep).
+      RENV_CONFIG_AUTOLOADER_ENABLED: 'false'
     steps:
       - uses: actions/checkout@v4
 
