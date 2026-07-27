@@ -21,6 +21,14 @@
 #   {"op": "require_first_entry"}
 #   {"op": "pad_cohort_end", "days": 1825}
 #
+# `codelist` may name ONE codelist or SEVERAL:
+#
+#   {"op": "concept_cohort", "codelist": ["cs_follicular_lymphoma", "cs_multiple_myeloma"]}
+#
+# conceptCohort() creates one cohort per codelist entry, so several named
+# together are several cohorts in ONE table -- which is what lets one estimator
+# call cover every outcome sharing an exit rule, instead of one call each.
+#
 # Free text is NOT replaced and is never auto-converted: entry_events /
 # inclusion_criteria / exit_criteria stay exactly as they are, and a cohort
 # carrying operations renders from them instead. Converting sentences into
@@ -122,6 +130,18 @@ op_chr <- function(o, key) {
   if (is.na(v) || !nzchar(trimws(v))) NULL else trimws(v)
 }
 
+# The same field read as a VECTOR, for a key that may name one thing or several.
+#
+# JSON carries both shapes naturally -- "cs_x" and ["cs_x", "cs_y"] -- and a
+# field that grew a plural reading must still read every SAP written before it
+# did. Returns NULL for absent, exactly as op_chr() does, so an omitted field
+# still leaves the package default in force.
+op_chr_vec <- function(o, key) {
+  v <- trimws(as.character(unlist(o[[key]] %||% character(0))))
+  v <- v[!is.na(v) & nzchar(v)]
+  if (!length(v)) NULL else v
+}
+
 # A [lower, upper] pair, or a list of them. Indexed with [[ ]] and never
 # unlist()ed, for the reason in cohort_kinds.R: a null bound would collapse and
 # the pair would silently become length 1.
@@ -143,7 +163,8 @@ register_cohort_op(
   "concept_cohort",
   entry = TRUE,
   prose = function(o) sprintf(
-    "Entry: a record of any concept in [%s]%s%s.", op_chr(o, "codelist") %||% "?",
+    "Entry: a record of any concept in [%s]%s%s.",
+    paste(op_chr_vec(o, "codelist") %||% "?", collapse = ", "),
     if (!is.null(op_chr(o, "subset_cohort"))) {
       sprintf(", among people in the %s cohort", op_chr(o, "subset_cohort"))
     } else "",
@@ -151,12 +172,13 @@ register_cohort_op(
       ", with the episode ending on the record's start date"
     } else ""),
   code = function(o, ctx) {
-    cl <- op_chr(o, "codelist")
+    cl <- op_chr_vec(o, "codelist")
     r_call("conceptCohort", list(
       cdm        = "cdm",
-      # The R name the concept set was assigned under, not a string: the script
-      # builds the codelist object above and hands it in here.
-      conceptSet = if (is.null(cl)) NULL else concept_set_var(cl),
+      # The R name(s) the concept set was assigned under, not a string: the
+      # script builds the codelist object above and hands it in here. Several
+      # named together become one codelist -- see concept_set_arg().
+      conceptSet = if (is.null(cl)) NULL else concept_set_arg(cl),
       name       = r_string(ctx$table),
       # Only when the author chose the non-default. Where the episode ENDS is
       # what a later pad_cohort_end counts from, so the two decide together
@@ -179,12 +201,24 @@ register_cohort_op(
     ))
   },
   validate = function(o, ctx) {
-    cl <- op_chr(o, "codelist")
+    cl <- op_chr_vec(o, "codelist")
     if (is.null(cl)) {
       return("An entry operation must name the codelist its concepts come from.")
     }
-    if (length(ctx$codelists) && !cl %in% ctx$codelists) {
-      return(sprintf("Entry cites [%s], which is not on the Codelists tab.", cl))
+    # Every name is reported, not just the first: an entry citing four codelists
+    # with two of them missing should say which two.
+    if (length(ctx$codelists)) {
+      missing <- cl[!cl %in% ctx$codelists]
+      if (length(missing)) {
+        return(sprintf("Entry cites [%s], which is not on the Codelists tab.",
+                       paste(missing, collapse = ", ")))
+      }
+    }
+    # One cohort per codelist is the whole point of naming several, so two
+    # entries under the same name would collide in the generated cohort set.
+    if (anyDuplicated(cl)) {
+      return(sprintf("Entry names [%s] more than once.",
+                     paste(unique(cl[duplicated(cl)]), collapse = ", ")))
     }
     ex <- op_chr(o, "exit")
     if (!is.null(ex) && !ex %in% c("event_end_date", "event_start_date")) {
@@ -338,6 +372,20 @@ concept_set_var <- function(name) {
   if (is.na(v)) "concept_set" else v
 }
 
+# The conceptSet= argument for one entry operation, which may name SEVERAL
+# codelists.
+#
+# A codelist renders as a NAMED LIST of concept ids (see concept_set_r_code), so
+# c() of several is one codelist carrying one entry per element -- and
+# conceptCohort() creates ONE COHORT PER ENTRY in a single table. That is the
+# whole reason an entry may name more than one: six cancers sharing an exit rule
+# are six cohorts in one table, not six tables, and the estimators then take the
+# lot in a single call.
+concept_set_arg <- function(names) {
+  vars <- vapply(names, concept_set_var, character(1), USE.NAMES = FALSE)
+  if (length(vars) == 1) vars else sprintf("c(%s)", paste(vars, collapse = ", "))
+}
+
 # One codelist as the object conceptCohort(conceptSet =) takes.
 #
 # conceptCohort() documents that conceptSet accepts a plain codelist -- a named
@@ -436,9 +484,9 @@ cohort_operations_code <- function(ch, codelists = list(), cohorts = character(0
 # here rather than being worked out again at each call site.
 cited_codelist_names <- function(cohorts) {
   refs <- unlist(lapply(cohorts %||% list(), function(co) {
-    vapply(Filter(function(o) identical(cohort_op_type(o), "concept_cohort"),
+    lapply(Filter(function(o) identical(cohort_op_type(o), "concept_cohort"),
                   co$operations %||% list()),
-           function(o) op_chr(o, "codelist") %||% "", character(1))
+           function(o) op_chr_vec(o, "codelist") %||% character(0))
   }))
   refs <- as.character(refs %||% character(0))
   unique(refs[nzchar(refs)])

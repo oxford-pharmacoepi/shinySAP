@@ -204,3 +204,59 @@ test_that("app.R hands analyses_server its objective choices", {
   call <- paste(app, collapse = "\n")
   expect_match(call, "objective_choices = objective_choices", fixed = TRUE)
 })
+
+# Loading a SAP must not delete what it loaded.
+#
+# A selectize renders NOTHING for a `selected` that is absent from `choices`:
+# with choices = character(0) the <select> comes back empty, so the browser
+# reports an empty value and collect() writes that straight back. Merely opening
+# a saved SAP and letting it autosave stripped every analysis's objective links.
+# The saved ids are therefore seeded as the initial choices; the observe() in
+# analysis_item_server replaces them with the objectives' text once the Study tab
+# reports it.
+test_that("a loaded analysis card renders its saved objectives as options", {
+  html <- as.character(analysis_item_ui("analysis_1",
+                                        list(objectives = list("obj_1", "obj_3"))))
+  expect_match(html, '<option value="obj_1" selected>', fixed = TRUE)
+  expect_match(html, '<option value="obj_3" selected>', fixed = TRUE)
+})
+
+# Seeding choices from the prefill must not invent one: an analysis that named
+# no objective still renders a picker with nothing selected. (Scoped to obj_
+# values -- the card's other selects, analysis_type among them, carry options of
+# their own.)
+test_that("an analysis with no saved objectives renders no objective options", {
+  html <- as.character(analysis_item_ui("analysis_1", list()))
+  expect_no_match(html, '<option value="obj_', fixed = TRUE)
+})
+
+# The half of this that was actually losing the data.
+#
+# collect() wrote `objectives` faithfully, but analysis_to_prefill() -- what
+# load() rebuilds every card from -- lifts only ANALYSIS_COMMON_FIELDS straight
+# from the file, and `objectives` was not among them. So opening a SAP rendered
+# each analysis with no objectives, and the next save wrote that emptiness back.
+# The template round-trip test covers a template's own fields; nothing covered
+# the shared half of the card, which is where this lived.
+test_that("analysis_to_prefill carries objectives back from a saved analysis", {
+  pf <- analysis_to_prefill(list(
+    name = "P", analysis_type = "estimatePointPrevalence",
+    objectives = list("obj_1", "obj_5"), data_sources = list("SIDIAP"),
+    parameters = list(denominatorTable = "D", outcomeTable = "O")))
+  expect_identical(as.character(unlist(pf$objectives)), c("obj_1", "obj_5"))
+})
+
+test_that("every field the shared half of the card owns round-trips on load", {
+  # Whatever the card renders and collects, load() must hand back.
+  expect_true(all(c("name", "analysis_type", "data_sources", "objectives")
+                  %in% ANALYSIS_COMMON_FIELDS))
+})
+
+test_that("a saved analysis keeps its objectives through load and re-render", {
+  html <- as.character(analysis_item_ui("analysis_1", analysis_to_prefill(list(
+    name = "P", analysis_type = "estimatePointPrevalence",
+    objectives = list("obj_1", "obj_5"), data_sources = list("SIDIAP"),
+    parameters = list(denominatorTable = "D", outcomeTable = "O")))))
+  expect_match(html, '<option value="obj_1" selected>', fixed = TRUE)
+  expect_match(html, '<option value="obj_5" selected>', fixed = TRUE)
+})

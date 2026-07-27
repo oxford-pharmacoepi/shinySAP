@@ -142,13 +142,17 @@ split_top_level <- function(s) {
 # aligned under its opening paren, so the emitted script stays readable at the
 # width a Word page and an R script both assume.
 r_wrap_value <- function(value, prefix, width = 92) {
-  if (nchar(prefix) + nchar(value) <= width || !grepl("^list\\(", value)) return(value)
-  inner <- substr(value, 6L, nchar(value) - 1L)
+  # list() and c() wrap the same way -- only the opening token differs, and its
+  # width is what the continuation lines line up under. c() earns this because an
+  # entry naming six codelists renders as one c() of six variable names.
+  head <- if (grepl("^list\\(", value)) "list(" else if (grepl("^c\\(", value)) "c(" else NULL
+  if (is.null(head) || nchar(prefix) + nchar(value) <= width) return(value)
+  inner <- substr(value, nchar(head) + 1L, nchar(value) - 1L)
   parts <- split_top_level(inner)
   if (length(parts) < 2) return(value)
-  pad <- strrep(" ", nchar(prefix) + 5L)
+  pad <- strrep(" ", nchar(prefix) + nchar(head))
   wrapped <- character(0)
-  line    <- "list("
+  line    <- head
   # Only the FIRST line sits after the "  argName = " prefix; every continuation
   # line already carries that width as leading pad, so counting the prefix again
   # would wrap them far too early.
@@ -219,6 +223,86 @@ table_name_collisions <- function(cohorts) {
             "%s. Rename one so each cohort gets its own table."),
       t, paste(sprintf("'%s'", nms[tbl == t]), collapse = ", "))
   ))
+}
+
+# Cohorts an estimator points at that the generated script never creates.
+#
+# An estimator call names a cohort TABLE, and something has to have created it. A
+# denominator cohort creates one (generateDenominatorCohortSet); so does a plain
+# cohort carrying typed operations (conceptCohort and the verbs after it). A
+# plain cohort with NEITHER -- prose alone -- creates nothing, which cohort_r_code()
+# documents as legitimate: such a cohort is instantiated outside
+# IncidencePrevalence, by hand or by a study's own script.
+#
+# Legitimate, but not free. The script still emits the estimator call, so run as
+# it stands it fails at the data partner with "<table> does not exist in the
+# cdm_reference object" -- and nothing anywhere said so. Every other gap in the
+# generated code is reported: a colliding table name above, an expanding concept
+# set as a TODO, an unregistered operation as a comment in place. This one was
+# the exception, and it is the one that stops the script dead.
+#
+# A reference to a cohort NOBODY DEFINED lands here too. It is a different
+# mistake with the same ending -- a call against a table the script never creates
+# -- and no other check reports it.
+#
+# Grouped by the missing cohort rather than by the analysis, because that is
+# where the fix goes: nine analyses sharing one uninstantiated outcome are one
+# problem, not nine.
+#
+# Analyses whose type maps onto no estimator (the "Other" template) are skipped:
+# they emit no call, so they cannot point at a table that is missing.
+uninstantiated_cohort_problems <- function(cohorts, analyses) {
+  cohorts  <- cohorts %||% list()
+  analyses <- analyses %||% list()
+
+  nms <- vapply(cohorts, function(co) as.character(co$name %||% "")[1], character(1))
+  ok  <- !is.na(nms) & nzchar(nms)
+  # NULL from BOTH renderers is the whole test. The extra arguments
+  # cohort_operations_code() takes only shape the code it emits, never whether
+  # there is any, so the defaults are safe here.
+  made <- vapply(cohorts, function(co) {
+    !is.null(cohort_operations_code(co)) || !is.null(cohort_r_code(co))
+  }, logical(1))
+  defined <- nms[ok]
+  created <- nms[ok & made]
+
+  # cohort name -> the analyses naming it, for the analyses that emit a call.
+  refs <- list()
+  for (a in analyses) {
+    if (is.na(analysis_estimator(a$analysis_type))) next
+    p <- a$parameters %||% list()
+    for (id in as.character(analysis_template(a$analysis_type)$pickers$cohorts %||% character(0))) {
+      nm <- as.character(p[[id]] %||% "")[1]
+      if (is.na(nm)) next
+      nm <- trimws(nm)
+      # An empty picker is "not chosen yet", which is the template's own problem
+      # to report, not a missing table.
+      if (!nzchar(nm) || nm %in% created) next
+      refs[[nm]] <- c(refs[[nm]], as.character(a$name %||% "(unnamed analysis)")[1])
+    }
+  }
+
+  naming <- function(x) {
+    x <- unique(x)
+    if (length(x) <= 4) return(paste(sprintf("'%s'", x), collapse = ", "))
+    sprintf("%s, and %d more", paste(sprintf("'%s'", x[1:4]), collapse = ", "), length(x) - 4)
+  }
+
+  lapply(names(refs), function(nm) {
+    tbl <- cohort_table_name(nm)
+    tbl <- if (is.na(tbl)) nm else tbl
+    list(name = nm, messages = if (nm %in% defined) {
+      sprintf(paste("%s is named by %s, but the generated script never creates it:",
+                    "it is a plain cohort with no typed operations, so nothing",
+                    "instantiates the table '%s'. Give it operations, or create",
+                    "'%s' yourself before the script runs."),
+              sprintf("'%s'", nm), naming(refs[[nm]]), tbl, tbl)
+    } else {
+      sprintf(paste("%s is named by %s, but this SAP defines no cohort by that",
+                    "name, so the script never creates the table '%s'."),
+              sprintf("'%s'", nm), naming(refs[[nm]]), tbl)
+    })
+  })
 }
 
 # Cohorts ----------------------------------------------------------------------

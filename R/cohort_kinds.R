@@ -170,8 +170,10 @@ extract_codelist_refs <- function(cohort) {
   # A typed entry operation names its codelist in a FIELD, not in brackets, so it
   # is read directly. Both forms feed the same reference check: an operation
   # citing a codelist nobody defined is the same problem as a sentence doing it.
+  # The field may name SEVERAL, and every one of them is a reference -- reading
+  # only the first would leave the rest looking uncited.
   ops <- Filter(function(o) !is.null(o$codelist), cohort$operations %||% list())
-  refs <- c(refs, vapply(ops, function(o) as.character(o$codelist)[1], character(1)))
+  refs <- c(refs, unlist(lapply(ops, function(o) as.character(unlist(o$codelist)))))
   refs <- refs[!is.na(refs) & nzchar(refs)]
   unique(refs)
 }

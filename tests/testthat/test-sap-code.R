@@ -169,6 +169,67 @@ test_that("cohort names that collapse onto one table name are reported", {
   expect_length(table_name_collisions(list(list(name = "A"), list(name = "B"))), 0)
 })
 
+# An estimator call against a table nothing in the script creates ----------------
+#
+# The script generated fine, every other validator passed, and it died at the
+# data partner. These are that gap from each side.
+
+ug_denom <- list(name = "General population", kind = "denominator", sex = list("Both"),
+                 ageGroup = list(c(0, 150)), daysPriorObservation = list(0))
+ug_prose <- list(name = "Follicular lymphoma", kind = "outcome",
+                 entry_events = list("Diagnosis of follicular lymphoma [cs_fl]"))
+ug_typed <- list(name = "Follicular lymphoma", kind = "outcome",
+                 operations = list(list(op = "concept_cohort", codelist = "cs_fl")))
+ug_prev  <- function(outcome, name = "Point prevalence") list(
+  name = name, analysis_type = "estimatePointPrevalence",
+  parameters = list(denominatorTable = "General population", outcomeTable = outcome))
+
+test_that("an estimator pointing at a cohort the script never creates is reported", {
+  found <- uninstantiated_cohort_problems(list(ug_denom, ug_prose),
+                                          list(ug_prev("Follicular lymphoma")))
+  expect_length(found, 1)
+  expect_identical(found[[1]]$name, "Follicular lymphoma")
+  expect_match(found[[1]]$messages, "never creates it", fixed = TRUE)
+  # The table name is what the run-time error will name, so it earns a mention.
+  expect_match(found[[1]]$messages, "follicular_lymphoma", fixed = TRUE)
+})
+
+# The denominator is referenced by the same analysis and generates its own call,
+# so it must not be swept up alongside the outcome.
+test_that("cohorts the script does create are not reported", {
+  expect_length(uninstantiated_cohort_problems(list(ug_denom, ug_typed),
+                                               list(ug_prev("Follicular lymphoma"))), 0)
+})
+
+test_that("naming a cohort nobody defined is reported as the missing table it is", {
+  found <- uninstantiated_cohort_problems(list(ug_denom), list(ug_prev("Nowhere cohort")))
+  expect_length(found, 1)
+  expect_match(found[[1]]$messages, "defines no cohort by that name", fixed = TRUE)
+})
+
+# "Other" maps onto no estimator, so it emits no call and cannot point at a
+# missing table. Reporting one would be a problem the script does not have.
+test_that("an analysis that generates no call reports nothing", {
+  expect_length(uninstantiated_cohort_problems(
+    list(ug_prose),
+    list(list(name = "Descriptive", analysis_type = "Other",
+              parameters = list(outcome_cohort = "Follicular lymphoma")))), 0)
+})
+
+test_that("an unchosen cohort picker is not mistaken for a missing table", {
+  expect_length(uninstantiated_cohort_problems(list(ug_denom), list(ug_prev(""))), 0)
+})
+
+# The fix goes on the cohort, so nine analyses sharing one uninstantiated outcome
+# are one problem -- not the same sentence nine times.
+test_that("analyses sharing an uninstantiated cohort report one problem", {
+  found <- uninstantiated_cohort_problems(
+    list(ug_denom, ug_prose),
+    lapply(1:9, function(i) ug_prev("Follicular lymphoma", sprintf("Analysis %d", i))))
+  expect_length(found, 1)
+  expect_match(found[[1]]$messages, "and 5 more", fixed = TRUE)
+})
+
 test_that("the whole-SAP script generates cohorts before the estimates that use them", {
   script <- sap_r_script(list(
     cohorts = list(

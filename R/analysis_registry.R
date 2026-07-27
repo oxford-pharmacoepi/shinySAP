@@ -35,7 +35,14 @@ ANALYSIS_TYPE_ALIASES <- c(
 
 # The half of the card every analysis type shares, and the only keys load() lifts
 # straight from the file without going through a template.
-ANALYSIS_COMMON_FIELDS <- c("name", "analysis_type", "data_sources")
+#
+# `objectives` belongs here for the same reason the other three do: the shared
+# half of the card renders it and collect() writes it. Leaving it out broke the
+# mirror in one direction only -- the picker saved fine, but analysis_to_prefill()
+# never handed it back, so LOADING a SAP rendered every analysis with no
+# objectives and the next save wrote that emptiness over the file. A field the
+# card owns must round-trip, or the app silently deletes it.
+ANALYSIS_COMMON_FIELDS <- c("name", "analysis_type", "data_sources", "objectives")
 
 # Ids already taken by the common half and by item_card(). No template may reuse
 # one, or the card would carry a duplicate input id.
@@ -433,7 +440,13 @@ denominator_panel <- function(cohort, intro, lead = NULL) {
 # three age groups and two sexes is six cohorts, not one. Spelling them out is the
 # point: it is the only place the author sees what the arguments they typed will
 # actually generate, and how fast it multiplies.
-DENOMINATOR_SET_SHOWN <- 100
+#
+# EVERY cohort is listed. There used to be a cap, with the remainder reported as
+# "… and N more not listed here", because an uncapped list ran the card off the
+# page. The scroll container below removed that constraint, and a truncated list
+# was the weaker answer anyway: the whole reason for spelling the set out is to
+# show what the arguments generate, and a reader who cannot see the last entry
+# cannot check it.
 
 # `lead` is a function(n) -> the sentence above the list, because the sentence
 # differs by context: the analysis card says "the analysis runs on all of them",
@@ -442,10 +455,6 @@ DENOMINATOR_SET_SHOWN <- 100
 denominator_cohort_set_ui <- function(cohort, lead = NULL) {
   set <- denominator_cohort_set(cohort)
   n   <- length(set)
-  # Never silently truncate: say what was dropped. Only a pathological cohort gets
-  # near this, but a 500-line card would be unreadable and unscrollable.
-  shown  <- utils::head(set, DENOMINATOR_SET_SHOWN)
-  hidden <- n - length(shown)
   msg <- if (is.null(lead)) {
     sprintf("This cohort set generates %d cohort%s, and the analysis runs on %s:",
             n, if (n == 1) "" else "s", if (n == 1) "it" else "all of them")
@@ -455,13 +464,25 @@ denominator_cohort_set_ui <- function(cohort, lead = NULL) {
   div(
     class = "mt-3",
     div(class = "text-muted mb-1", msg),
-    tags$ol(
-      class = "mb-0 ps-3 font-monospace",
-      lapply(shown, function(x) tags$li(format_denominator_cohort(x)))
-    ),
-    if (hidden > 0)
-      div(class = "text-muted fst-italic mt-1",
-          sprintf("… and %d more not listed here.", hidden))
+    # The list is BOUNDED AND SCROLLED, not laid out in full. The cap alone was
+    # not enough: a correct denominator multiplies fast -- 15 age groups x 3
+    # sexes x 3 prior-observation values is 135 cohorts -- so even the capped 100
+    # ran the card past the bottom of the layout column. Scrolling keeps the
+    # whole list reachable while the card stays the size of a card. Its own
+    # border and background say the region scrolls; `overflow: auto` also catches
+    # a long line rather than pushing the column sideways.
+    div(
+      style = "max-height: 18rem; overflow: auto;",
+      class = "border rounded bg-body px-2 py-1",
+      # ps-5, not ps-3. A list marker sits in the OL's left padding, so a padding
+      # narrower than the marker pushes it outside the content box -- which the
+      # scroll container above then clips. Now that the list is uncapped the
+      # marker can reach four digits, which ps-5 still clears in this font size.
+      tags$ol(
+        class = "mb-0 ps-5 font-monospace",
+        lapply(set, function(x) tags$li(format_denominator_cohort(x)))
+      )
+    )
   )
 }
 

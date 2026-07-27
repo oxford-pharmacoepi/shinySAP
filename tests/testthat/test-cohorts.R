@@ -535,3 +535,26 @@ test_that("denominator_cohort_set_ui: a caller can supply its own lead sentence"
   expect_match(as.character(denominator_cohort_set_ui(list(kind = "denominator"))),
                "the analysis runs on it")
 })
+
+# A real denominator multiplies: C1-001's is 15 age groups x 3 sexes x 3
+# prior-observation values. Laid out in full that pushed the card past the bottom
+# of the layout column, so the list is bounded and scrolls inside the card.
+test_that("denominator_cohort_set_ui: a large set scrolls instead of growing the card", {
+  big <- list(kind = "denominator", requirementInteractions = TRUE,
+              sex = list("Both", "Male", "Female"),
+              daysPriorObservation = list(365, 0, 1095),
+              ageGroup = lapply(seq(0, 140, by = 10), function(a) c(a, a + 9)))
+  html <- as.character(denominator_cohort_set_ui(big))
+  expect_match(html, "max-height", fixed = TRUE)
+  expect_match(html, "overflow: auto", fixed = TRUE)
+  # A marker sits in the list's left padding, so that padding must clear the
+  # widest one -- narrower, and the scroll container clips the numbers.
+  expect_match(html, 'class="mb-0 ps-5 font-monospace"', fixed = TRUE)
+  # EVERY cohort is listed: the scroll box is what bounds the card, not a cap on
+  # the list, so nothing is dropped and there is no remainder to report.
+  expect_equal(length(denominator_cohort_set(big)), 135)
+  expect_length(gregexpr("<li>", html, fixed = TRUE)[[1]], 135)
+  expect_no_match(html, "not listed here", fixed = TRUE)
+  # The last entry is reachable -- the point of listing them all.
+  expect_match(html, "Age 140, 149 | Female | 1095 days prior observation", fixed = TRUE)
+})

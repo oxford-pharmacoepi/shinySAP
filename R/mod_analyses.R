@@ -28,8 +28,16 @@ analysis_item_ui <- function(id, prefill = NULL) {
     # the break instead.
     div(
       class = "objectives-picker",
+      # The saved ids are the INITIAL CHOICES, not just the selection. A
+      # selectize cannot hold a `selected` that is absent from `choices`: it
+      # discards it and reports an empty value, and collect() then writes that
+      # empty value straight back -- so merely LOADING a SAP and letting it
+      # autosave stripped every analysis's objectives. The observe() below
+      # replaces these bare ids with the objectives' text as soon as the Study
+      # tab reports them, carrying the selection across; seeding them here means
+      # the value is never lost in the window before that happens.
       selectizeInput(ns("objectives"), "Objectives this analysis answers",
-                     choices = character(0),
+                     choices = as.character(unlist(pf("objectives", character(0)))),
                      selected = as.character(unlist(pf("objectives", character(0)))),
                      multiple = TRUE, width = "100%",
                      options = list(placeholder = "Objectives from the Study tab"))

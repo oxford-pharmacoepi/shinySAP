@@ -207,6 +207,73 @@ test_that("only codelists a typed entry cites are assigned in the script", {
   expect_false(grepl("cs_unused <- list(", script, fixed = TRUE))
 })
 
+# An entry naming several codelists ----------------------------------------------
+#
+# conceptCohort() creates ONE COHORT PER CODELIST ENTRY, so several named
+# together are several cohorts in one table. That is what lets a study with six
+# outcomes sharing an exit rule run one estimator call instead of six, and it is
+# why `codelist` reads as a vector rather than a name.
+
+many_ops <- list(
+  list(op = "concept_cohort", codelist = list("cs_fl", "cs_mm"), exit = "event_start_date"),
+  list(op = "require_first_entry"),
+  list(op = "pad_cohort_end", days = 1825)
+)
+
+test_that("several codelists become one conceptCohort call over c() of them", {
+  code <- cohort_operations_code(fl_cohort(many_ops))
+  expect_match(code, "conceptSet = c(cs_fl, cs_mm)", fixed = TRUE)
+  # One table, not one per codelist.
+  expect_equal(length(gregexpr("conceptCohort(", code, fixed = TRUE)[[1]]), 1)
+})
+
+# The single-name form is the one every SAP written before this used, so it has
+# to keep rendering as a bare variable rather than c() of one.
+test_that("one codelist still renders unwrapped", {
+  expect_match(cohort_operations_code(fl_cohort(standard_ops)),
+               "conceptSet = cs_fl", fixed = TRUE)
+})
+
+test_that("prose names every codelist the entry cites", {
+  line <- cohort_operations_prose(fl_cohort(many_ops))[[1]]
+  expect_match(line, "[cs_fl, cs_mm]", fixed = TRUE)
+})
+
+test_that("every cited codelist is assigned in the script, not just the first", {
+  cs <- function(nm, id) list(name = nm, concept_set_expression = list(
+    list(concept_id = id, excluded = FALSE, descendants = FALSE, mapped = FALSE)))
+  script <- sap_r_script(list(
+    codelists = list(cs("cs_fl", "111"), cs("cs_mm", "222")),
+    cohorts   = list(fl_cohort(many_ops))))
+  expect_true(grepl("cs_fl <- list(", script, fixed = TRUE))
+  expect_true(grepl("cs_mm <- list(", script, fixed = TRUE))
+})
+
+# Reading only the first name would leave the rest looking uncited, which is the
+# opposite of the reference check's job.
+test_that("an unknown codelist is reported wherever it sits in the list", {
+  errs <- cohort_operations_problems(fl_cohort(many_ops), "cs_fl")
+  expect_length(errs, 1)
+  expect_match(errs[[1]], "cs_mm", fixed = TRUE)
+  expect_no_match(errs[[1]], "cs_fl", fixed = TRUE)
+})
+
+test_that("all cited codelists resolving is no problem", {
+  expect_length(cohort_operations_problems(fl_cohort(many_ops), c("cs_fl", "cs_mm")), 0)
+})
+
+# One cohort per codelist is the point, so a repeat would collide in the set.
+test_that("naming the same codelist twice is a problem", {
+  errs <- cohort_operations_problems(
+    fl_cohort(list(list(op = "concept_cohort", codelist = list("cs_fl", "cs_fl")))),
+    "cs_fl")
+  expect_match(paste(errs, collapse = " "), "more than once", fixed = TRUE)
+})
+
+test_that("the codelist reference check sees every name an entry cites", {
+  expect_setequal(extract_codelist_refs(fl_cohort(many_ops)), c("cs_fl", "cs_mm"))
+})
+
 # Round trip through the card -----------------------------------------------------
 
 # A card that dropped a key it cannot yet edit would delete the only executable

@@ -362,15 +362,18 @@ server <- function(input, output, session) {
   # The bracket convention as a contract: every [cs_x] a cohort cites must
   # resolve to a codelist on the Codelists tab, and idle codelists get a nudge.
   #
-  # table_name_collisions() guards the generated code rather than the JSON: two
-  # cohort names that differ only in punctuation collapse to one CDM table name,
-  # and the script would then create that table twice and quietly estimate
-  # everything against the second.
+  # The last two guard the generated code rather than the JSON.
+  # table_name_collisions(): two cohort names that differ only in punctuation
+  # collapse to one CDM table name, and the script would then create that table
+  # twice and quietly estimate everything against the second.
+  # uninstantiated_cohort_problems(): an estimator pointing at a table nothing in
+  # the script creates -- which validates clean here and dies at the data partner.
   problems <- reactive(c(study_problems(study$data()),
                          objective_coverage_problems(study$data(), analyses$data()),
                          cohorts$problems(), analyses$problems(),
                          codelist_reference_problems(cohorts$data(), codelists$names()),
-                         table_name_collisions(cohorts$data())))
+                         table_name_collisions(cohorts$data()),
+                         uninstantiated_cohort_problems(cohorts$data(), analyses$data())))
 
   # A clicked Save: once the working file exists it simply rewrites it (with
   # the title guard and the problems warning). Only the FIRST save has a

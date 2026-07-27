@@ -1,10 +1,10 @@
 {
   "sap_schema_version": "0.4.22",
-  "generated_at": "2026-07-22T15:30:39+0100",
+  "generated_at": "2026-07-27T17:01:03+0100",
   "study": {
     "title": "Prevalence of rare blood cancers in Europe",
     "study_code": "C1-001",
-    "authors": ["Edward Burn", "Martí Català"],
+    "authors": ["Edward Burn", "Martí Català", "Katia Verhamme", "Daniel Prieto-Alhambra"],
     "version": "1.0",
     "min_cell_count": 5,
     "date": "2026-07-17",
@@ -17,7 +17,7 @@
       },
       {
         "id": "obj_2",
-        "text": "To estimate the prevalence of diffuse Large B-Cell Lymphoma between 1 st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex"
+        "text": "To estimate the prevalence of diffuse Large B-Cell Lymphoma between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex"
       },
       {
         "id": "obj_3",
@@ -29,7 +29,7 @@
       },
       {
         "id": "obj_5",
-        "text": "To estimate the prevalence of acute myeloid leukaemia between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex and sex"
+        "text": "To estimate the prevalence of acute myeloid leukaemia between 1st January 2010 and the end of available data in data sources from across Europe, stratified by age and sex"
       },
       {
         "id": "obj_6",
@@ -523,6 +523,24 @@
           "excluded": false,
           "descendants": false,
           "mapped": false
+        },
+        {
+          "concept_id": "37205181",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44806990",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44806991",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
         }
       ],
       "codes": [
@@ -825,53 +843,2425 @@
         {
           "code": "37203899",
           "name": "Nodal peripheral T-cell lymphoma with T follicular helper phenotype"
+        },
+        {
+          "code": "37205181",
+          "name": "Follicular T-cell lymphoma"
+        },
+        {
+          "code": "44806990",
+          "name": "Follicular lymphoma grade 3a"
+        },
+        {
+          "code": "44806991",
+          "name": "Follicular lymphoma grade 3b"
         }
       ]
     },
     {
       "name": "cs_diffuse_large_b_cell_lymphoma",
-      "category": "Index event",
-      "description": "Diffuse large B-cell lymphoma protocol codelist",
-      "source_file": null,
+      "category": "Condition / observation",
+      "description": "Preliminary diffuse large B-cell lymphoma concept set from DARWIN EU C1-001 v2.0, Appendix I. Includes Condition and Observation concepts; no descendants. Clinical review required before final use.",
+      "source_file": "diffuse_large_b_cell_lymphoma_codelist_protocol_v2.csv",
       "vocabulary_version": null,
-      "concept_set_expression": [],
-      "codes": []
+      "concept_set_expression": [
+        {
+          "concept_id": "4297358",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4300704",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37399015",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36716774",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36716775",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37110401",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37116982",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42539527",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3654886",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3654887",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44808122",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4079293",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4121330",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4144199",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4146630",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4141258",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "432574",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "764839",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4173978",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4079291",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4301669",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4173962",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36712836",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36712837",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4189146",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872963",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4262918",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37396838",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37116992",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37117038",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37206914",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37206933",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4178883",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        }
+      ],
+      "codes": [
+        {
+          "code": "4297358",
+          "name": "Primary cutaneous diffuse large cell B-cell lymphoma"
+        },
+        {
+          "code": "4300704",
+          "name": "Diffuse large B-cell lymphoma (nodal/systemic with skin involvement)"
+        },
+        {
+          "code": "37399015",
+          "name": "Epstein-Barr virus positive diffuse large B-cell lymphoma of elderly"
+        },
+        {
+          "code": "36716774",
+          "name": "B-cell lymphoma unclassifiable with features intermediate between Burkitt lymphoma and diffuse large B-cell lymphoma"
+        },
+        {
+          "code": "36716775",
+          "name": "B-cell lymphoma unclassifiable with features intermediate between classical Hodgkin lymphoma and diffuse large B-cell lymphoma"
+        },
+        {
+          "code": "37110401",
+          "name": "Diffuse large B-cell lymphoma co-occurrent with chronic inflammation caused by Epstein-Barr virus"
+        },
+        {
+          "code": "37116982",
+          "name": "Diffuse large B-cell lymphoma of central nervous system"
+        },
+        {
+          "code": "42539527",
+          "name": "Primary cutaneous diffuse large cell B-cell lymphoma of lower extremity"
+        },
+        {
+          "code": "3654886",
+          "name": "Diffuse large B-cell lymphoma of small intestine"
+        },
+        {
+          "code": "3654887",
+          "name": "Diffuse large B-cell lymphoma of stomach"
+        },
+        {
+          "code": "44808122",
+          "name": "Diffuse large B-cell lymphoma"
+        },
+        {
+          "code": "4079293",
+          "name": "Diffuse malignant lymphoma - centroblastic polymorphic"
+        },
+        {
+          "code": "4121330",
+          "name": "Diffuse malignant lymphoma - centroblastic"
+        },
+        {
+          "code": "4144199",
+          "name": "Diffuse malignant lymphoma - centroblastic-centrocytic"
+        },
+        {
+          "code": "4146630",
+          "name": "Malignant lymphoma, centroblastic-centrocytic, follicular"
+        },
+        {
+          "code": "4141258",
+          "name": "Malignant lymphoma, centroblastic type, follicular"
+        },
+        {
+          "code": "432574",
+          "name": "Diffuse non-Hodgkin's lymphoma, large cell (clinical)"
+        },
+        {
+          "code": "764839",
+          "name": "Diffuse non-Hodgkin's lymphoma Lugano stage I"
+        },
+        {
+          "code": "4173978",
+          "name": "Diffuse malignant lymphoma - large cleaved cell"
+        },
+        {
+          "code": "4079291",
+          "name": "Diffuse malignant lymphoma - large non-cleaved cell"
+        },
+        {
+          "code": "4301669",
+          "name": "Primary cutaneous anaplastic large cell B-cell lymphoma"
+        },
+        {
+          "code": "4173962",
+          "name": "Lymphoma with spill"
+        },
+        {
+          "code": "36712836",
+          "name": "B-cell lymphoma, unclassifiable, with features intermediate between diffuse large B-cell lymphoma and Burkitt lymphoma"
+        },
+        {
+          "code": "36712837",
+          "name": "B-cell lymphoma, unclassifiable, with features intermediate between diffuse large B-cell lymphoma and Hodgkin lymphoma"
+        },
+        {
+          "code": "4189146",
+          "name": "Diffuse large B-cell lymphoma - category"
+        },
+        {
+          "code": "42872963",
+          "name": "Malignant lymphoma, diffuse large B-cell, immunoblastic"
+        },
+        {
+          "code": "4262918",
+          "name": "Malignant lymphoma, large B-cell, diffuse"
+        },
+        {
+          "code": "37396838",
+          "name": "Epstein-Barr virus positive diffuse large B-cell lymphoma of elderly"
+        },
+        {
+          "code": "37116992",
+          "name": "Diffuse large B-cell lymphoma associated with chronic inflammation"
+        },
+        {
+          "code": "37117038",
+          "name": "B-cell lymphoma with features intermediate between diffuse large B-cell lymphoma and Burkitt lymphoma"
+        },
+        {
+          "code": "37206914",
+          "name": "Diffuse large B-cell lymphoma activated B-cell subtype"
+        },
+        {
+          "code": "37206933",
+          "name": "Diffuse large B-cell lymphoma germinal center B-cell subtype"
+        },
+        {
+          "code": "4178883",
+          "name": "Malignant lymphoma, mixed small and large cell, diffuse"
+        }
+      ]
     },
     {
       "name": "cs_multiple_myeloma",
-      "category": "Index event",
-      "description": "Multiple myeloma protocol codelist",
-      "source_file": null,
+      "category": "Condition / observation",
+      "description": "Preliminary multiple myeloma concept set from DARWIN EU C1-001 v2.0, Appendix I. Includes Condition and Observation concepts; no descendants. Clinical review required before final use.",
+      "source_file": "multiple_myeloma_codelist_protocol_v2.csv",
       "vocabulary_version": null,
-      "concept_set_expression": [],
-      "codes": []
+      "concept_set_expression": [
+        {
+          "concept_id": "437233",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37016161",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37209514",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4043713",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4224628",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4258135",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4259972",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "764229",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42538151",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "436059",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4019477",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4082464",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4079684",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4111355",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4111356",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4112310",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4197600",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4137433",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4188299",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4137510",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4145040",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "133158",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "760936",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "133154",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "46270015",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4210177",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        }
+      ],
+      "codes": [
+        {
+          "code": "437233",
+          "name": "Multiple myeloma"
+        },
+        {
+          "code": "37016161",
+          "name": "Light chain nephropathy due to multiple myeloma"
+        },
+        {
+          "code": "37209514",
+          "name": "Hypogammaglobulinemia due to multiple myeloma"
+        },
+        {
+          "code": "4043713",
+          "name": "Neuropathy due to multiple myeloma"
+        },
+        {
+          "code": "4224628",
+          "name": "Amyloid light chain amyloidosis due to multiple myeloma"
+        },
+        {
+          "code": "4258135",
+          "name": "Asymptomatic multiple myeloma"
+        },
+        {
+          "code": "4259972",
+          "name": "Indolent multiple myeloma"
+        },
+        {
+          "code": "764229",
+          "name": "Relapse multiple myeloma"
+        },
+        {
+          "code": "42538151",
+          "name": "Osteoporosis co-occurrent and due to multiple myeloma"
+        },
+        {
+          "code": "436059",
+          "name": "Multiple myeloma in remission"
+        },
+        {
+          "code": "4019477",
+          "name": "Myeloma-associated amyloidosis"
+        },
+        {
+          "code": "4082464",
+          "name": "Light chain myeloma"
+        },
+        {
+          "code": "4079684",
+          "name": "Non-secretory myeloma"
+        },
+        {
+          "code": "4111355",
+          "name": "IgA myeloma"
+        },
+        {
+          "code": "4111356",
+          "name": "IgG myeloma"
+        },
+        {
+          "code": "4112310",
+          "name": "IgD myeloma"
+        },
+        {
+          "code": "4197600",
+          "name": "Lambda light chain myeloma"
+        },
+        {
+          "code": "4137433",
+          "name": "Myeloma kidney"
+        },
+        {
+          "code": "4188299",
+          "name": "Kappa light chain myeloma"
+        },
+        {
+          "code": "4137510",
+          "name": "Osteosclerotic myeloma"
+        },
+        {
+          "code": "4145040",
+          "name": "Solitary osseous myeloma"
+        },
+        {
+          "code": "133158",
+          "name": "Plasma cell leukemia in remission"
+        },
+        {
+          "code": "760936",
+          "name": "Plasma cell leukemia in relapse"
+        },
+        {
+          "code": "133154",
+          "name": "Plasma cell leukemia"
+        },
+        {
+          "code": "46270015",
+          "name": "History of multiple myeloma"
+        },
+        {
+          "code": "4210177",
+          "name": "Multiple myeloma"
+        }
+      ]
     },
     {
       "name": "cs_chronic_lymphocytic_leukaemia",
-      "category": "Index event",
-      "description": "Chronic lymphocytic leukaemia protocol codelist",
-      "source_file": null,
+      "category": "Condition / observation",
+      "description": "Preliminary chronic lymphocytic leukaemia concept set from DARWIN EU C1-001 v2.0, Appendix I. Includes Condition and Observation concepts; no descendants. Clinical review required before final use.",
+      "source_file": "chronic_lymphocytic_leukaemia_codelist_protocol_v2.csv",
       "vocabulary_version": null,
-      "concept_set_expression": [],
-      "codes": []
+      "concept_set_expression": [
+        {
+          "concept_id": "44811227",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44811228",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44814026",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4082311",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4173824",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4173955",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4082338",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4297353",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4326339",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37110902",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37206728",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "760935",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4188973",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "133438",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "138379",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44783718",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "132570",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4082460",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "193429",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4173974",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "132852",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4082459",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4299151",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4001331",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37312023",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4245460",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4139554",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "439269",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4038845",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "318989",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4079683",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4173956",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "439268",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "196650",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4173957",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "442095",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4180093",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "46270567",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37312112",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37312109",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4186899",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        }
+      ],
+      "codes": [
+        {
+          "code": "44811227",
+          "name": "Clinical stage A chronic lymphocytic leukaemia"
+        },
+        {
+          "code": "44811228",
+          "name": "Clinical stage B chronic lymphocytic leukaemia"
+        },
+        {
+          "code": "44814026",
+          "name": "Clinical stage C chronic lymphocytic leukaemia"
+        },
+        {
+          "code": "4082311",
+          "name": "B-cell chronic lymphocytic leukemia"
+        },
+        {
+          "code": "4173824",
+          "name": "B-cell chronic lymphocytic leukemia variant"
+        },
+        {
+          "code": "4173955",
+          "name": "T-cell chronic lymphocytic leukemia"
+        },
+        {
+          "code": "4082338",
+          "name": "Chronic lymphocytic prolymphocytic leukemia syndrome"
+        },
+        {
+          "code": "4297353",
+          "name": "Leukemic infiltration of skin (chronic T-cell lymphocytic leukemia)"
+        },
+        {
+          "code": "4326339",
+          "name": "Smoldering chronic lymphocytic leukemia"
+        },
+        {
+          "code": "37110902",
+          "name": "Chronic lymphocytic leukemia genetic mutation variant"
+        },
+        {
+          "code": "37206728",
+          "name": "Monoclonal B-cell lymphocytosis chronic lymphocytic leukemia-type"
+        },
+        {
+          "code": "760935",
+          "name": "Chronic lymphoid leukemia in relapse"
+        },
+        {
+          "code": "4188973",
+          "name": "Chronic myeloid leukemia in lymphoid blast crisis"
+        },
+        {
+          "code": "133438",
+          "name": "Chronic lymphoid leukemia in remission"
+        },
+        {
+          "code": "138379",
+          "name": "Chronic lymphoid leukemia, disease"
+        },
+        {
+          "code": "44783718",
+          "name": "T-cell large granular lymphocytic leukemia"
+        },
+        {
+          "code": "132570",
+          "name": "Leukemic reticuloendotheliosis of lymph nodes of head, face and neck"
+        },
+        {
+          "code": "4082460",
+          "name": "Large granular lymphocytic leukemia"
+        },
+        {
+          "code": "193429",
+          "name": "Leukemic reticuloendotheliosis of intra-abdominal lymph nodes"
+        },
+        {
+          "code": "4173974",
+          "name": "B-cell prolymphocytic leukemia"
+        },
+        {
+          "code": "132852",
+          "name": "Leukemic reticuloendotheliosis of extranodal AND/OR solid organ site"
+        },
+        {
+          "code": "4082459",
+          "name": "Hairy cell leukemia variant"
+        },
+        {
+          "code": "4299151",
+          "name": "Leukemic infiltration of skin in hairy-cell leukemia"
+        },
+        {
+          "code": "4001331",
+          "name": "Prolymphocytic leukemia (clinical)"
+        },
+        {
+          "code": "37312023",
+          "name": "B-cell prolymphocytic leukemia in remission"
+        },
+        {
+          "code": "4245460",
+          "name": "Hairy cell leukemia of spleen"
+        },
+        {
+          "code": "4139554",
+          "name": "Atypical hairy cell leukemia"
+        },
+        {
+          "code": "439269",
+          "name": "Leukemic reticuloendotheliosis of lymph nodes of axilla and upper limb"
+        },
+        {
+          "code": "4038845",
+          "name": "Hairy cell leukemia (clinical)"
+        },
+        {
+          "code": "318989",
+          "name": "Leukemic reticuloendotheliosis of lymph nodes of multiple sites"
+        },
+        {
+          "code": "4079683",
+          "name": "T-cell prolymphocytic leukemia"
+        },
+        {
+          "code": "4173956",
+          "name": "Richter's syndrome"
+        },
+        {
+          "code": "439268",
+          "name": "Leukemic reticuloendotheliosis of lymph nodes of inguinal region and lower limb"
+        },
+        {
+          "code": "196650",
+          "name": "Leukemic reticuloendotheliosis of intrapelvic lymph nodes"
+        },
+        {
+          "code": "4173957",
+          "name": "Splenic lymphoma with villous lymphocytes"
+        },
+        {
+          "code": "442095",
+          "name": "Leukemic reticuloendotheliosis of intrathoracic lymph nodes"
+        },
+        {
+          "code": "4180093",
+          "name": "Chronic lymphocytic leukemia"
+        },
+        {
+          "code": "46270567",
+          "name": "History of chronic lymphocytic leukemia"
+        },
+        {
+          "code": "37312112",
+          "name": "Monoclonal B-cell lymphocytosis chronic lymphocytic leukemia-type"
+        },
+        {
+          "code": "37312109",
+          "name": "Monoclonal B-cell lymphocytosis non-chronic lymphocytic leukemia type"
+        },
+        {
+          "code": "4186899",
+          "name": "Chronic lymphoid leukemia - category"
+        }
+      ]
     },
     {
       "name": "cs_acute_myeloid_leukaemia",
-      "category": "Index event",
-      "description": "Acute myeloid leukaemia protocol codelist",
-      "source_file": null,
+      "category": "Condition / observation",
+      "description": "Preliminary acute myeloid leukaemia concept set from DARWIN EU C1-001 v2.0, Appendix I. Includes Condition and Observation concepts; no descendants. Clinical review required before final use.",
+      "source_file": "acute_myeloid_leukaemia_codelist_protocol_v2.csv",
       "vocabulary_version": null,
-      "concept_set_expression": [],
-      "codes": []
+      "concept_set_expression": [
+        {
+          "concept_id": "44807009",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3572249",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3572256",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "135499",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4233531",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4230253",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4234749",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4300784",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4143382",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4138903",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40481524",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40483761",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "764781",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "764782",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "45765495",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "45766268",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36715587",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36717461",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37110870",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37116722",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42539431",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42538579",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35622003",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35607963",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35622696",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35622760",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35623630",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35623631",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35623633",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36683269",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3654662",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "135762",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "140352",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4326339",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4002497",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4112803",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4137687",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36676614",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4175688",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4116880",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44784490",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "140672",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4142105",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "136930",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4139358",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4079686",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "138099",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4144191",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4003187",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "135768",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4003184",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4082485",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4189938",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4173970",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "132850",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4304355",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4304199",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4304356",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4304051",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4029177",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4028713",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4029663",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4030263",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4031360",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4073533",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4265011",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4264447",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4288090",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4287472",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4265012",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4184848",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872921",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872922",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872933",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872934",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872942",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "45771384",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "45766616",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37110871",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42535969",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37204375",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37204557",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37312067",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "46273391",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        }
+      ],
+      "codes": [
+        {
+          "code": "44807009",
+          "name": "Acute myeloid leukaemia with 11q23 abnormality"
+        },
+        {
+          "code": "3572249",
+          "name": "Relapsing acute myeloid leukemia"
+        },
+        {
+          "code": "3572256",
+          "name": "Refractory acute myeloid leukemia"
+        },
+        {
+          "code": "135499",
+          "name": "Subacute myeloid leukemia"
+        },
+        {
+          "code": "4233531",
+          "name": "Acute myeloid leukemia, minimal differentiation, FAB M0"
+        },
+        {
+          "code": "4230253",
+          "name": "Acute myeloid leukemia without maturation, FAB M1"
+        },
+        {
+          "code": "4234749",
+          "name": "Acute myeloid leukemia with maturation, FAB M2"
+        },
+        {
+          "code": "4300784",
+          "name": "Leukemic infiltration of skin in acute myeloid leukemia"
+        },
+        {
+          "code": "4143382",
+          "name": "Subacute myeloid leukemia in remission"
+        },
+        {
+          "code": "4138903",
+          "name": "Acute myeloid leukemia with maturation, FAB M2, in remission"
+        },
+        {
+          "code": "40481524",
+          "name": "Acute myeloid leukemia with t(9:11)(p22;q23); MLLT3-MLL"
+        },
+        {
+          "code": "40483761",
+          "name": "Acute myeloid leukemia with myelodysplasia-related changes"
+        },
+        {
+          "code": "764781",
+          "name": "Acute myeloid leukemia, minimal differentiation, FAB M0 in remission"
+        },
+        {
+          "code": "764782",
+          "name": "Acute myeloid leukemia without maturation, FAB M1 in remission"
+        },
+        {
+          "code": "45765495",
+          "name": "Core binding factor acute myeloid leukemia"
+        },
+        {
+          "code": "45766268",
+          "name": "Cytogenetically normal acute myeloid leukemia"
+        },
+        {
+          "code": "36715587",
+          "name": "Acute myeloid leukemia due to recurrent genetic abnormality"
+        },
+        {
+          "code": "36717461",
+          "name": "Therapy related acute myeloid leukemia and myelodysplastic syndrome"
+        },
+        {
+          "code": "37110870",
+          "name": "Acute myeloid leukemia with t(8;16)(p11;p13) translocation"
+        },
+        {
+          "code": "37116722",
+          "name": "Acute myeloid leukemia with t(6;9)(p23;q34) translocation"
+        },
+        {
+          "code": "42539431",
+          "name": "Acute myeloid leukemia with FMS-like tyrosine kinase-3 mutation"
+        },
+        {
+          "code": "42538579",
+          "name": "Therapy related acute myeloid leukemia due to and following administration of antineoplastic agent"
+        },
+        {
+          "code": "35622003",
+          "name": "Acute myeloid leukemia with NPM1 somatic mutation"
+        },
+        {
+          "code": "35607963",
+          "name": "Megakaryoblastic acute myeloid leukemia with t(1;22)(p13;q13)"
+        },
+        {
+          "code": "35622696",
+          "name": "Acute myeloid leukemia with CEBPA somatic mutations"
+        },
+        {
+          "code": "35622760",
+          "name": "Inherited acute myeloid leukemia"
+        },
+        {
+          "code": "35623630",
+          "name": "Acute myeloid leukemia and myelodysplastic syndrome related to alkylating agent"
+        },
+        {
+          "code": "35623631",
+          "name": "Acute myeloid leukemia and myelodysplastic syndrome related to topoisomerase type 2 inhibitor"
+        },
+        {
+          "code": "35623633",
+          "name": "Acute myeloid leukemia and myelodysplastic syndrome related to radiation"
+        },
+        {
+          "code": "36683269",
+          "name": "Acute myeloid leukemia with inv(3)(q21q26.2) or t(3;3)(q21;q26.2); RPN1-EVI1"
+        },
+        {
+          "code": "3654662",
+          "name": "Acute myeloid leukemia with inv(16)(p13.1q22) or t(16;16)(p13.1;q22) CBFB-MYH11"
+        },
+        {
+          "code": "135762",
+          "name": "Acute myeloid leukemia in remission"
+        },
+        {
+          "code": "140352",
+          "name": "Acute myeloid leukemia, disease"
+        },
+        {
+          "code": "4326339",
+          "name": "Smoldering chronic lymphocytic leukemia"
+        },
+        {
+          "code": "4002497",
+          "name": "Acute promyelocytic leukemia, FAB M3"
+        },
+        {
+          "code": "4112803",
+          "name": "Acute promyelocytic leukemia - hypogranular variant"
+        },
+        {
+          "code": "4137687",
+          "name": "Acute promyelocytic leukemia, FAB M3, in remission"
+        },
+        {
+          "code": "36676614",
+          "name": "Differentiation syndrome due to and following chemotherapy co-occurrent with acute promyelocytic leukemia"
+        },
+        {
+          "code": "4175688",
+          "name": "Hypergranular promyelocytic leukemia"
+        },
+        {
+          "code": "4116880",
+          "name": "Acute myelomonocytic leukemia - eosinophilic variant"
+        },
+        {
+          "code": "44784490",
+          "name": "Acute monoblastic leukemia in remission"
+        },
+        {
+          "code": "140672",
+          "name": "Acute monocytic leukemia in remission"
+        },
+        {
+          "code": "4142105",
+          "name": "Acute myelomonocytic leukemia, FAB M4, in remission"
+        },
+        {
+          "code": "136930",
+          "name": "Megakaryocytic leukemia in remission"
+        },
+        {
+          "code": "4139358",
+          "name": "Erythroleukemia, FAB M6 in remission"
+        },
+        {
+          "code": "4079686",
+          "name": "Acute megakaryoblastic leukemia"
+        },
+        {
+          "code": "138099",
+          "name": "Erythroleukemia, FAB M6"
+        },
+        {
+          "code": "4144191",
+          "name": "Basophilic leukemia"
+        },
+        {
+          "code": "4003187",
+          "name": "Acute myelomonocytic leukemia, FAB M4"
+        },
+        {
+          "code": "135768",
+          "name": "Acute monocytic leukemia"
+        },
+        {
+          "code": "4003184",
+          "name": "Acute panmyelosis with myelofibrosis"
+        },
+        {
+          "code": "4082485",
+          "name": "Acute monoblastic leukemia"
+        },
+        {
+          "code": "4189938",
+          "name": "Acute monocytic/monoblastic leukemia"
+        },
+        {
+          "code": "4173970",
+          "name": "Acute eosinophilic leukemia"
+        },
+        {
+          "code": "132850",
+          "name": "Myeloid leukemia in remission"
+        },
+        {
+          "code": "4304355",
+          "name": "Acute myeloid leukemia with abnormal marrow eosinophils"
+        },
+        {
+          "code": "4304199",
+          "name": "Acute myeloid leukemia, minimal differentiation"
+        },
+        {
+          "code": "4304356",
+          "name": "Acute myeloid leukemia without maturation"
+        },
+        {
+          "code": "4304051",
+          "name": "Acute myeloid leukemia with maturation"
+        },
+        {
+          "code": "4029177",
+          "name": "Acute myeloid leukemia with myelodysplasia-related changes"
+        },
+        {
+          "code": "4028713",
+          "name": "Acute myeloid leukemia, t(8;21) (q22;q22)"
+        },
+        {
+          "code": "4029663",
+          "name": "Acute myeloid leukemia, 11q23 abnormalities"
+        },
+        {
+          "code": "4030263",
+          "name": "Therapy-related acute myeloid leukemia and myelodysplastic syndrome"
+        },
+        {
+          "code": "4031360",
+          "name": "Acute myeloid leukemia, M6 type"
+        },
+        {
+          "code": "4073533",
+          "name": "Acute myeloid leukemia, no ICD-O subtype"
+        },
+        {
+          "code": "4265011",
+          "name": "Acute myeloid leukemia with recurrent genetic abnormality"
+        },
+        {
+          "code": "4264447",
+          "name": "Acute myeloid leukemia with multilineage dysplasia following a myelodysplastic syndrome or myelodysplastic syndrome/myeloproliferative disorder"
+        },
+        {
+          "code": "4288090",
+          "name": "Acute myeloid leukemia with multilineage dysplasia without antecedent myelodysplastic syndrome"
+        },
+        {
+          "code": "4287472",
+          "name": "Therapy-related acute myeloid leukemia and myelodysplastic syndrome, alkylating agent-related type"
+        },
+        {
+          "code": "4265012",
+          "name": "Therapy-related acute myeloid leukemia and myelodysplastic syndrome, topoisomerase type II inhibitor-related type"
+        },
+        {
+          "code": "4184848",
+          "name": "Acute myeloid leukemia"
+        },
+        {
+          "code": "42872921",
+          "name": "Mixed phenotype acute leukemia B/myeloid"
+        },
+        {
+          "code": "42872922",
+          "name": "Mixed phenotype acute leukemia T/myeloid"
+        },
+        {
+          "code": "42872933",
+          "name": "Acute myeloid leukemia with t(6;9)(p23;q34); DEK-NUP214"
+        },
+        {
+          "code": "42872934",
+          "name": "Acute myeloid leukemia with inv(3)(q21q26.2) or t(3;3)(q21;q26.2); RPN1-EVI1"
+        },
+        {
+          "code": "42872942",
+          "name": "Acute myeloid leukemia (megakaryoblastic) with t(1;22)(p13;q13); RBM15-MKL1"
+        },
+        {
+          "code": "45771384",
+          "name": "Acute myeloid leukemia with mutation of CEBPA (CCAAT enhancer binding protein alpha) gene"
+        },
+        {
+          "code": "45766616",
+          "name": "Acute myeloid leukemia with mutated NPM1"
+        },
+        {
+          "code": "37110871",
+          "name": "Acute myeloid leukemia with t(8;16)(p11;p13) translocation"
+        },
+        {
+          "code": "42535969",
+          "name": "Acute myeloid leukemia with FMS-like tyrosine kinase-3 mutation"
+        },
+        {
+          "code": "37204375",
+          "name": "Acute myeloid leukemia with BCR-ABL1"
+        },
+        {
+          "code": "37204557",
+          "name": "Acute myeloid leukemia with mutated RUNX1"
+        },
+        {
+          "code": "37312067",
+          "name": "Acute myeloid leukemia with biallelic mutation of CEBPA (CCAAT enhancer binding protein alpha) gene"
+        },
+        {
+          "code": "46273391",
+          "name": "History of acute myeloid leukemia"
+        }
+      ]
     },
     {
       "name": "cs_acute_lymphocytic_leukaemia",
-      "category": "Index event",
-      "description": "Acute lymphocytic leukaemia protocol codelist",
-      "source_file": null,
+      "category": "Condition / observation",
+      "description": "Preliminary acute lymphocytic leukaemia concept set from DARWIN EU C1-001 v2.0, Appendix I. Includes Condition and Observation concepts; no descendants. Clinical review required before final use.",
+      "source_file": "acute_lymphocytic_leukaemia_codelist_protocol_v2.csv",
       "vocabulary_version": null,
-      "concept_set_expression": [],
-      "codes": []
+      "concept_set_expression": [
+        {
+          "concept_id": "36712834",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36712835",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "136656",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4139054",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37018868",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37018869",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "141816",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "134305",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4173963",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4082461",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4079280",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4079281",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4082462",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4153344",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4299143",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4221907",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4138008",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4138752",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4143997",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37017893",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37109936",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3654647",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3654648",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3654649",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3654650",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3654651",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3654653",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4003188",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4081867",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4227963",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "134596",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4030260",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4029662",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4030261",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4264448",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4288091",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4189936",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4143821",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872925",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872954",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872955",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872956",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872957",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872958",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872959",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872960",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "42872961",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "45766617",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37204662",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37204838",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37206196",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        }
+      ],
+      "codes": [
+        {
+          "code": "36712834",
+          "name": "Acute lymphoid leukemia relapse"
+        },
+        {
+          "code": "36712835",
+          "name": "Refractory acute lymphoid leukemia"
+        },
+        {
+          "code": "136656",
+          "name": "Subacute lymphoid leukemia"
+        },
+        {
+          "code": "4139054",
+          "name": "Subacute lymphoid leukemia in remission"
+        },
+        {
+          "code": "37018868",
+          "name": "Disorder of central nervous system co-occurrent and due to acute lymphoid leukemia in remission"
+        },
+        {
+          "code": "37018869",
+          "name": "Disorder of central nervous system co-occurrent and due to acute lymphoid leukemia"
+        },
+        {
+          "code": "141816",
+          "name": "Acute lymphoid leukemia in remission"
+        },
+        {
+          "code": "134305",
+          "name": "Acute lymphoid leukemia"
+        },
+        {
+          "code": "4173963",
+          "name": "B-cell acute lymphoblastic leukemia"
+        },
+        {
+          "code": "4082461",
+          "name": "Precursor B-cell acute lymphoblastic leukemia"
+        },
+        {
+          "code": "4079280",
+          "name": "Common acute lymphoblastic leukemia"
+        },
+        {
+          "code": "4079281",
+          "name": "Null cell acute lymphoblastic leukemia"
+        },
+        {
+          "code": "4082462",
+          "name": "T-cell acute lymphoblastic leukemia"
+        },
+        {
+          "code": "4153344",
+          "name": "Acute lymphoblastic leukemia, transitional pre-B-cell"
+        },
+        {
+          "code": "4299143",
+          "name": "Leukemic infiltration of skin (T-cell lymphoblastic leukemia)"
+        },
+        {
+          "code": "4221907",
+          "name": "Precursor T cell lymphoblastic leukemia/lymphoblastic lymphoma"
+        },
+        {
+          "code": "4138008",
+          "name": "Philadelphia chromosome-positive acute lymphoblastic leukemia"
+        },
+        {
+          "code": "4138752",
+          "name": "Precursor B-cell acute lymphoblastic leukemia in remission"
+        },
+        {
+          "code": "4143997",
+          "name": "T-cell acute lymphoblastic leukemia in remission"
+        },
+        {
+          "code": "37017893",
+          "name": "Philadelphia chromosome-negative precursor B-cell acute lymphoblastic leukemia"
+        },
+        {
+          "code": "37109936",
+          "name": "B lymphoblastic leukemia lymphoma with t(9:22) (q34;q11.2); BCR-ABL 1"
+        },
+        {
+          "code": "3654647",
+          "name": "B lymphoblastic leukemia lymphoma with t(5;14)(q31;q32); IL3-IGH"
+        },
+        {
+          "code": "3654648",
+          "name": "B lymphoblastic leukemia lymphoma with t(v;11q23); MLL rearranged"
+        },
+        {
+          "code": "3654649",
+          "name": "B lymphoblastic leukemia lymphoma with t(12;21) (p13;q22); TEL/AML1 (ETV6-RUNX1)"
+        },
+        {
+          "code": "3654650",
+          "name": "B lymphoblastic leukemia lymphoma with t(1;19)(Q23;P13.3); E2A-PBX1 (TCF3/PBX1)"
+        },
+        {
+          "code": "3654651",
+          "name": "B lymphoblastic leukemia lymphoma with hypodiploidy"
+        },
+        {
+          "code": "3654653",
+          "name": "B lymphoblastic leukemia lymphoma with hyperdiploidy"
+        },
+        {
+          "code": "4003188",
+          "name": "Adult T-cell leukemia/lymphoma"
+        },
+        {
+          "code": "4081867",
+          "name": "Acute biphenotypic leukemia"
+        },
+        {
+          "code": "4227963",
+          "name": "Precursor T-cell lymphoblastic lymphoma"
+        },
+        {
+          "code": "134596",
+          "name": "Lymphoid leukemia in remission"
+        },
+        {
+          "code": "4030260",
+          "name": "Precursor cell lymphoblastic leukemia"
+        },
+        {
+          "code": "4029662",
+          "name": "Precursor B-cell lymphoblastic leukemia"
+        },
+        {
+          "code": "4030261",
+          "name": "Precursor T-cell lymphoblastic leukemia"
+        },
+        {
+          "code": "4264448",
+          "name": "Precursor B-lymphoblastic leukemia/lymphoblastic lymphoma"
+        },
+        {
+          "code": "4288091",
+          "name": "Precursor T cell lymphoblastic leukemia/lymphoblastic lymphoma"
+        },
+        {
+          "code": "4189936",
+          "name": "Acute lymphoblastic leukemia - category"
+        },
+        {
+          "code": "4143821",
+          "name": "Philadelphia chromosome-positive acute lymphoblastic leukemia"
+        },
+        {
+          "code": "42872925",
+          "name": "B lymphoblastic leukemia / lymphoma - category"
+        },
+        {
+          "code": "42872954",
+          "name": "B lymphoblastic leukemia lymphoma, no ICD-O subtype"
+        },
+        {
+          "code": "42872955",
+          "name": "B lymphoblastic leukemia lymphoma with t(9;22)(q34;q11.2); BCR-ABL1"
+        },
+        {
+          "code": "42872956",
+          "name": "B lymphoblastic leukemia lymphoma with t(v;11q23); MLL rearranged"
+        },
+        {
+          "code": "42872957",
+          "name": "B lymphoblastic leukemia lymphoma with t(12;21)(p13;q22); TEL-AML1 (ETV6-RUNX1)"
+        },
+        {
+          "code": "42872958",
+          "name": "B lymphoblastic leukemia lymphoma with hyperdiploidy"
+        },
+        {
+          "code": "42872959",
+          "name": "B lymphoblastic leukemia lymphoma with hypodiploidy (Hypodiploid ALL)"
+        },
+        {
+          "code": "42872960",
+          "name": "B lymphoblastic leukemia lymphoma with t(5;14)(q31;q32); IL3-IGH"
+        },
+        {
+          "code": "42872961",
+          "name": "B lymphoblastic leukemia lymphoma with t(1;19)(q23;p13.3); E2A-PBX1 (TCF3-PBX1)"
+        },
+        {
+          "code": "45766617",
+          "name": "T lymphoblastic leukemia/lymphoma"
+        },
+        {
+          "code": "37204662",
+          "name": "NK-lymphoblastic leukemia/lymphoma"
+        },
+        {
+          "code": "37204838",
+          "name": "B-lymphoblastic leukemia lymphoma BCR-ABL1-like"
+        },
+        {
+          "code": "37206196",
+          "name": "B lymphoblastic leukemia lymphoma with iAMP21"
+        }
+      ]
     }
   ],
   "cohorts": [
@@ -897,41 +3287,28 @@
         [45, 64],
         [65, 150]
       ],
-      "sex": ["Both"],
+      "sex": ["Both", "Male", "Female"],
       "daysPriorObservation": [365, 0, 1095],
       "requirementInteractions": true
     },
     {
-      "name": "Follicular lymphoma",
-      "kind": "target",
+      "name": "Rare blood cancers 5-year partial prevalence",
+      "kind": "outcome",
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of follicular lymphoma [cs_follicular_lymphoma]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for follicular lymphoma", "Index on the first occurrence ever"],
-      "exit_criteria": ["End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_follicular_lymphoma"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "exit_at_observation_end"
-        }
-      ]
-    },
-    {
-      "name": "Follicular lymphoma 5-year partial prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of follicular lymphoma [cs_follicular_lymphoma]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for follicular lymphoma", "Index on the first occurrence ever"],
+      "entry_events": ["Diagnosis or observation record of any study cancer: [cs_follicular_lymphoma], [cs_diffuse_large_b_cell_lymphoma], [cs_multiple_myeloma], [cs_chronic_lymphocytic_leukaemia], [cs_acute_myeloid_leukaemia], [cs_acute_lymphocytic_leukaemia]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for the cancer", "Index on the first occurrence ever"],
       "exit_criteria": ["1825 days after index", "End of continuous observation"],
       "operations": [
         {
           "op": "concept_cohort",
-          "codelist": "cs_follicular_lymphoma",
+          "codelist": [
+            "cs_follicular_lymphoma",
+            "cs_diffuse_large_b_cell_lymphoma",
+            "cs_multiple_myeloma",
+            "cs_chronic_lymphocytic_leukaemia",
+            "cs_acute_myeloid_leukaemia",
+            "cs_acute_lymphocytic_leukaemia"
+          ],
           "exit": "event_start_date"
         },
         {
@@ -944,16 +3321,23 @@
       ]
     },
     {
-      "name": "Follicular lymphoma 2-year partial prevalence",
-      "kind": "target",
+      "name": "Rare blood cancers 2-year partial prevalence",
+      "kind": "outcome",
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of follicular lymphoma [cs_follicular_lymphoma]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for follicular lymphoma", "Index on the first occurrence ever"],
+      "entry_events": ["Diagnosis or observation record of any study cancer: [cs_follicular_lymphoma], [cs_diffuse_large_b_cell_lymphoma], [cs_multiple_myeloma], [cs_chronic_lymphocytic_leukaemia], [cs_acute_myeloid_leukaemia], [cs_acute_lymphocytic_leukaemia]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for the cancer", "Index on the first occurrence ever"],
       "exit_criteria": ["730 days after index", "End of continuous observation"],
       "operations": [
         {
           "op": "concept_cohort",
-          "codelist": "cs_follicular_lymphoma",
+          "codelist": [
+            "cs_follicular_lymphoma",
+            "cs_diffuse_large_b_cell_lymphoma",
+            "cs_multiple_myeloma",
+            "cs_chronic_lymphocytic_leukaemia",
+            "cs_acute_myeloid_leukaemia",
+            "cs_acute_lymphocytic_leukaemia"
+          ],
           "exit": "event_start_date"
         },
         {
@@ -966,343 +3350,187 @@
       ]
     },
     {
-      "name": "Diffuse large B-cell lymphoma complete prevalence",
-      "kind": "target",
+      "name": "Rare blood cancers complete prevalence",
+      "kind": "outcome",
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of diffuse large B-cell lymphoma [cs_diffuse_large_b_cell_lymphoma]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for diffuse large B-cell lymphoma", "Index on the first occurrence ever"],
+      "entry_events": ["Diagnosis or observation record of any study cancer: [cs_follicular_lymphoma], [cs_diffuse_large_b_cell_lymphoma], [cs_multiple_myeloma], [cs_chronic_lymphocytic_leukaemia], [cs_acute_myeloid_leukaemia], [cs_acute_lymphocytic_leukaemia]"],
+      "inclusion_criteria": ["Relevant diagnosis or observation code for the cancer", "Index on the first occurrence ever"],
       "exit_criteria": ["End of continuous observation"],
       "operations": [
         {
           "op": "concept_cohort",
-          "codelist": "cs_diffuse_large_b_cell_lymphoma"
+          "codelist": [
+            "cs_follicular_lymphoma",
+            "cs_diffuse_large_b_cell_lymphoma",
+            "cs_multiple_myeloma",
+            "cs_chronic_lymphocytic_leukaemia",
+            "cs_acute_myeloid_leukaemia",
+            "cs_acute_lymphocytic_leukaemia"
+          ]
         },
         {
           "op": "require_first_entry"
         },
         {
           "op": "exit_at_observation_end"
-        }
-      ]
-    },
-    {
-      "name": "Diffuse large B-cell lymphoma 5-year partial prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of diffuse large B-cell lymphoma [cs_diffuse_large_b_cell_lymphoma]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for diffuse large B-cell lymphoma", "Index on the first occurrence ever"],
-      "exit_criteria": ["1825 days after index", "End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_diffuse_large_b_cell_lymphoma",
-          "exit": "event_start_date"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "pad_cohort_end",
-          "days": 1825
-        }
-      ]
-    },
-    {
-      "name": "Diffuse large B-cell lymphoma 2-year partial prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of diffuse large B-cell lymphoma [cs_diffuse_large_b_cell_lymphoma]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for diffuse large B-cell lymphoma", "Index on the first occurrence ever"],
-      "exit_criteria": ["730 days after index", "End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_diffuse_large_b_cell_lymphoma",
-          "exit": "event_start_date"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "pad_cohort_end",
-          "days": 730
-        }
-      ]
-    },
-    {
-      "name": "Multiple myeloma complete prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of multiple myeloma [cs_multiple_myeloma]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for multiple myeloma", "Index on the first occurrence ever"],
-      "exit_criteria": ["End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_multiple_myeloma"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "exit_at_observation_end"
-        }
-      ]
-    },
-    {
-      "name": "Multiple myeloma 5-year partial prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of multiple myeloma [cs_multiple_myeloma]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for multiple myeloma", "Index on the first occurrence ever"],
-      "exit_criteria": ["1825 days after index", "End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_multiple_myeloma",
-          "exit": "event_start_date"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "pad_cohort_end",
-          "days": 1825
-        }
-      ]
-    },
-    {
-      "name": "Multiple myeloma 2-year partial prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of multiple myeloma [cs_multiple_myeloma]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for multiple myeloma", "Index on the first occurrence ever"],
-      "exit_criteria": ["730 days after index", "End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_multiple_myeloma",
-          "exit": "event_start_date"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "pad_cohort_end",
-          "days": 730
-        }
-      ]
-    },
-    {
-      "name": "Chronic lymphocytic leukaemia complete prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of chronic lymphocytic leukaemia [cs_chronic_lymphocytic_leukaemia]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for chronic lymphocytic leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_chronic_lymphocytic_leukaemia"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "exit_at_observation_end"
-        }
-      ]
-    },
-    {
-      "name": "Chronic lymphocytic leukaemia 5-year partial prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of chronic lymphocytic leukaemia [cs_chronic_lymphocytic_leukaemia]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for chronic lymphocytic leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["1825 days after index", "End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_chronic_lymphocytic_leukaemia",
-          "exit": "event_start_date"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "pad_cohort_end",
-          "days": 1825
-        }
-      ]
-    },
-    {
-      "name": "Chronic lymphocytic leukaemia 2-year partial prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of chronic lymphocytic leukaemia [cs_chronic_lymphocytic_leukaemia]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for chronic lymphocytic leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["730 days after index", "End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_chronic_lymphocytic_leukaemia",
-          "exit": "event_start_date"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "pad_cohort_end",
-          "days": 730
-        }
-      ]
-    },
-    {
-      "name": "Acute myeloid leukaemia complete prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of acute myeloid leukaemia [cs_acute_myeloid_leukaemia]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for acute myeloid leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_acute_myeloid_leukaemia"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "exit_at_observation_end"
-        }
-      ]
-    },
-    {
-      "name": "Acute myeloid leukaemia 5-year partial prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of acute myeloid leukaemia [cs_acute_myeloid_leukaemia]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for acute myeloid leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["1825 days after index", "End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_acute_myeloid_leukaemia",
-          "exit": "event_start_date"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "pad_cohort_end",
-          "days": 1825
-        }
-      ]
-    },
-    {
-      "name": "Acute myeloid leukaemia 2-year partial prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of acute myeloid leukaemia [cs_acute_myeloid_leukaemia]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for acute myeloid leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["730 days after index", "End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_acute_myeloid_leukaemia",
-          "exit": "event_start_date"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "pad_cohort_end",
-          "days": 730
-        }
-      ]
-    },
-    {
-      "name": "Acute lymphocytic leukaemia complete prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of acute lymphocytic leukaemia [cs_acute_lymphocytic_leukaemia]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for acute lymphocytic leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_acute_lymphocytic_leukaemia"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "exit_at_observation_end"
-        }
-      ]
-    },
-    {
-      "name": "Acute lymphocytic leukaemia 5-year partial prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of acute lymphocytic leukaemia [cs_acute_lymphocytic_leukaemia]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for acute lymphocytic leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["1825 days after index", "End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_acute_lymphocytic_leukaemia",
-          "exit": "event_start_date"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "pad_cohort_end",
-          "days": 1825
-        }
-      ]
-    },
-    {
-      "name": "Acute lymphocytic leukaemia 2-year partial prevalence",
-      "kind": "target",
-      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
-      "entry_events": ["Diagnosis or observation record of acute lymphocytic leukaemia [cs_acute_lymphocytic_leukaemia]"],
-      "inclusion_criteria": ["Relevant diagnosis or observation code for acute lymphocytic leukaemia", "Index on the first occurrence ever"],
-      "exit_criteria": ["730 days after index", "End of continuous observation"],
-      "operations": [
-        {
-          "op": "concept_cohort",
-          "codelist": "cs_acute_lymphocytic_leukaemia",
-          "exit": "event_start_date"
-        },
-        {
-          "op": "require_first_entry"
-        },
-        {
-          "op": "pad_cohort_end",
-          "days": 730
         }
       ]
     }
   ],
   "proposed_analyses": [
     {
-      "name": "Follicular lymphoma – 5-year partial point prevalence – 365d prior observation",
+      "name": "Partial prevalence (5-year) – point prevalence (primary)",
       "analysis_type": "estimatePointPrevalence",
-      "objectives": [],
+      "objectives": ["obj_1", "obj_2", "obj_3", "obj_4", "obj_5", "obj_6"],
       "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
       "parameters": {
         "denominatorTable": "General population denominator",
-        "outcomeTable": "Follicular lymphoma 5-year partial prevalence",
+        "outcomeTable": "Rare blood cancers 5-year partial prevalence",
         "denominatorCohortId": null,
         "outcomeCohortId": null,
         "interval": "years",
         "timePoint": "start",
-        "strata": [
-          ["sex"],
-          ["age_group"]
-        ],
+        "strata": [],
+        "includeOverallStrata": true
+      }
+    },
+    {
+      "name": "Partial prevalence (5-year) – annual period prevalence, one day observed",
+      "analysis_type": "estimatePeriodPrevalence",
+      "objectives": ["obj_1", "obj_2", "obj_3", "obj_4", "obj_5", "obj_6"],
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "parameters": {
+        "denominatorTable": "General population denominator",
+        "outcomeTable": "Rare blood cancers 5-year partial prevalence",
+        "denominatorCohortId": null,
+        "outcomeCohortId": null,
+        "interval": "years",
+        "completeDatabaseIntervals": true,
+        "fullContribution": false,
+        "level": "person",
+        "strata": [],
+        "includeOverallStrata": true
+      }
+    },
+    {
+      "name": "Partial prevalence (5-year) – annual period prevalence, full year observed",
+      "analysis_type": "estimatePeriodPrevalence",
+      "objectives": ["obj_1", "obj_2", "obj_3", "obj_4", "obj_5", "obj_6"],
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "parameters": {
+        "denominatorTable": "General population denominator",
+        "outcomeTable": "Rare blood cancers 5-year partial prevalence",
+        "denominatorCohortId": null,
+        "outcomeCohortId": null,
+        "interval": "years",
+        "completeDatabaseIntervals": true,
+        "fullContribution": true,
+        "level": "person",
+        "strata": [],
+        "includeOverallStrata": true
+      }
+    },
+    {
+      "name": "Partial prevalence (2-year) – point prevalence",
+      "analysis_type": "estimatePointPrevalence",
+      "objectives": ["obj_1", "obj_2", "obj_3", "obj_4", "obj_5", "obj_6"],
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "parameters": {
+        "denominatorTable": "General population denominator",
+        "outcomeTable": "Rare blood cancers 2-year partial prevalence",
+        "denominatorCohortId": null,
+        "outcomeCohortId": null,
+        "interval": "years",
+        "timePoint": "start",
+        "strata": [],
+        "includeOverallStrata": true
+      }
+    },
+    {
+      "name": "Partial prevalence (2-year) – annual period prevalence, one day observed",
+      "analysis_type": "estimatePeriodPrevalence",
+      "objectives": ["obj_1", "obj_2", "obj_3", "obj_4", "obj_5", "obj_6"],
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "parameters": {
+        "denominatorTable": "General population denominator",
+        "outcomeTable": "Rare blood cancers 2-year partial prevalence",
+        "denominatorCohortId": null,
+        "outcomeCohortId": null,
+        "interval": "years",
+        "completeDatabaseIntervals": true,
+        "fullContribution": false,
+        "level": "person",
+        "strata": [],
+        "includeOverallStrata": true
+      }
+    },
+    {
+      "name": "Partial prevalence (2-year) – annual period prevalence, full year observed",
+      "analysis_type": "estimatePeriodPrevalence",
+      "objectives": ["obj_1", "obj_2", "obj_3", "obj_4", "obj_5", "obj_6"],
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "parameters": {
+        "denominatorTable": "General population denominator",
+        "outcomeTable": "Rare blood cancers 2-year partial prevalence",
+        "denominatorCohortId": null,
+        "outcomeCohortId": null,
+        "interval": "years",
+        "completeDatabaseIntervals": true,
+        "fullContribution": true,
+        "level": "person",
+        "strata": [],
+        "includeOverallStrata": true
+      }
+    },
+    {
+      "name": "Complete prevalence – point prevalence",
+      "analysis_type": "estimatePointPrevalence",
+      "objectives": ["obj_1", "obj_2", "obj_3", "obj_4", "obj_5", "obj_6"],
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "parameters": {
+        "denominatorTable": "General population denominator",
+        "outcomeTable": "Rare blood cancers complete prevalence",
+        "denominatorCohortId": null,
+        "outcomeCohortId": null,
+        "interval": "years",
+        "timePoint": "start",
+        "strata": [],
+        "includeOverallStrata": true
+      }
+    },
+    {
+      "name": "Complete prevalence – annual period prevalence, one day observed",
+      "analysis_type": "estimatePeriodPrevalence",
+      "objectives": ["obj_1", "obj_2", "obj_3", "obj_4", "obj_5", "obj_6"],
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "parameters": {
+        "denominatorTable": "General population denominator",
+        "outcomeTable": "Rare blood cancers complete prevalence",
+        "denominatorCohortId": null,
+        "outcomeCohortId": null,
+        "interval": "years",
+        "completeDatabaseIntervals": true,
+        "fullContribution": false,
+        "level": "person",
+        "strata": [],
+        "includeOverallStrata": true
+      }
+    },
+    {
+      "name": "Complete prevalence – annual period prevalence, full year observed",
+      "analysis_type": "estimatePeriodPrevalence",
+      "objectives": ["obj_1", "obj_2", "obj_3", "obj_4", "obj_5", "obj_6"],
+      "data_sources": ["CPRD GOLD", "IPCI", "IQVIA Belgium", "IQVIA DA Germany", "SIDIAP"],
+      "parameters": {
+        "denominatorTable": "General population denominator",
+        "outcomeTable": "Rare blood cancers complete prevalence",
+        "denominatorCohortId": null,
+        "outcomeCohortId": null,
+        "interval": "years",
+        "completeDatabaseIntervals": true,
+        "fullContribution": true,
+        "level": "person",
+        "strata": [],
         "includeOverallStrata": true
       }
     }
