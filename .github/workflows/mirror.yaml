@@ -16,6 +16,18 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Verify mirror token
+        env:
+          MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
+        run: |
+          if [ -z "$MIRROR_TOKEN" ]; then
+            echo "::error::MIRROR_TOKEN secret is empty or not visible to this workflow"
+            exit 1
+          fi
+          curl -sf -H "Authorization: Bearer $MIRROR_TOKEN" \
+            https://api.github.com/repos/fastomop/shinySAP > /dev/null \
+            || { echo "::error::Token cannot access fastomop/shinySAP (bad scope/owner/expired)"; exit 1; }
+
       - name: Push to FastOMOP mirror
         env:
           MIRROR_TOKEN: ${{ secrets.MIRROR_TOKEN }}
