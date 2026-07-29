@@ -206,6 +206,87 @@ cohort_table_name <- function(x) {
   substr(s, 1, 63)
 }
 
+# Data sources as the generated script's own guard -------------------------------
+#
+# `data_sources` is the SAP-level counterpart of `cdm`: WHICH databases a cohort
+# is built in and an estimate is run against. It is the one field on an analysis
+# that reached the document and stopped there -- the script ran every estimate at
+# every data partner, so a plan restricting an analysis to two of five databases
+# generated code that ignored the restriction. That is the dangerous direction:
+# the plan a reviewer signed said one thing and the code exported another.
+#
+# A DARWIN study package ships ONE script to every partner and each runs it
+# against their own CDM, so the restriction has to be a run-time test rather than
+# a build-time one -- hence omopgenerics::cdmName(cdm), which returns the name the
+# cdm reference was created with. Namespaced rather than library()'d, the same
+# way suppression_r_code() writes omopgenerics::suppress().
+#
+# THE NAMES MUST LINE UP. The guard compares this SAP's source keys against
+# whatever codeToRun.R passed as cdmName, and nothing here can check that -- so
+# study_export_notes() says so whenever a guard is emitted.
+
+# The source keys a SAP names, exactly as the pickers offer them: the short key,
+# falling back to the full name (see names_r in mod_cdm_sources.R). The two must
+# agree or an item's data_sources could never match the list it chose from.
+sap_source_keys <- function(sap) {
+  vapply(sap$cdm_sources %||% list(), function(s) {
+    key <- trimws(as.character(s$source_key %||% "")[1])
+    if (!is.na(key) && nzchar(key)) key else trimws(as.character(s$name %||% "")[1])
+  }, character(1))
+}
+
+item_sources <- function(x) {
+  v <- trimws(as.character(unlist(x$data_sources %||% character(0))))
+  unique(v[!is.na(v) & nzchar(v)])
+}
+
+# TRUE when an item names a PROPER SUBSET of the study's sources -- the only case
+# a guard says anything. An item that runs everywhere, or that names no sources at
+# all (the author never said, which this app reads as no restriction), is emitted
+# bare: wrapping every call in a test that is always true would bury the two that
+# are not.
+is_source_restricted <- function(item, all_sources) {
+  keys <- item_sources(item)
+  if (!length(keys) || !length(all_sources)) return(FALSE)
+  !setequal(keys, all_sources)
+}
+
+indent_block <- function(code) paste0("  ", gsub("\n", "\n  ", code))
+
+# Always c(), even for one source. r_chr_vec() drops the c() at length 1, which
+# is right for interval = "years" and wrong here: `%in% c("SIDIAP")` reads as the
+# membership test it is, and stays diff-stable when a second database is added.
+r_chr_c <- function(x) sprintf("c(%s)", paste(vapply(
+  as.character(unlist(x)), r_string, character(1)), collapse = ", "))
+
+# A SIDE-EFFECTING block -- a cohort, a denominator set -- under its guard. Not
+# creating the table at a partner the plan excludes is the whole point, so there
+# is nothing to put in an else.
+source_guard <- function(code, item, all_sources) {
+  if (is.null(code) || !is_source_restricted(item, all_sources)) return(code)
+  sprintf("if (omopgenerics::cdmName(cdm) %%in%% %s) {\n%s\n}",
+          r_chr_c(item_sources(item)), indent_block(code))
+}
+
+# An ESTIMATE under its guard, which needs the other branch.
+#
+# The estimates are bound together at the end (suppression_r_code), so every
+# variable the script binds has to EXIST at every partner -- a bare `if` would
+# leave it undefined wherever the guard is false and take down bind() with
+# "object not found", turning a restriction the plan states into a study that
+# crashes at three partners out of five. omopgenerics::emptySummarisedResult() is
+# a valid empty summarised_result, so it binds with the rest and contributes no
+# rows: the analysis simply produced nothing there, which is what the plan says.
+source_guard_estimate <- function(var, code, item, all_sources) {
+  if (!is_source_restricted(item, all_sources)) {
+    return(sprintf("%s <- %s", var, code))
+  }
+  sprintf(paste0("%s <- if (omopgenerics::cdmName(cdm) %%in%% %s) {\n%s\n} else {\n",
+                 "  # Not run here: this SAP restricts the analysis to the databases above.\n",
+                 "  omopgenerics::emptySummarisedResult()\n}"),
+          var, r_chr_c(item_sources(item)), indent_block(code))
+}
+
 # Two cohorts whose names collapse to ONE table name. The generated script would
 # then create a table twice and every estimate on the first would silently read
 # the second. Shaped like the other entries in problems_r (see cohort_kinds.R).
@@ -305,6 +386,135 @@ uninstantiated_cohort_problems <- function(cohorts, analyses) {
   })
 }
 
+# Plan fields carried into the RESULT ------------------------------------------
+#
+# An analysis's four non-`parameters` fields -- name, role, objectives,
+# data_sources -- are not arguments to any DARWIN function, because none of them
+# is a computational choice: the primary analysis and its sensitivity analyses
+# call the same estimator with the same arguments, and what separates them is
+# which one the study's conclusion may rest on. That is a decision the PLAN makes.
+#
+# data_sources became a guard (see source_guard above). The other three reached
+# the script only as a comment, which is fine for someone reading the code and
+# useless to everything downstream: the exported results are what a study report
+# is written from, and a results file that cannot say which of nine prevalence
+# estimates is the primary one pushes the same "it is only in prose" problem one
+# step further along.
+#
+# omopgenerics settings are the documented home for this. A summarised_result may
+# carry extra settings columns beyond the required ones, and they survive bind(),
+# suppress() and the export/import round trip -- verified against omopgenerics
+# 1.4.1 and IncidencePrevalence 1.2.1, including that the tag reaches the CSV
+# that actually leaves the data partner.
+SAP_TAG_HELPER <- paste(
+  "# The SAP fields that are not estimator arguments, carried into the result so",
+  "# the exported settings say which analysis produced it and which one the",
+  "# study concludes from. An empty result is left alone: it has no settings rows",
+  "# to label, and omopgenerics drops all-NA settings columns anyway.",
+  "sapTag <- function(result, analysis, role = NA_character_,",
+  "                   objectives = NA_character_) {",
+  "  if (nrow(result) == 0) return(result)",
+  "  s <- omopgenerics::settings(result)",
+  "  s$sap_analysis   <- analysis",
+  "  s$sap_role       <- role",
+  "  s$sap_objectives <- objectives",
+  "  omopgenerics::newSummarisedResult(result, settings = s)",
+  "}",
+  sep = "\n")
+
+# Which objectives an analysis answers, as the numbers the document uses. Shared
+# with objective_labels() (sap_study_export.R) so the comment above a call and the
+# label inside the result cannot number them differently.
+objective_indices <- function(sap, a) {
+  objs <- sap$study$objectives %||% list()
+  ids  <- vapply(objs, function(o) objective_id(o) %||% "", character(1))
+  named <- as.character(unlist(a$objectives %||% list()))
+  which(ids %in% named)
+}
+
+# The one line that labels an estimate. `analysis` is always passed -- an unnamed
+# analysis is a gap the author can see in the results rather than one that
+# silently loses its label. role and objectives are passed only when stated, so
+# the helper's own NA defaults stand for "the plan never said".
+sap_tag_call <- function(var, a, sap) {
+  nm <- trimws(as.character(a$name %||% "")[1])
+  if (is.na(nm) || !nzchar(nm)) nm <- "(unnamed analysis)"
+  role <- canonical_analysis_role(a$role)
+  objs <- objective_indices(sap, a)
+  args <- c(var,
+            sprintf("analysis = %s", r_string(nm)),
+            if (nzchar(role)) sprintf("role = %s", r_string(role)),
+            if (length(objs)) sprintf("objectives = %s",
+                                      r_string(paste(objs, collapse = ", "))))
+  one <- sprintf("%s <- sapTag(%s)", var, paste(args, collapse = ", "))
+  if (nchar(one) <= 92) return(one)
+  # An analysis name is a whole sentence, so this wraps more often than not.
+  # Two-space indent rather than aligning under the paren: the left-hand side is
+  # often results[["a_long_analysis_slug"]], and aligning to it would push every
+  # argument off the right of the page.
+  sprintf("%s <- sapTag(\n%s\n)", var,
+          paste(sprintf("  %s", args), collapse = ",\n"))
+}
+
+# An estimate that runs at a data partner where its cohort is never built.
+#
+# The same failure as uninstantiated_cohort_problems() -- "<table> does not exist
+# in the cdm_reference object" -- but reachable only per DATABASE, and only since
+# data_sources became a guard in the generated script rather than documentation.
+# A cohort restricted to SIDIAP and an analysis running on all five is a plan
+# that reads fine and dies at four partners: the cohort block is guarded out
+# there, the estimate is not, and it points at a table nothing created.
+#
+# Reported per analysis, naming the databases and the cohort, because that is the
+# pair the author has to reconcile -- widen the cohort or narrow the analysis.
+#
+# An analysis or cohort naming NO sources is unrestricted (the author never said),
+# so it can never be the narrower of the two and raises nothing.
+cohort_source_coverage_problems <- function(cohorts, analyses, all_sources) {
+  cohorts     <- cohorts %||% list()
+  analyses    <- analyses %||% list()
+  all_sources <- as.character(all_sources %||% character(0))
+  if (!length(all_sources)) return(list())
+
+  index <- stats::setNames(cohorts, vapply(cohorts, function(co)
+    as.character(co$name %||% "")[1], character(1)))
+  # Where an item actually runs: what it names, or everywhere when it names
+  # nothing.
+  runs_in <- function(x) {
+    keys <- item_sources(x)
+    if (!length(keys)) all_sources else keys
+  }
+
+  found <- list()
+  for (a in analyses) {
+    if (is.na(analysis_estimator(a$analysis_type))) next
+    a_sources <- runs_in(a)
+    p <- a$parameters %||% list()
+    msgs <- character(0)
+    for (id in as.character(analysis_template(a$analysis_type)$pickers$cohorts %||% character(0))) {
+      nm <- trimws(as.character(p[[id]] %||% "")[1])
+      if (is.na(nm) || !nzchar(nm)) next
+      co <- index[[nm]]
+      # A cohort this SAP does not define is uninstantiated_cohort_problems()'s
+      # to report; saying it twice in different words helps nobody.
+      if (is.null(co)) next
+      gap <- setdiff(a_sources, runs_in(co))
+      if (length(gap)) {
+        msgs <- c(msgs, sprintf(paste(
+          "Runs on %s, where the cohort '%s' is not built -- the script guards",
+          "that cohort to its own data sources, so the estimate would point at a",
+          "table that does not exist there."),
+          paste(gap, collapse = ", "), nm))
+      }
+    }
+    if (length(msgs)) {
+      found[[length(found) + 1]] <- list(
+        name = as.character(a$name %||% "(unnamed analysis)")[1], messages = msgs)
+    }
+  }
+  found
+}
+
 # Cohorts ----------------------------------------------------------------------
 
 # The generator call a denominator cohort describes, or NULL for a plain cohort.
@@ -354,11 +564,11 @@ analysis_estimator <- function(type) {
   if (is.na(type) || !nzchar(type)) return(NA_character_)
   estimators <- c("estimatePointPrevalence", "estimatePeriodPrevalence", "estimateIncidence")
   if (type %in% estimators) return(type)
-  # Pre-0.4.0 files name the registry key rather than the estimator. Prevalence
-  # is deliberately absent: the key alone does not say point or period, and
-  # guessing one would put a choice in the code the author never made.
-  aliases <- c("Incidence" = "estimateIncidence", "Incidence rate" = "estimateIncidence")
-  if (type %in% names(aliases)) return(unname(aliases[[type]]))
+  # The Incidence template has no serialised_type, so a saved analysis names the
+  # registry key. Prevalence is deliberately absent here: it DOES serialise an
+  # estimator, and the key alone would not say point or period -- guessing one
+  # would put a choice in the code the author never made.
+  if (identical(type, "Incidence")) return("estimateIncidence")
   NA_character_
 }
 
@@ -502,13 +712,16 @@ sap_script_sections <- function(sap) {
     if (!is.null(code)) add("Concept sets", nm, code = code)
   }
 
+  all_sources <- sap_source_keys(sap)
+
   for (co in cohorts) {
     code <- cohort_operations_code(
       co,
       vapply(codelists, function(cl) as.character(cl$name %||% "")[1], character(1)),
       vapply(cohorts, function(x) as.character(x$name %||% "")[1], character(1)))
     if (!is.null(code)) {
-      add("Cohorts", as.character(co$name %||% ""), code = code,
+      add("Cohorts", as.character(co$name %||% ""),
+          code = source_guard(code, co, all_sources),
           pkgs = cohort_operations_packages(co))
     }
   }
@@ -527,12 +740,14 @@ sap_script_sections <- function(sap) {
       # 0.4.21, which discarded the result -- the denominator was never attached,
       # and every estimate pointing at it would have failed at run time.
       add("Denominator cohort sets", as.character(co$name %||% ""),
-          code = sprintf("cdm <- %s", code), pkgs = "IncidencePrevalence")
+          code = source_guard(sprintf("cdm <- %s", code), co, all_sources),
+          pkgs = "IncidencePrevalence")
     }
   }
 
-  vars  <- estimate_var_names(analyses)
-  bound <- character(0)
+  vars   <- estimate_var_names(analyses)
+  bound  <- character(0)
+  tagged <- FALSE
   for (i in seq_along(analyses)) {
     a    <- analyses[[i]]
     nm   <- as.character(a$name %||% "")
@@ -547,7 +762,15 @@ sap_script_sections <- function(sap) {
       # fact about the script as a whole rather than about the call.
       bound <- c(bound, vars[[i]])
       tmpl  <- analysis_template(canonical_analysis_type(a$analysis_type))
-      add("Estimates", nm, code = sprintf("%s <- %s", vars[[i]], code),
+      # The helper is defined once, immediately before the first estimate that
+      # uses it, so a plan with no estimates carries no dead function.
+      if (!tagged) {
+        add("Estimates", NA_character_, code = SAP_TAG_HELPER)
+        tagged <- TRUE
+      }
+      add("Estimates", nm,
+          code = paste(source_guard_estimate(vars[[i]], code, a, all_sources),
+                       sap_tag_call(vars[[i]], a, sap), sep = "\n"),
           pkgs = as.character(tmpl$package %||% character(0)))
     }
   }

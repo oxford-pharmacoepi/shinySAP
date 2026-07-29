@@ -16,22 +16,40 @@
 
 # The dropdown. The registry is deliberately partial: a type with no template
 # falls back to "Other", so adding one later never means touching this vector.
-ANALYSIS_TYPES <- c(
-  "Cohort characterisation", "Incidence", "Prevalence",
-  "Comparative cohort", "Self-controlled case series", "Case-control",
-  "Survival analysis", "Patient-level prediction", "Drug utilisation", "Other"
-)
+#
+# The two estimators this app generates code for, plus the generic form. The
+# seven types offered until 0.4.24 (cohort characterisation, comparative cohort,
+# self-controlled case series, case-control, survival analysis, patient-level
+# prediction, drug utilisation) were labels and nothing else: none had a
+# template, so every one rendered the "Other" block and serialised the same
+# generic fields. Offering them implied this app could plan a study it has no
+# estimator for -- each needs its own package (CohortCharacteristics,
+# CohortSurvival, DrugUtilisation ...) before the label means anything.
+ANALYSIS_TYPES <- c("Incidence", "Prevalence", "Other")
 
-# Types renamed after SAPs had already been saved under the old label, plus the
-# labels templates serialise through `serialised_type` -- both must resolve back
-# to their registry key. Without this, selectInput() drops a `selected` it
-# cannot find in `choices`, the browser falls back to the first option, and the
-# analysis silently changes type.
+# The labels a template serialises through `serialised_type` must resolve back to
+# its registry key. Without this, selectInput() drops a `selected` it cannot find
+# in `choices`, the browser falls back to the first option, and the analysis
+# silently changes type on load.
 ANALYSIS_TYPE_ALIASES <- c(
-  "Incidence rate"           = "Incidence",
   "estimatePointPrevalence"  = "Prevalence",
   "estimatePeriodPrevalence" = "Prevalence"
 )
+
+# Whether an analysis carries the study's conclusion or probes how robust it is.
+#
+# This is NOT an estimator argument, and that is exactly why it needs a field:
+# "re-run with a 30-day washout" is a second call, not an argument to the first
+# (which is why `sensitivity_analyses` was dropped from Incidence in 0.3.1 and
+# from Prevalence in 0.4.0) -- but the DISTINCTION still has to be written down
+# somewhere, because it is the first thing a reviewer looks for. A protocol
+# states it in a column of its own; without a field, an author can only spell it
+# into the analysis name, where nothing can group or check it.
+#
+# Unset is a real state, like the cohort kind and the analysis type: a new card
+# starts with no role chosen rather than defaulting to one, and
+# analysis_role_problems() reports a plan whose primary analysis is missing.
+ANALYSIS_ROLES <- c("Primary" = "primary", "Sensitivity" = "sensitivity")
 
 # The half of the card every analysis type shares, and the only keys load() lifts
 # straight from the file without going through a template.
@@ -42,7 +60,7 @@ ANALYSIS_TYPE_ALIASES <- c(
 # never handed it back, so LOADING a SAP rendered every analysis with no
 # objectives and the next save wrote that emptiness over the file. A field the
 # card owns must round-trip, or the app silently deletes it.
-ANALYSIS_COMMON_FIELDS <- c("name", "analysis_type", "data_sources", "objectives")
+ANALYSIS_COMMON_FIELDS <- c("name", "analysis_type", "role", "data_sources", "objectives")
 
 # Ids already taken by the common half and by item_card(). No template may reuse
 # one, or the card would carry a duplicate input id.
@@ -63,8 +81,8 @@ PREVALENCE_LEVELS           <- c("person", "record")
 # Ids a template renders that are outputs, not inputs: they hold no value, so
 # they are exempt from the collect/flatten round-trip check in the tests. The
 # *_ui ids are the subcohort placeholders (see `subcohorts` below).
-DISPLAY_ONLY_IDS <- c("denominator_summary", "denominatorCohortId_ui", "outcomeCohortId_ui",
-                      "censorCohortId_ui")
+DISPLAY_ONLY_IDS <- c("denominator_summary", "cohort_role_notes", "denominatorCohortId_ui",
+                      "outcomeCohortId_ui", "censorCohortId_ui")
 
 # IncidencePrevalence::estimateIncidence(interval =): more than one may be given,
 # and results are estimated for each.
@@ -104,26 +122,22 @@ INTERVALS <- c("weeks", "months", "quarters", "years", "overall")
 # The two inputs -> the JSON value. The checkbox wins: a ticked box is Inf no
 # matter what the number field happens to still hold.
 #
-# `x` may also be a string, which is how an old file and the tests reach here --
-# "365", or the pre-0.3.2 "unbounded" sentinel.
+# `x` arrives as a string when the tests reach here directly; a numericInput
+# sends a number, or NA once the field is cleared.
 parse_washout <- function(x, unbounded = FALSE) {
   if (isTRUE(unbounded)) return(as_num_array(Inf))
   x <- trimws(as.character(x %||% "")[1])         # a blank numericInput sends NA
   if (is.na(x) || !nzchar(x)) return(NULL)
-  if (tolower(x) %in% c("inf", "infinity", "unbounded")) return(as_num_array(Inf))
   n <- suppressWarnings(as.numeric(x))
   if (is.na(n) || n < 0) NULL else as_num_array(n)
 }
 
 # The washout as a number, resolving a JSON null back to Inf. NULL means unset --
-# the one state that is not a number. Also reads the pre-0.3.2 shapes, so the
-# validator and the form agree about what an old file says: the "unbounded"
-# sentinel string, and a bare number rather than a one-element array.
+# the one state that is not a number.
 washout_days <- function(w) {
   if (is.null(w) || !length(w)) return(NULL)
   v <- w[[1]]
   if (is.null(v)) return(Inf)                     # [null] -- an unbounded washout
-  if (is.character(v) && tolower(v) %in% c("unbounded", "inf", "infinity")) return(Inf)
   n <- suppressWarnings(as.numeric(v))
   if (is.na(n)) NULL else n
 }
@@ -169,8 +183,8 @@ analysis_registry_env <- environment()
 #             flatten() sees the raw label under `analysis_type` and recovers
 #             whatever inputs encode it.
 #   flatten   function(params) -> prefill keys; the inverse of collect's nesting,
-#             or identity if collect nests nothing. Also the place to migrate an
-#             older file's keys onto the current inputs.
+#             or identity if collect nests nothing. Also where an input id that
+#             differs from its JSON key is reconciled.
 #   validate  function(params, cohorts) -> character() of problems, where
 #             `cohorts` is the named list from cohorts$by_name(). An analysis can
 #             name a cohort nobody defined (the pickers allow free text), so look
@@ -198,9 +212,13 @@ register_analysis_template <- function(type, hint = NULL, ui, collect,
 # an ID contributes nothing -- there is no ID to reference. One ID is not a set:
 # callers treat length < 2 as "no sub-cohorts".
 #
-# `parent_cohort` is no longer captured on the cohort card, so only an older SAP
-# still carries it; a cohort built now matches solely by its own name. The read is
-# kept so those older files still resolve their sub-cohort selections.
+# DEAD FOR NOW, and deliberately left whole: no cohort template collects
+# `cohort_id` or `parent_cohort`, so against a cohort built in this app it always
+# returns nothing and the sub-cohort pickers never render. That makes the three
+# *CohortId arguments unreachable from the UI even though they are real estimator
+# arguments -- a half-built feature, not a legacy path. Finish it by capturing an
+# id on the cohort card, or delete the mechanism outright; either is a decision,
+# not a cleanup.
 subcohort_choices <- function(parent_name, cohorts) {
   parent_name <- as.character(parent_name %||% "")
   if (!nzchar(parent_name)) return(numeric(0))
@@ -233,6 +251,61 @@ canonical_analysis_type <- function(x) {
 analysis_template <- function(x) {
   tmpl <- ANALYSIS_TEMPLATES[[canonical_analysis_type(x)]]
   if (is.null(tmpl)) ANALYSIS_TEMPLATES[["Other"]] else tmpl
+}
+
+# "" for unset, exactly as canonical_analysis_type() does. A role the vocabulary
+# does not know (a hand-edited file) is NOT coerced to a neighbour: it comes back
+# as itself so the document shows what the file says and the problem is visible,
+# rather than a plan silently reading as primary because "main" was typed.
+canonical_analysis_role <- function(x) {
+  if (length(x) != 1 || is.na(x) || !nzchar(x)) return("")
+  as.character(x)
+}
+
+# A plan needs exactly one thing it concludes from.
+#
+# Every analysis unset is the normal state of a half-written SAP and says
+# nothing; a plan that HAS roles but no primary among them is the case worth
+# reporting, because it reads as complete while leaving the reader to guess which
+# result is the answer. Two primaries is the same gap from the other side --
+# legitimate when a study genuinely has two co-primary estimands, which is why it
+# is a warning rather than a rule.
+#
+# Problems OF THE ANALYSES SECTION, shaped like the per-analysis entries in
+# problems_r. Warn-not-block, like every other problem here.
+analysis_role_problems <- function(analyses) {
+  analyses <- analyses %||% list()
+  if (!length(analyses)) return(list())
+  roles <- vapply(analyses, function(a) canonical_analysis_role(a$role), character(1))
+  known <- roles[nzchar(roles)]
+  if (!length(known)) return(list())
+
+  found <- list()
+  unknown <- setdiff(unique(known), ANALYSIS_ROLES)
+  if (length(unknown)) {
+    found[[length(found) + 1]] <- list(
+      name = "Analyses",
+      messages = sprintf("'%s' is not a role this app knows; use %s.",
+                         paste(unknown, collapse = "', '"),
+                         paste(ANALYSIS_ROLES, collapse = " or ")))
+  }
+  n_primary <- sum(known == "primary")
+  if (n_primary == 0) {
+    found[[length(found) + 1]] <- list(
+      name = "Analyses",
+      messages = paste(
+        "No analysis is marked primary. Every analysis here is a sensitivity",
+        "analysis, so the plan states nothing to conclude from -- mark the one",
+        "that carries the study's answer."))
+  } else if (n_primary > 1) {
+    found[[length(found) + 1]] <- list(
+      name = "Analyses",
+      messages = sprintf(paste(
+        "%d analyses are marked primary. That is right only if the study has",
+        "co-primary estimands; otherwise one of them is a sensitivity analysis."),
+        n_primary))
+  }
+  found
 }
 
 # Shared blocks ---------------------------------------------------------------
@@ -390,6 +463,39 @@ denominator_summary <- function(cohort, picked = NULL) {
     ))
   }
   denominator_panel(cohort, "Inherited from this cohort — set it on the Cohorts tab:")
+}
+
+# The outcome and censoring slots, checked against the kind of the cohort each
+# names. A HINT, not a validate() problem, and the distinction is the whole
+# design: crossing the two slots is usually a slip, but it is legitimately how a
+# real plan reads -- death is the outcome of one analysis and the censoring event
+# of the next, and whichever kind that one cohort carries, the other use looks
+# wrong. A problem would block a save on a correct plan; a hint sits on the card
+# and can be ignored.
+#
+# So this fires ONLY on a definite crossing, where the cohort is labelled as the
+# other slot's role. An `other`, `target` or kindless cohort in either slot says
+# nothing -- a plain cohort reused as an outcome is ordinary, and the kind was
+# never a promise about which analysis would consume it. What is unambiguously
+# wrong (a generated denominator in either slot) stays in validate(), where it
+# blocks.
+cohort_role_notes_ui <- function(ns, pf) {
+  uiOutput(ns("cohort_role_notes"))
+}
+
+cohort_role_notes <- function(outcome, censor = NULL) {
+  crossed <- function(cohort, is_kind, slot, labelled) {
+    if (is.null(cohort)) return(NULL)
+    if (!identical(canonical_cohort_kind(cohort$kind), is_kind)) return(NULL)
+    sprintf(paste("'%s' is the %s here, but its kind is %s. That is fine if the",
+                  "same cohort plays both parts — otherwise check the pickers."),
+            cohort$name %||% "This cohort", slot, labelled)
+  }
+  notes <- c(crossed(outcome, "censor",  "outcome",   "Censoring"),
+             crossed(censor,  "outcome", "censoring cohort", "Outcome"))
+  if (!length(notes)) return(NULL)
+  div(class = "alert alert-warning py-2 small mb-3",
+      lapply(notes, function(n) div(n)))
 }
 
 # The panel itself: the facts grid plus the generated cohort set, one styled

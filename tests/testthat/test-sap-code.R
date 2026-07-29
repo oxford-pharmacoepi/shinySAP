@@ -158,7 +158,8 @@ test_that("an analysis type with no package function maps to nothing", {
   expect_null(analysis_r_code(list(analysis_type = "Other", parameters = list())))
   # The registry key alone cannot say point or period, so it maps to neither.
   expect_true(is.na(analysis_estimator("Prevalence")))
-  expect_identical(analysis_estimator("Incidence rate"), "estimateIncidence")
+  # The Incidence template has no serialised_type, so its files name the key.
+  expect_identical(analysis_estimator("Incidence"), "estimateIncidence")
 })
 
 test_that("cohort names that collapse onto one table name are reported", {
@@ -218,6 +219,54 @@ test_that("an analysis that generates no call reports nothing", {
 
 test_that("an unchosen cohort picker is not mistaken for a missing table", {
   expect_length(uninstantiated_cohort_problems(list(ug_denom), list(ug_prev(""))), 0)
+})
+
+# The same run-time failure, reachable only per DATABASE -- and only since
+# data_sources became a guard in the generated script rather than documentation.
+# A cohort built in two databases and an estimate run in three is a plan that
+# reads fine and dies at the third: the cohort block is guarded out there, the
+# estimate is not, and it points at a table nothing created.
+
+ALL3 <- c("SIDIAP", "CPRD GOLD", "IPCI")
+with_sources <- function(x, ...) utils::modifyList(x, list(data_sources = list(...)))
+
+test_that("an estimate running where its cohort is not built is reported", {
+  found <- cohort_source_coverage_problems(
+    list(with_sources(ug_denom, "SIDIAP", "CPRD GOLD", "IPCI"),
+         with_sources(ug_typed, "SIDIAP", "CPRD GOLD")),
+    list(with_sources(ug_prev("Follicular lymphoma"), "SIDIAP", "CPRD GOLD", "IPCI")),
+    ALL3)
+  expect_length(found, 1)
+  expect_match(found[[1]]$messages, "IPCI", fixed = TRUE)
+  expect_match(found[[1]]$messages, "'Follicular lymphoma'", fixed = TRUE)
+})
+
+test_that("an estimate narrower than its cohorts is fine", {
+  expect_length(cohort_source_coverage_problems(
+    list(with_sources(ug_denom, "SIDIAP", "CPRD GOLD", "IPCI"),
+         with_sources(ug_typed, "SIDIAP", "CPRD GOLD")),
+    list(with_sources(ug_prev("Follicular lymphoma"), "SIDIAP")),
+    ALL3), 0)
+})
+
+# Naming no sources is "the author never said", which this app reads as no
+# restriction -- so it can never be the narrower of the two.
+test_that("items naming no sources raise nothing", {
+  expect_length(cohort_source_coverage_problems(
+    list(ug_denom, ug_typed), list(ug_prev("Follicular lymphoma")), ALL3), 0)
+  # The cohort is unrestricted, so an analysis on all three is still covered.
+  expect_length(cohort_source_coverage_problems(
+    list(ug_denom, ug_typed),
+    list(with_sources(ug_prev("Follicular lymphoma"), "SIDIAP", "CPRD GOLD", "IPCI")),
+    ALL3), 0)
+})
+
+# A cohort this SAP does not define at all is uninstantiated_cohort_problems()'s
+# to report; the same gap in two different wordings helps nobody.
+test_that("a cohort nobody defined is left to the other validator", {
+  expect_length(cohort_source_coverage_problems(
+    list(with_sources(ug_denom, "SIDIAP")),
+    list(with_sources(ug_prev("Nowhere cohort"), "SIDIAP")), ALL3), 0)
 })
 
 # The fix goes on the cohort, so nine analyses sharing one uninstantiated outcome
@@ -311,15 +360,18 @@ test_that("the script's blocks are labelled, ordered, and skip plain cohorts", {
       parameters = list(denominatorTable = "General population",
                         outcomeTable = "Flu vaccine")))))
 
-  # Libraries leads, derived from what the blocks after it call.
+  # Libraries leads, derived from what the blocks after it call. The untitled
+  # block inside Estimates is the sapTag helper: it belongs to the group rather
+  # than to any one estimate, like the untitled suppression block at the end.
   expect_identical(vapply(secs, function(s) s$group, character(1)),
                    c("Libraries", "Denominator cohort sets", "Estimates",
-                     "Result suppression"))
+                     "Estimates", "Result suppression"))
   expect_identical(vapply(secs, function(s) s$title, character(1)),
-                   c(NA_character_, "General population", "Point prevalence",
-                     NA_character_))
+                   c(NA_character_, "General population", NA_character_,
+                     "Point prevalence", NA_character_))
+  expect_match(secs[[3]]$code, "sapTag <- function", fixed = TRUE)
   # The estimate is assigned, so the suppression block can name it.
-  expect_match(secs[[3]]$code, "point_prevalence_1 <- estimatePointPrevalence\\(", perl = TRUE)
+  expect_match(secs[[4]]$code, "point_prevalence_1 <- estimatePointPrevalence\\(", perl = TRUE)
 })
 
 # The header is a block, not something sap_r_script() adds on the way out --

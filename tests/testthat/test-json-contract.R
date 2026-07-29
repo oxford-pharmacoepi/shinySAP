@@ -65,17 +65,6 @@ test_that("single data_source stays an array", {
 })
 
 # Section rename: 0.2.0 reads proposed_analyses, but must still load 0.1.0 files.
-test_that("coalesce_key prefers the new name",
-          expect_identical(coalesce_key(list(proposed_analyses = list("new"), analyses = list("old")),
-                                        "proposed_analyses", "analyses"), list("new")))
-test_that("coalesce_key falls back to the old name",
-          expect_identical(coalesce_key(list(analyses = list("old")), "proposed_analyses", "analyses"),
-                           list("old")))
-test_that("coalesce_key on an empty new key falls back",
-          expect_identical(coalesce_key(list(proposed_analyses = list(), analyses = list("old")),
-                                        "proposed_analyses", "analyses"), list("old")))
-test_that("coalesce_key with neither key gives an empty list",
-          expect_identical(coalesce_key(list(), "proposed_analyses", "analyses"), list()))
 
 test_that("slugify",
           expect_identical(slugify("Metformin & Lactic Acidosis!"), "metformin-lactic-acidosis"))
@@ -166,6 +155,14 @@ test_that("sap_is_empty: a fresh app is empty, anything authored is not", {
                 cdm_sources = list(), cdm_changes = list(), codelists = list(),
                 cohorts = list(), proposed_analyses = list())
   expect_true(sap_is_empty(fresh))
+  # The block the study card always writes, empty. Four nulls are not content.
+  blank_protocol <- fresh
+  blank_protocol$study$protocol <- list(reference = NA, version = NA,
+                                        date = NA, url = NA)
+  expect_true(sap_is_empty(blank_protocol))
+  named_protocol <- blank_protocol
+  named_protocol$study$protocol$reference <- "DARWIN EU® Study Protocol C1-001"
+  expect_false(sap_is_empty(named_protocol))
   titled <- fresh
   titled$study$title <- "My study"
   expect_false(sap_is_empty(titled))

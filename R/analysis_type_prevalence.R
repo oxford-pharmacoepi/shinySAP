@@ -39,6 +39,7 @@ register_analysis_template(
     # picked cohort spans a set; all of the set's IDs selected by default.
     uiOutput(ns("denominatorCohortId_ui")),
     uiOutput(ns("outcomeCohortId_ui")),
+    cohort_role_notes_ui(ns, pf),
     # No time-at-risk block: prevalence is measured at points or over calendar
     # intervals, not across a window anchored on cohort entry.
     selectInput(ns("prevalence_type"), "Prevalence type", PREVALENCE_TYPES,
@@ -150,45 +151,28 @@ register_analysis_template(
     if (identical(input$prevalence_type, "Period prevalence")) "estimatePeriodPrevalence"
     else "estimatePointPrevalence",
 
-  # flatten() carries older files onto the current inputs. Before 0.3.0 every
-  # analysis used the generic form, which called the denominator population
-  # `target_cohort`; the first prevalence template stored an interval length in
-  # days and free-text time points; and the keys were snake_case before they
-  # were aligned with the estimators' argument names. Old keys are read with
-  # [[, not $: on a file that lacks one, $ would partial-match a longer name
-  # (`time_point` finds `time_points`) and migrate the wrong value.
+  # flatten() is the inverse of collect(): the JSON keys back onto the input ids.
+  # `interval` is read with [[, not $, throughout -- $ partial-matches, and this
+  # template has both `interval` and the two per-type interval selects.
   flatten = function(p) {
     # The point/period select is not among the parameters: the split lives in
-    # the file's analysis_type, which load() passes through here. Files saved
-    # before the estimator rename still carry prevalence_type and keep it;
-    # with neither, the select's own default (point) applies.
+    # the file's analysis_type, which load() passes through here (see
+    # serialised_type above). With neither, the select's own default applies.
     if (is.null(p$prevalence_type))
       p$prevalence_type <- switch(as.character(p$analysis_type %||% ""),
         estimatePointPrevalence  = "Point prevalence",
         estimatePeriodPrevalence = "Period prevalence") %||% "Point prevalence"
 
-    if (is.null(p$denominatorTable))
-      p$denominatorTable <- p[["denominator_cohort"]] %||% p[["target_cohort"]]
-    if (is.null(p$outcomeTable))
-      p$outcomeTable <- p[["outcome_cohort"]]
-    if (is.null(p$timePoint))
-      p$timePoint <- p[["time_point"]]
-    if (is.null(p$fullContribution))
-      p$fullContribution <- p[["full_contribution"]]
-    if (is.null(p$completeDatabaseIntervals))
-      p$completeDatabaseIntervals <- p[["complete_database_intervals"]]
     # The checkbox id is the shared block's snake_case; the JSON key is this
-    # template's camelCase. Files from before the alignment already used the
-    # snake_case key, which is the input id itself.
+    # template's camelCase.
     if (is.null(p$include_overall_strata))
       p$include_overall_strata <- p[["includeOverallStrata"]]
     if (is.null(p$include_overall_strata))
       p$include_overall_strata <- TRUE
 
-    # Tokens for the strata multi-select. strata_tokens() reads every shape
-    # this field has had: a list of variable groups (current), a flat array of
-    # free-text lines (the textarea era), and legacy `stratifications`.
-    p$strata <- strata_tokens(p[["strata"]] %||% p[["stratifications"]])
+    # Tokens for the strata multi-select: one per variable group, crossed
+    # variables comma-joined.
+    p$strata <- strata_tokens(p[["strata"]])
 
     # collect() serialises only the selected type's arguments, so a loaded
     # point analysis carries no period fields and vice versa. Fill the gaps
@@ -199,21 +183,6 @@ register_analysis_template(
     if (is.null(p$fullContribution))          p$fullContribution          <- FALSE
     if (is.null(p$completeDatabaseIntervals)) p$completeDatabaseIntervals <- TRUE
     if (is.null(p$level))                     p$level                     <- PREVALENCE_LEVELS[1]
-
-    # An old interval length becomes the new interval when the day count is a
-    # calendar unit. Free-text time_points, and lengths that fit no unit, have
-    # no field left to land in (this template has no sensitivity_analyses), so
-    # they do not survive a load. `interval` is read with [[ throughout: on an
-    # old record with no such key, $ would partial-match interval_length_days
-    # and make the interval look already set.
-    days <- p$interval_length_days
-    if (is.null(p[["interval"]]) && length(days) == 1 && !is.na(days)) {
-      p$interval <-
-        if (days == 7) "weeks"
-        else if (days >= 28 && days <= 31) "months"
-        else if (days >= 90 && days <= 92) "quarters"
-        else if (days >= 365 && days <= 366) "years"
-    }
 
     # The one saved `interval` feeds whichever select applies. "overall" never
     # reaches the point select: it is not among its choices, and a selected

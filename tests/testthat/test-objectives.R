@@ -4,27 +4,6 @@
 # insert one at the top and every reference below it silently means something
 # else. Most of these tests are that property from one side or the other.
 
-test_that("migrate_objectives: bare strings gain ids in order, losslessly", {
-  objs <- migrate_objectives(list("First objective", "Second objective"))
-  expect_identical(vapply(objs, objective_id, character(1)), c("obj_1", "obj_2"))
-  expect_identical(vapply(objs, objective_text, character(1)),
-                   c("First objective", "Second objective"))
-})
-
-test_that("migrate_objectives leaves ids that already exist alone", {
-  objs <- migrate_objectives(list(
-    list(id = "obj_7", text = "Kept"), "Newly minted"))
-  # obj_8, not obj_1: ids count past the highest in use so a gap can never be
-  # refilled by a different objective.
-  expect_identical(vapply(objs, objective_id, character(1)), c("obj_7", "obj_8"))
-})
-
-test_that("migrate_sap gives a study's objectives ids", {
-  sap <- migrate_sap(list(study = list(objectives = list("A", "B"))))
-  expect_identical(vapply(sap$study$objectives, objective_id, character(1)),
-                   c("obj_1", "obj_2"))
-})
-
 test_that("objective_text and objective_id read both the old and new shapes", {
   expect_identical(objective_text("bare string"), "bare string")
   expect_true(is.na(objective_id("bare string")))
@@ -38,7 +17,7 @@ test_that("objective_text and objective_id read both the old and new shapes", {
 # edits keep an id and which mint a new one.
 
 test_that("reordering objectives keeps their ids", {
-  existing <- migrate_objectives(list("First", "Second", "Third"))
+  existing <- reconcile_objectives(c("First", "Second", "Third"), list())
   out <- reconcile_objectives(c("Third", "First", "Second"), existing)
   expect_identical(vapply(out, objective_id, character(1)), c("obj_3", "obj_1", "obj_2"))
 })
@@ -46,7 +25,7 @@ test_that("reordering objectives keeps their ids", {
 # The failure this design exists to prevent: with position as identity, an
 # objective inserted at the top would repoint every reference below it.
 test_that("inserting an objective does not repoint the ones after it", {
-  existing <- migrate_objectives(list("First", "Second"))
+  existing <- reconcile_objectives(c("First", "Second"), list())
   out <- reconcile_objectives(c("Brand new", "First", "Second"), existing)
   expect_identical(vapply(out, objective_text, character(1)),
                    c("Brand new", "First", "Second"))
@@ -59,7 +38,7 @@ test_that("inserting an objective does not repoint the ones after it", {
 # would silently start pointing at a different objective. Gaps are the safe
 # outcome -- the id is opaque, and the document numbers by position.
 test_that("deleting an objective does not free its id for reuse", {
-  existing <- migrate_objectives(list("First", "Second"))
+  existing <- reconcile_objectives(c("First", "Second"), list())
   out <- reconcile_objectives(c("Second", "Third"), existing)
   expect_identical(vapply(out, objective_id, character(1)), c("obj_2", "obj_3"))
 })
@@ -67,7 +46,7 @@ test_that("deleting an objective does not free its id for reuse", {
 # Deliberate: a reworded objective may be a different objective, so the link
 # breaks visibly rather than silently following the new wording.
 test_that("rewording an objective mints a new id", {
-  existing <- migrate_objectives(list("First"))
+  existing <- reconcile_objectives(c("First"), list())
   out <- reconcile_objectives("First, but rewritten", existing)
   expect_false(identical(objective_id(out[[1]]), "obj_1"))
 })
@@ -84,8 +63,8 @@ test_that("blank lines are not objectives", {
 # Coverage ------------------------------------------------------------------------
 
 sap_with <- function(n_obj, ...) {
-  list(study = list(objectives = migrate_objectives(as.list(
-    sprintf("Objective %d", seq_len(n_obj))))), analyses = list(...))
+  list(study = list(objectives = reconcile_objectives(
+    sprintf("Objective %d", seq_len(n_obj)), list())), analyses = list(...))
 }
 
 test_that("an objective no analysis answers is reported", {
@@ -141,7 +120,7 @@ test_that("a SAP with neither objectives nor analyses has nothing to report", {
 
 test_that("the generated study code names the objective an estimate answers", {
   sap <- list(
-    study = list(objectives = migrate_objectives(list("First", "Second"))),
+    study = list(objectives = reconcile_objectives(c("First", "Second"), list())),
     cohorts = list(),
     proposed_analyses = list(list(
       name = "PP", analysis_type = "estimatePointPrevalence",
@@ -153,12 +132,59 @@ test_that("the generated study code names the objective an estimate answers", {
 
 test_that("an analysis naming no objective gets no label rather than a blank one", {
   sap <- list(
-    study = list(objectives = migrate_objectives(list("First"))),
+    study = list(objectives = reconcile_objectives(c("First"), list())),
     proposed_analyses = list(list(
       name = "PP", analysis_type = "estimatePointPrevalence",
       parameters = list(denominatorTable = "D", outcomeTable = "O"))))
   expect_false(grepl("[objective", study_files(sap)[["analyses/incidencePrevalence.R"]],
                      fixed = TRUE))
+})
+
+# The source protocol ----------------------------------------------------------
+#
+# Which protocol this SAP implements, and which version of it. Always written as
+# a block of four keys so the shape is stable; the values are what say whether a
+# protocol was named at all.
+
+test_that("the study card collects the protocol it implements", {
+  testServer(study_server, {
+    session$setInputs(protocol_reference = "DARWIN EU® Study Protocol C1-001",
+                      protocol_version   = "2.0",
+                      protocol_date      = "2022-11-01",
+                      protocol_url       = "https://example.org/c1-001.pdf")
+    prot <- isolate(data())$protocol
+    expect_identical(prot$reference, "DARWIN EU® Study Protocol C1-001")
+    expect_identical(prot$version, "2.0")
+    expect_identical(prot$date, "2022-11-01")
+  })
+})
+
+test_that("a SAP naming no protocol writes the block as nulls, not blanks", {
+  testServer(study_server, {
+    session$setInputs(protocol_reference = "", protocol_version = "",
+                      protocol_date = "", protocol_url = "")
+    prot <- isolate(data())$protocol
+    expect_true(all(vapply(prot, is.na, logical(1))))
+    back <- fromJSON(as.character(sap_json(list(study = isolate(data())))),
+                     simplifyVector = FALSE)
+    expect_null(back$study$protocol$reference)
+  })
+})
+
+# load() must not trip over a file that has no protocol block at all -- every
+# SAP written before 0.4.27, and every SAP for a study with no separate protocol.
+#
+# The CLEARING half of that path (a card holding a protocol, loading a SAP that
+# names none, must end up empty rather than keeping the previous study's) is not
+# asserted here because it is not observable from testServer: update*Input()
+# sends a message to a browser that does not exist, so input$ never changes. It
+# is why the date is a textInput -- updateDateInput() cannot clear one at all.
+test_that("loading a SAP with no protocol block is not an error", {
+  testServer(study_server, {
+    session$setInputs(protocol_reference = "An earlier protocol")
+    expect_no_error(load(list(title = "Next study")))
+    expect_no_error(load(list(title = "Third study", protocol = list(version = "2.0"))))
+  })
 })
 
 # The card ---------------------------------------------------------------------------
@@ -248,7 +274,7 @@ test_that("analysis_to_prefill carries objectives back from a saved analysis", {
 
 test_that("every field the shared half of the card owns round-trips on load", {
   # Whatever the card renders and collects, load() must hand back.
-  expect_true(all(c("name", "analysis_type", "data_sources", "objectives")
+  expect_true(all(c("name", "analysis_type", "role", "data_sources", "objectives")
                   %in% ANALYSIS_COMMON_FIELDS))
 })
 

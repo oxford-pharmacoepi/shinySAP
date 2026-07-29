@@ -1,10 +1,7 @@
-# Cohort kinds. 0.3.0 replaced `role` (Target / Comparator / ...) with `kind`.
-# Each kind now carries only the arguments its generator actually takes.
+# Cohort kinds. Each kind carries only the arguments its generator actually takes.
 
-# An old Target cohort is a PLAIN cohort, not a generated denominator -- mapping it
-# to one would drop its entry events, which that kind's block does not carry.
-test_that("cohort kind: an old Target role becomes a plain target cohort",
-          expect_identical(canonical_cohort_kind("Target"), "target"))
+# A target cohort is a PLAIN cohort, not a generated denominator -- reading it as
+# one would drop its entry events, which that kind's block does not carry.
 test_that("cohort kind: a target cohort is not a denominator", {
   expect_false(is_denominator_kind("target"))
   expect_true(is_denominator_kind("target_denominator"))
@@ -113,24 +110,10 @@ test_that("cohort: a target denominator does have a time at risk",
                         names(COHORT_TEMPLATES[["target_denominator"]]$collect(list()))))
 # 0.4.15 folded index_rule and concept_set back into the text fields: the
 # codelist is cited inline in the entry event, the index rule is an inclusion
-# criterion. An old file's values fold in on load -- nothing is lost.
+# criterion.
 test_that("cohort: a plain cohort no longer collects index_rule or concept_set", {
   keys <- names(COHORT_TEMPLATES[["target"]]$collect(list()))
   expect_false(any(c("index_rule", "concept_set") %in% keys))
-})
-test_that("migrate_sap: an old concept_set and index_rule fold into the text fields", {
-  m <- migrate_sap(list(cohorts = list(list(
-    name = "T", kind = "target",
-    entry_events = list("Influenza vaccination"),
-    index_rule = "First occurrence ever",
-    inclusion_criteria = list("Aged 18 or over at index"),
-    concept_set = "Influenza vaccine (ATC J07BB)"
-  ))))
-  ch <- m$cohorts[[1]]
-  expect_true("Codelist: Influenza vaccine (ATC J07BB)" %in% unlist(ch$entry_events))
-  expect_true("Index date: First occurrence ever" %in% unlist(ch$inclusion_criteria))
-  expect_null(ch$concept_set)
-  expect_null(ch$index_rule)
 })
 
 test_that("cohort: an outcome cohort carries none of the generator arguments",
@@ -325,21 +308,6 @@ test_that("cohort: anything that is not a denominator carries no strata columns"
   expect_length(cohort_strata_variables(list(kind = "outcome")), 0)
   expect_length(cohort_strata_variables(NULL), 0)
 })
-# 0.4.12 dropped the cohort description: the kind block already says what a
-# cohort is in structured form, so an old file's free text does not survive.
-test_that("migrate_sap: an old cohort's description is dropped", {
-  m <- migrate_sap(list(cohorts = list(list(
-    name = "D", kind = "denominator", description = "prose that drifted"
-  ))))
-  expect_null(m$cohorts[[1]]$description)
-})
-
-test_that("migrate_sap: an old file's declared strata columns are dropped", {
-  m <- migrate_sap(list(cohorts = list(list(
-    name = "D", kind = "denominator", strata_variables = list("age_group", "sex", "region")
-  ))))
-  expect_null(m$cohorts[[1]]$strata_variables)
-})
 
 # What the cohort set actually generates ---------------------------------------
 #
@@ -358,6 +326,38 @@ test_that("cohort set: interactions cross ageGroup x sex x daysPriorObservation"
                         sex = list("Male", "Female"),
                         daysPriorObservation = list(0, 365)), 8)   # 2 x 2 x 2
 })
+# The ORDER is the part that matters beyond the count, because it is what a
+# cohort id means: an analysis restricted to denominatorCohortId = 3 gets
+# whichever combination the generator numbered 3, and this app's preview is what
+# tells the author which that is.
+#
+# Pinned against the real thing rather than reasoned about. Running
+# generateDenominatorCohortSet() (IncidencePrevalence 1.2.1) on a mock CDM with
+# ageGroup = list(c(0, 40), c(41, 150)), sex = c("Both", "Female") and
+# daysPriorObservation = c(0, 365) returns, by cohort_definition_id:
+#
+#   1  0 to 40   Both    0        5  41 to 150  Both    0
+#   2  0 to 40   Both    365      6  41 to 150  Both    365
+#   3  0 to 40   Female  0        7  41 to 150  Female  0
+#   4  0 to 40   Female  365      8  41 to 150  Female  365
+#
+# -- age outermost, then sex, then days of prior observation. If a future
+# version of the package reorders that, this test is what says so.
+test_that("cohort set: the order matches the generator's own cohort ids", {
+  s <- den_set(ageGroup = list(c(0, 40), c(41, 150)),
+               sex = list("Both", "Female"),
+               daysPriorObservation = list(0, 365))
+  got <- lapply(s, function(x) list(age = unlist(x$ageGroup), sex = x$sex,
+                                    prior = x$daysPriorObservation))
+  expect_identical(vapply(got, function(g) g$age[[1]], numeric(1)),
+                   c(0, 0, 0, 0, 41, 41, 41, 41))
+  expect_identical(vapply(got, function(g) as.character(g$sex), character(1)),
+                   c("Both", "Both", "Female", "Female",
+                     "Both", "Both", "Female", "Female"))
+  expect_identical(vapply(got, function(g) as.numeric(g$prior), numeric(1)),
+                   c(0, 365, 0, 365, 0, 365, 0, 365))
+})
+
 test_that("cohort set: each generated cohort is one distinct combination", {
   s <- den_set(ageGroup = list(c(0, 17), c(18, 64)), sex = list("Male", "Female"))
   lines <- vapply(s, format_denominator_cohort, character(1))
@@ -500,9 +500,9 @@ test_that("duplicate names: distinct, blank and NA names raise nothing",
 
 # cohort_to_prefill() is the ONE path a card is rebuilt from -- load and the
 # Duplicate button both use it.
-test_that("cohort_to_prefill: an old role is canonicalised and flattened", {
-  p <- cohort_to_prefill(list(name = "T", role = "Target"))
-  expect_identical(p$kind, "target")
+test_that("cohort_to_prefill: an unknown kind is canonicalised and flattened", {
+  p <- cohort_to_prefill(list(name = "T", kind = "something made up"))
+  expect_identical(p$kind, "other")
 })
 test_that("cohort_to_prefill: a denominator's date range splits back onto its fields", {
   p <- cohort_to_prefill(list(kind = "denominator",

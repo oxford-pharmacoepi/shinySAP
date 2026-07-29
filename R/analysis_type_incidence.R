@@ -81,6 +81,7 @@ register_analysis_template(
         uiOutput(ns("censorCohortId_ui"))
       )
     ),
+    cohort_role_notes_ui(ns, pf),
 
     section_heading("Time granularity"),
     layout_columns(
@@ -144,7 +145,7 @@ register_analysis_template(
     # and denominator_summary() already flags it on the card.
     d <- cohort_by_name(cohorts, p$denominatorTable)
 
-    if (!is.null(d) && !d$kind %in% c("denominator", "target_denominator"))
+    if (!is.null(d) && !is_denominator_kind(d$kind))
       errs <- c(errs, "Denominator must be a denominator or target-denominator cohort.")
 
     # The mirror-image mistake: outcome and censoring must be PLAIN cohorts --
@@ -170,35 +171,12 @@ register_analysis_template(
     errs
   },
 
-  # flatten() carries an older file onto the current inputs. Before 0.4.3 the
-  # Incidence parameters were snake_case and nested under an `estimand` object that
-  # estimateIncidence() has no concept of; before that the generic form called the
-  # denominator `target_cohort` and the analysis carried its own time at risk. Old
-  # keys are read with [[, never $: on a file that lacks one, $ would partial-match
-  # a longer name and migrate the wrong value.
+  # flatten() is the inverse of collect(): the JSON keys back onto the input ids.
+  # Every key here is a live one -- the two places the ids and the argument names
+  # genuinely differ, plus the defaults an absent key needs.
   flatten = function(p) {
-    # Un-nest the pre-0.4.3 `estimand` wrapper: its fields sat one level down.
-    est <- p[["estimand"]]
-    if (!is.null(est)) {
-      for (k in names(est)) if (is.null(p[[k]])) p[[k]] <- est[[k]]
-      p$estimand <- NULL
-    }
-
-    # Rename the pre-0.4.3 snake_case keys onto the input ids, which for every
-    # field but the overall-strata checkbox are the argument names themselves.
-    ren <- c(denominator_cohort = "denominatorTable", target_cohort = "denominatorTable",
-             outcome_cohort = "outcomeTable", censor_cohort = "censorTable",
-             complete_database_intervals = "completeDatabaseIntervals",
-             outcome_washout = "outcomeWashout", repeated_events = "repeatedEvents")
-    for (old in names(ren)) {
-      new <- ren[[old]]
-      if (is.null(p[[new]]) && !is.null(p[[old]])) p[[new]] <- p[[old]]
-      p[[old]] <- NULL
-    }
-
     # The overall-strata checkbox is the shared block's input, whose id stays
-    # snake_case; the JSON key is camelCase. A new file carries includeOverallStrata
-    # and needs it copied onto the input id; an old file already used the input id.
+    # snake_case; the JSON key is the argument's camelCase.
     if (is.null(p$include_overall_strata))
       p$include_overall_strata <- p[["includeOverallStrata"]]
     if (is.null(p$include_overall_strata)) p$include_overall_strata <- TRUE
@@ -206,8 +184,6 @@ register_analysis_template(
     # The JSON holds ONE washout value; the form holds TWO inputs, because a number
     # field cannot show Inf and the checkbox carries it instead. Read the flag off
     # the value first -- overwriting it would destroy the Inf we need it for.
-    # washout_days() also reads the pre-0.3.2 shapes: the "unbounded" sentinel
-    # string, and a bare number rather than a one-element array.
     w <- p$outcomeWashout
     p$outcomeWashout_unbounded <- washout_is_unbounded(w)
     # p[...] <- list(NULL) keeps the key with a NULL value; p$x <- NULL would DELETE
@@ -216,21 +192,7 @@ register_analysis_template(
     p["outcomeWashout"] <- list(washout_days_value(w))
 
     # The strata multi-select holds one token per group, crossed vars comma-joined.
-    # strata_tokens() also reads the legacy `stratifications` shape.
-    p$strata <- strata_tokens(p[["strata"]] %||% p[["stratifications"]])
-
-    # 0.3.0 moved time at risk onto the denominator cohort; migrate_sap() does that
-    # before any section loads, so by here there is nothing left to carry.
-    p$time_at_risk <- NULL
-
-    # 0.3.1 dropped these: rate-per-N and the denominator unit are presentation
-    # choices made downstream, not arguments to estimateIncidence(), and a
-    # sensitivity analysis is a second call rather than a parameter of this one.
-    p$reporting <- NULL
-    p$denominator_unit <- NULL
-    p$rate_multiplier <- NULL
-    p$sensitivity_analyses <- NULL
-    p$stratifications <- NULL
+    p$strata <- strata_tokens(p[["strata"]])
     p
   }
 )

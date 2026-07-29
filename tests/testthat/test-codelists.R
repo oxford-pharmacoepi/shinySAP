@@ -144,8 +144,7 @@ test_that("read_concept_set: an Atlas export nested under `expression` is found"
   expect_true(cs$expression[[1]]$descendants)
 })
 
-# read_codelist() is the snapshot half of the same reader, and the shape it
-# returns is what pre-0.4.20 callers and saved SAPs already expect.
+# read_codelist() is the snapshot half of the same reader: just the codes.
 test_that("read_codelist still returns just the resolved codes", {
   p <- write_tmp(c("concept_id,concept_name", "111,a"), ".csv")
   expect_identical(read_codelist(p, "x.csv"), list(list(code = "111", name = "a")))

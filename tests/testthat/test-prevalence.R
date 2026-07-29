@@ -1,5 +1,4 @@
-# The Prevalence template: period and point round trips, cohort sets, and the
-# migrations from the snake_case and pre-0.3.0 shapes.
+# The Prevalence template: period and point round trips, and cohort sets.
 
 prev <- round_trip(ANALYSIS_TEMPLATES[["Prevalence"]], list(
   denominatorTable          = "Metformin new users",
@@ -44,7 +43,7 @@ test_that("prevalence: flatten recovers the type select from the estimator name"
           expect_identical(prefiller(ANALYSIS_TEMPLATES[["Prevalence"]]$flatten(
             list(analysis_type = "estimatePeriodPrevalence")))("prevalence_type"),
             "Period prevalence"))
-test_that("prevalence: an older file's own prevalence_type parameter wins",
+test_that("prevalence: an explicit prevalence_type wins over the analysis_type",
           expect_identical(prefiller(ANALYSIS_TEMPLATES[["Prevalence"]]$flatten(
             list(analysis_type = "Prevalence", prevalence_type = "Period prevalence")
           ))("prevalence_type"), "Period prevalence"))
@@ -135,52 +134,3 @@ test_that("subcohorts: a blank or absent parent detects nothing", {
 })
 test_that("subcohorts: a child without an ID contributes nothing",
           expect_false(anyNA(subcohort_choices("Adults", set_cohorts))))
-
-# Prevalence keys were snake_case before they were aligned with the
-# IncidencePrevalence argument names; a file saved under those names must land
-# on the renamed inputs.
-snake_prev <- prefiller(ANALYSIS_TEMPLATES[["Prevalence"]]$flatten(list(
-  denominator_cohort          = "Metformin new users",
-  outcome_cohort              = "Lactic acidosis",
-  time_point                  = "middle",
-  full_contribution           = TRUE,
-  complete_database_intervals = FALSE,
-  include_overall_strata      = FALSE,
-  stratifications             = list("Sex")
-)))
-
-test_that("snake_case prevalence: cohorts migrate", {
-  expect_identical(snake_prev("denominatorTable"), "Metformin new users")
-  expect_identical(snake_prev("outcomeTable"), "Lactic acidosis")
-})
-test_that("snake_case prevalence: timePoint migrates",
-          expect_identical(snake_prev("timePoint"), "middle"))
-test_that("snake_case prevalence: checkboxes migrate without flipping", {
-  expect_true(snake_prev("fullContribution"))
-  expect_identical(snake_prev("completeDatabaseIntervals"), FALSE)
-  expect_identical(snake_prev("include_overall_strata"), FALSE)
-})
-test_that("snake_case prevalence: stratifications migrate to strata tokens",
-          expect_identical(snake_prev("strata"), "Sex"))
-test_that("textarea-era prevalence: flat strata lines migrate to strata tokens",
-          expect_identical(prefiller(ANALYSIS_TEMPLATES[["Prevalence"]]$flatten(
-            list(strata = list("Sex", "10-year age bands"))))("strata"),
-            c("Sex", "10-year age bands")))
-
-# Loading a pre-0.3.0 prevalence analysis: a day count that names a calendar
-# unit becomes the interval; free-text time_points have had no home since
-# sensitivity_analyses was dropped and no longer survive.
-legacy_prev <- prefiller(ANALYSIS_TEMPLATES[["Prevalence"]]$flatten(list(
-  target_cohort        = "Metformin new users",
-  prevalence_type      = "Point prevalence",
-  interval_length_days = 30,
-  time_points          = list("2020-01-01", "2021-01-01")
-)))
-
-test_that("legacy prevalence: target_cohort migrates to the denominator",
-          expect_identical(legacy_prev("denominatorTable"), "Metformin new users"))
-test_that("legacy prevalence: a 30-day interval length maps to months",
-          expect_identical(legacy_prev("point_interval"), "months"))
-test_that("legacy prevalence: an unmappable interval length falls back to the default",
-          expect_identical(prefiller(ANALYSIS_TEMPLATES[["Prevalence"]]$flatten(
-            list(interval_length_days = 45)))("point_interval", "years"), "years"))

@@ -38,10 +38,10 @@ blank_to_na <- function(x) {
 
 # A dateInput's `value`: a Date, or NULL to start the field genuinely blank.
 #
-# These fields used to be free-text, so an older file may hold something a
-# calendar cannot show ("Q1 2024", "unknown"). dateInput() would warn and render
-# blank anyway; doing the coercion here makes that explicit and keeps the console
-# quiet. A date the picker cannot represent is not one this app can capture.
+# A hand-edited file may hold something a calendar cannot show ("Q1 2024",
+# "unknown"). dateInput() would warn and render blank anyway; coercing here makes
+# that explicit and keeps the console quiet. A date the picker cannot represent
+# is not one this app can capture.
 as_date_value <- function(x) {
   x <- trimws(as.character(x %||% "")[1])
   if (is.na(x) || !nzchar(x)) return(NULL)
@@ -114,15 +114,6 @@ prefiller <- function(prefill) {
   }
 }
 
-# First non-empty key, so a renamed section can still read older SAP files.
-coalesce_key <- function(x, ...) {
-  for (key in c(...)) {
-    v <- x[[key]]
-    if (!is.null(v) && length(v) > 0) return(v)
-  }
-  list()
-}
-
 sap_json <- function(sap) {
   jsonlite::toJSON(sap, pretty = TRUE, auto_unbox = TRUE, na = "null", null = "null")
 }
@@ -168,8 +159,11 @@ save_working <- function(sap, path, n_problems = 0) {
 # defaults the author never typed, so they do not count as content.
 sap_is_empty <- function(sap) {
   s <- sap$study %||% list()
+  # The protocol block is always written (four keys, null until filled), so it is
+  # its VALUES that count as content -- naming the protocol and nothing else is a
+  # real start on a plan, and one worth keeping.
   authored <- c(s$title, s$study_code, unlist(s$authors), s$background, s$aim,
-                unlist(s$objectives))
+                unlist(s$objectives), unlist(s$protocol))
   authored <- authored[!is.na(authored)]
   !any(nzchar(as.character(authored))) &&
     !length(s$amendments) &&
@@ -375,269 +369,4 @@ reconcile_objectives <- function(texts, existing) {
     }
   }
   out
-}
-
-# Before 0.4.22 an objective was a bare string, identified by its position. That
-# is a lossless starting point -- position WAS the identity -- so ids are minted
-# in order rather than the author being asked to re-enter anything.
-migrate_objectives <- function(objs) {
-  objs <- objs %||% list()
-  if (!length(objs)) return(list())
-  taken <- vapply(objs, function(o) objective_id(o) %||% "", character(1))
-  taken <- taken[!is.na(taken) & nzchar(taken)]
-  lapply(objs, function(o) {
-    id <- objective_id(o)
-    if (is.na(id)) {
-      id    <- next_objective_id(taken)
-      taken <<- c(taken, id)
-    }
-    list(id = id, text = objective_text(o))
-  })
-}
-
-# Cross-section migrations, run once on a loaded SAP before any section sees it.
-#
-# A template's flatten() can only rewrite its own analysis, so anything that has
-# to move *between* sections has to happen here -- and before cohorts$load(), or
-# the cohort cards are already built by the time the analysis is read.
-#
-# Before 0.3.2 an analysis named a plain target cohort as its denominator and
-# carried its own time at risk. Neither is how IncidencePrevalence works: a
-# denominator is a cohort *set* produced by generateTargetDenominatorCohortSet(),
-# and timeAtRisk is one of that generator's arguments.
-#
-# So the missing denominator is synthesised here -- one per (target cohort, time
-# at risk) pair, since that is exactly what one generator call produces -- and the
-# analysis is repointed at it. Doing it in the template's flatten() is not
-# possible: an analysis can only rewrite itself, not add a cohort.
-#
-# The old {start_offset_days, start_anchor, end_offset_days, end_anchor} becomes
-# a single [[start, end]] interval. The anchors are dropped: the API has nowhere
-# to put them, because both bounds are relative to target cohort entry.
-migrate_sap <- function(sap) {
-  # 0.4.10 renamed study$acronym: what authors put there is a study code.
-  if (!is.null(sap$study)) {
-    sap$study$study_code <- sap$study$study_code %||% sap$study$acronym
-    sap$study$acronym    <- NULL
-    sap$study$objectives <- migrate_objectives(sap$study$objectives)
-  }
-  sap$cdm_changes <- lapply(sap$cdm_changes %||% list(), migrate_cdm_change)
-  sap$codelists   <- lapply(sap$codelists %||% list(), migrate_codelist)
-  analyses <- coalesce_key(sap, "proposed_analyses", "analyses")
-  cohorts  <- lapply(sap$cohorts %||% list(), migrate_cohort)
-  if (!length(analyses)) {
-    sap$cohorts <- cohorts
-    return(sap)
-  }
-
-  index_of <- function(nm) match(as.character(nm), vapply(
-    cohorts, function(x) as.character(x$name %||% ""), character(1)))
-
-  for (k in seq_along(analyses)) {
-    a     <- analyses[[k]]
-    flat  <- is.null(a$parameters)
-    p     <- if (flat) a else a$parameters
-    # Pre-0.3.0 the generic form called the denominator `target_cohort`.
-    nm    <- p$denominator_cohort %||% p$target_cohort
-    if (is.null(nm) || !nzchar(as.character(nm))) next
-
-    i <- index_of(nm)
-    # Names a cohort nobody defined, or one that is already a denominator: leave it.
-    if (is.na(i) || is_denominator_kind(cohorts[[i]]$kind)) next
-
-    tar <- migrate_time_at_risk(p$time_at_risk)
-    den <- synthetic_denominator_name(as.character(nm), tar)
-
-    if (is.na(index_of(den))) {
-      cohorts[[length(cohorts) + 1]] <- list(
-        name                = den,
-        kind                = "target_denominator",
-        targetCohortTable   = as.character(nm),
-        timeAtRisk          = tar,
-        requirementsAtEntry = TRUE
-      )
-    }
-
-    p$denominator_cohort <- den
-    p$time_at_risk       <- NULL
-    if (flat) analyses[[k]] <- p else analyses[[k]]$parameters <- p
-  }
-
-  sap$cohorts <- cohorts
-  # coalesce_key() may have read these from the pre-0.2.0 `analyses` key.
-  sap$proposed_analyses <- analyses
-  sap$analyses <- NULL
-  sap
-}
-
-# Before 0.4.20 a codelist carried only its resolved `codes`. That is not a lossy
-# starting point: a flat list of concept ids IS a concept set expression -- one
-# with nothing excluded, no descendants and no mapping -- so the expression is
-# derived from the codes rather than left empty for the author to re-enter. The
-# codes stay put as the resolved snapshot they always were.
-#
-# An expression already present is never rebuilt: after one upload of an Atlas
-# export the expression carries flags the codes cannot express, and regenerating
-# it from the snapshot would flatten a subtree back to its seed concept.
-migrate_codelist <- function(cl) {
-  if (!is.null(cl$concept_set_expression)) return(cl)
-  ids <- vapply(cl$codes %||% list(),
-                function(cd) as.character(cd$code %||% cd$concept_id %||% ""), character(1))
-  ids <- ids[!is.na(ids) & nzchar(ids)]
-  cl$concept_set_expression <- unname(lapply(
-    ids, function(id) c(list(concept_id = id), CONCEPT_SET_DEFAULTS)))
-  cl
-}
-
-# Before 0.4.4 a CDM change named one `data_source`; now it holds a
-# `data_sources` array. The dropped `cdm_version` is discarded.
-#
-# 0.4.5 retyped the section around the questions a SAP asks of the CDM
-# (validations / alterations / person cleaning). Every pre-0.4.5 type described
-# an alteration -- so any type the current list no longer carries lands on the
-# catch-all -- and the dropped cdm_table/cdm_field pair folds into the
-# description so nothing the author wrote is lost.
-migrate_cdm_change <- function(ch) {
-  if (is.null(ch$data_sources)) {
-    old <- as.character(ch$data_source %||% character(0))
-    ch$data_sources <- as_array(old[!is.na(old) & nzchar(old)])
-  }
-  ch$data_source <- NULL
-  ch$cdm_version <- NULL
-
-  type <- as.character(ch$change_type %||% "")
-  if (!is.na(type) && nzchar(type) && !(type %in% CDM_CHANGE_TYPES)) {
-    ch$change_type <- "Other database-specific alteration"
-  }
-
-  tf <- as.character(c(ch$cdm_table, ch$cdm_field))
-  tf <- paste(tf[!is.na(tf) & nzchar(tf)], collapse = ".")
-  if (nzchar(tf)) {
-    desc <- as.character(ch$description %||% "")
-    if (is.na(desc)) desc <- ""
-    ch$description <- if (nzchar(desc)) paste0(tf, ": ", desc) else tf
-  }
-  ch$cdm_table <- NULL
-  ch$cdm_field <- NULL
-
-  # 0.4.7 dropped the rationale; an old one folds into the description.
-  rat <- as.character(ch$rationale %||% "")
-  if (!is.na(rat) && nzchar(trimws(rat))) {
-    desc <- as.character(ch$description %||% "")
-    if (is.na(desc)) desc <- ""
-    ch$description <- if (nzchar(desc)) {
-      paste0(desc, " Rationale: ", rat)
-    } else {
-      paste0("Rationale: ", rat)
-    }
-  }
-  ch$rationale <- NULL
-  ch
-}
-
-# One generator call per (target, time at risk), so the name has to carry both.
-synthetic_denominator_name <- function(target, tar) {
-  win <- paste(format_bound_list(tar), collapse = "; ")
-  sprintf("%s denominator (%s days)", target, win)
-}
-
-# The anchored shape -> a list holding one [start, end] interval. Already-migrated
-# cohorts hold a list of pairs, which has no $start_offset_days and is left alone.
-migrate_time_at_risk <- function(tar) {
-  if (is.null(tar)) return(list(as_num_array(c(0, Inf))))   # the API's default
-  if (is.list(tar) && !is.null(tar$start_offset_days)) {
-    return(list(as_num_array(c(
-      as.numeric(tar$start_offset_days %||% 0),
-      as.numeric(tar$end_offset_days   %||% Inf)
-    ))))
-  }
-  tar
-}
-
-# Every key a denominator kind carries is now the generator argument's own name, so
-# a cohort read from an older file has to be renamed onto them here -- before
-# cohorts$load(), which builds the cards from these keys.
-#
-# Old keys are read with [[, never $: on a file that lacks one, $ partial-matches a
-# longer name (`cohort_date_range` would find `cohort_date_range_start`, and
-# `requirement` is a prefix of two different arguments) and would migrate the wrong
-# value.
-migrate_cohort <- function(ch) {
-  ch$kind <- canonical_cohort_kind(ch$kind %||% ch$role)
-  ch$role <- NULL
-
-  # 0.4.2 renamed these onto generate(Target)DenominatorCohortSet()'s argument names.
-  renames <- c(
-    target_cohort            = "targetCohortTable",
-    time_at_risk             = "timeAtRisk",
-    requirements_at_entry    = "requirementsAtEntry",
-    age_groups               = "ageGroup",
-    days_prior_observation   = "daysPriorObservation",
-    requirement_interactions = "requirementInteractions"
-  )
-  for (old in names(renames)) {
-    new <- renames[[old]]
-    if (is.null(ch[[new]]) && !is.null(ch[[old]])) ch[[new]] <- ch[[old]]
-    ch[[old]] <- NULL
-  }
-
-  if (!is.null(ch$timeAtRisk)) ch$timeAtRisk <- migrate_time_at_risk(ch$timeAtRisk)
-
-  # Age groups were free text ("18-64"); the API wants numeric pairs.
-  ages <- ch$ageGroup
-  if (length(ages) && all(vapply(ages, function(a) length(a) == 1 && is.character(a[[1]]),
-                                 logical(1)))) {
-    ch$ageGroup <- parse_bound_list(join_lines(ages))
-  }
-
-  # Neither generator takes a washout: it is estimateIncidence(outcomeWashout =),
-  # which the Incidence analysis now captures. There is nowhere to move a cohort
-  # washout to, so it is dropped rather than quietly misapplied.
-  ch$washout_days <- NULL
-
-  # cohortDateRange is ONE argument taking two dates. 0.3.1 called it the "study
-  # period" and 0.3.2 split it across two keys; both become the pair.
-  if (is.null(ch[["cohortDateRange"]])) {
-    start <- ch[["cohort_date_range_start"]] %||% ch[["study_period_start"]]
-    end   <- ch[["cohort_date_range_end"]]   %||% ch[["study_period_end"]]
-    if (!is.null(start) || !is.null(end)) ch$cohortDateRange <- cohort_date_range(start, end)
-  }
-  ch$cohort_date_range_start <- NULL
-  ch$cohort_date_range_end   <- NULL
-  ch$study_period_start      <- NULL
-  ch$study_period_end        <- NULL
-
-  # daysPriorObservation may be a vector; the old field was a single number.
-  if (is.null(ch$daysPriorObservation) && !is.null(ch[["prior_observation_days"]])) {
-    ch$daysPriorObservation <- as_num_array(ch[["prior_observation_days"]])
-  }
-  ch$prior_observation_days <- NULL
-
-  # 0.4.1 dropped the declared strata columns. generateDenominatorCohortSet()
-  # produces age_group and sex and nothing else, so the field could only ever agree
-  # with STRATA_VARIABLES or be wrong. An older file that named an extra ETL column
-  # loses it -- and any analysis stratified by that column now fails validation,
-  # which is the honest outcome: the generator was never going to produce it.
-  ch$strata_variables <- NULL
-
-  # 0.4.12 dropped the cohort description: the kind block already says what a
-  # cohort is in structured form. An older file's description does not survive.
-  ch$description <- NULL
-
-  # 0.4.15 folded concept_set and index_rule back into the text fields: the
-  # codelist is cited inline in the entry event that uses it, and the index
-  # rule is an inclusion criterion. Nothing the author wrote is lost.
-  cs <- as.character(ch$concept_set %||% "")[1]
-  if (!is.na(cs) && nzchar(cs)) {
-    ch$entry_events <- as_array(c(unlist(ch$entry_events), paste("Codelist:", cs)))
-  }
-  ch$concept_set <- NULL
-  ir <- as.character(ch$index_rule %||% "")[1]
-  if (!is.na(ir) && nzchar(ir)) {
-    ch$inclusion_criteria <- as_array(c(unlist(ch$inclusion_criteria),
-                                        paste("Index date:", ir)))
-  }
-  ch$index_rule <- NULL
-
-  ch
 }

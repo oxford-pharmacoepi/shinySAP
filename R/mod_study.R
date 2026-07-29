@@ -151,6 +151,33 @@ study_ui <- function(id) {
       ),
       dateInput(ns("date"), "Date", value = Sys.Date(), width = "100%")
     ),
+    # The protocol this SAP implements. A SAP is written AGAINST a protocol and
+    # is read beside it, so which one -- and which version of it -- is part of
+    # the plan, not context a reader is expected to supply. Without these fields
+    # the provenance has nowhere to go: `amendments` is this SAP's own version
+    # history, not the protocol's, so an author ends up spelling the reference
+    # into a description somewhere and it stops being findable.
+    #
+    # All four are optional. A SAP with no separate protocol is a normal thing to
+    # write, and blank fields serialise to null like every other optional text.
+    h5("Source protocol", class = "mt-4 mb-1"),
+    p(class = "text-muted small", "The protocol this analysis plan implements, if there is one."),
+    layout_columns(
+      col_widths = c(5, 2, 2, 3),
+      textInput(ns("protocol_reference"), "Reference", width = "100%",
+                placeholder = "DARWIN EU® Study Protocol C1-001"),
+      textInput(ns("protocol_version"), "Version", width = "100%"),
+      # Text, not date_input(): this is provenance transcribed off a cover page,
+      # nothing downstream parses it, and a dateInput cannot be CLEARED by
+      # load() -- updateDateInput() warns on both NA and "" -- which would leave
+      # the previous SAP's protocol date in the box when a SAP naming no
+      # protocol is loaded. The study's own date, which is always set, is the
+      # only date this app updates in place.
+      textInput(ns("protocol_date"), "Date", width = "100%",
+                placeholder = "YYYY-MM-DD"),
+      textInput(ns("protocol_url"), "URL", width = "100%",
+                placeholder = "https://…")
+    ),
     textAreaInput(ns("background"), "Rationale and background", rows = 4, width = "100%"),
     textAreaInput(
       ns("aim"), "Aim / research question",
@@ -212,6 +239,16 @@ study_server <- function(id) {
       # silently write into a plan that governs what leaves a data partner.
       min_cell_count = suppressWarnings(as.numeric(input$min_cell_count %||% NA)),
       date       = as.character(input$date %||% NA),
+      # One nested object rather than four flat keys: it is one thing with
+      # several attributes, and nesting keeps a SAP that names no protocol from
+      # spreading four nulls across the top of the study block. The object is
+      # always written, so the shape stays stable whether or not it is filled.
+      protocol   = list(
+        reference = blank_to_na(input$protocol_reference),
+        version   = blank_to_na(input$protocol_version),
+        date      = blank_to_na(input$protocol_date),
+        url       = blank_to_na(input$protocol_url)
+      ),
       background = blank_to_na(input$background),
       aim        = blank_to_na(input$aim),
       objectives = objectives(),
@@ -241,12 +278,20 @@ study_server <- function(id) {
       if (!is.null(study$date)) {
         updateDateInput(session, "date", value = as.Date(study$date))
       }
+      # A file naming no protocol clears the fields rather than leaving the
+      # PREVIOUS SAP's protocol sitting in them -- the same hazard the minimum
+      # cell count above spells out.
+      prot <- study$protocol %||% list()
+      updateTextInput(session, "protocol_reference", value = prot$reference %||% "")
+      updateTextInput(session, "protocol_version",   value = prot$version %||% "")
+      updateTextInput(session, "protocol_date",      value = prot$date %||% "")
+      updateTextInput(session, "protocol_url",       value = prot$url %||% "")
       updateTextAreaInput(session, "background", value = study$background %||% "")
       updateTextAreaInput(session, "aim", value = study$aim %||% "")
       # Seed the ids first: the textarea update fires the observer above, which
       # would otherwise mint fresh ids for objectives that already have them and
       # orphan every analysis pointing at them.
-      objectives(migrate_objectives(study$objectives))
+      objectives(study$objectives %||% list())
       updateTextAreaInput(session, "objectives",
                           value = join_lines(vapply(objectives(), objective_text,
                                                     character(1))))

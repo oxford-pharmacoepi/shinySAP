@@ -154,6 +154,22 @@ rows <- list(
     else sprintf("%s (results below this are suppressed before export)",
                  format(study$min_cell_count)))
 )
+
+# The protocol this SAP implements, as one line: "Reference v2.0, 2022-11-01
+# (url)". Omitted entirely when no protocol is named -- a SAP written without a
+# separate protocol should not carry an empty row saying so.
+prot <- study$protocol %||% list()
+prot_bits <- c(
+  chr(prot$reference),
+  if (nzchar(chr(prot$version))) paste0("v", chr(prot$version)) else "",
+  chr(prot$date)
+)
+prot_bits <- prot_bits[nzchar(prot_bits)]
+if (length(prot_bits)) {
+  line <- paste(prot_bits, collapse = ", ")
+  if (nzchar(chr(prot$url))) line <- paste0(line, "\n", chr(prot$url))
+  rows[[length(rows) + 1]] <- c("Source protocol", line)
+}
 field_table(rows)
 ```
 
@@ -573,9 +589,18 @@ if (!length(analyses)) {
   # all generated code lives in the analysis-code appendix, which carries each
   # call under its own `# <analysis name>` comment, including the fallback note
   # for an analysis type no IncidencePrevalence function maps onto.
+  # Role is stated even when unset ("Not stated"), for the same reason the
+  # minimum cell count is: a reviewer must be able to see which analysis carries
+  # the study's answer without inferring it from the name, and a plan that says
+  # nothing is a different claim from one that says every analysis is primary.
   df <- data.frame(
     `Name`          = vapply(analyses, function(a) chr(a$name), character(1)),
     `Analysis type` = vapply(analyses, function(a) chr(a$analysis_type), character(1)),
+    `Role`          = vapply(analyses, function(a) {
+      role <- chr(a$role)
+      if (nzchar(role)) paste0(toupper(substring(role, 1, 1)), substring(role, 2))
+      else "Not stated"
+    }, character(1)),
     `Data sources`  = vapply(analyses, sources_cell, character(1)),
     `Details`       = vapply(analyses, analysis_details, character(1)),
     check.names = FALSE, stringsAsFactors = FALSE

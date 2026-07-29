@@ -11,7 +11,7 @@ analysis_item_ui <- function(id, prefill = NULL) {
   item_card(
     id, "Analysis",
     layout_columns(
-      col_widths = c(7, 5),
+      col_widths = c(5, 4, 3),
       textInput(ns("name"), "Analysis name", pf("name"), width = "100%"),
       # A new card starts with NO type: the type decides everything else on the
       # card, so it is the author's first decision, not a default -- the same
@@ -19,6 +19,14 @@ analysis_item_ui <- function(id, prefill = NULL) {
       selectInput(ns("analysis_type"), "Analysis type",
                   c("Choose a type…" = "", ANALYSIS_TYPES),
                   selected = canonical_analysis_type(pf("analysis_type")),
+                  width = "100%"),
+      # Primary or sensitivity: what the study concludes from, versus what tests
+      # how much that conclusion depends on a choice. Unset by default -- see
+      # ANALYSIS_ROLES -- and reported by analysis_role_problems() once any
+      # analysis has a role but none is primary.
+      selectInput(ns("role"), "Role",
+                  c("Not stated" = "", ANALYSIS_ROLES),
+                  selected = canonical_analysis_role(pf("role")),
                   width = "100%")
     ),
     # WHY this analysis exists. Many-to-many on purpose: one objective is
@@ -225,6 +233,16 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
                           picked = denominator_pick())
     })
 
+    # Same placeholder-and-fill arrangement, for the outcome and censoring slots.
+    # No raw pick rides along here: an empty or dangling pick is not this block's
+    # business -- it only speaks when a cohort that IS defined carries the other
+    # slot's kind. Prevalence renders no censoring picker, so that input is NULL
+    # there and the censor half simply never fires.
+    output$cohort_role_notes <- renderUI({
+      cohort_role_notes(cohort_by_name(cohort_index(), input$outcomeTable),
+                        cohort_by_name(cohort_index(), input$censorTable))
+    })
+
     # For one round-trip after a type switch the new block's inputs have not
     # reported yet, so parameters briefly reads as nulls. Harmless while the only
     # consumers are the Review tab (suspended while the user is on Analyses) and
@@ -235,6 +253,8 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
       common <- list(
         name          = blank_to_na(input$name),
         analysis_type = NA,   # overwritten below once a type is chosen
+        # Unset saves as null, never a guess -- the same rule as the type above.
+        role          = blank_to_na(canonical_analysis_role(input$role)),
         objectives    = as_array(input$objectives %||% character(0)),
         data_sources  = as_array(input$data_sources %||% character(0))
       )
@@ -281,11 +301,7 @@ analysis_to_prefill <- function(a) {
   raw_type <- a$analysis_type
   a$analysis_type <- canonical_analysis_type(raw_type)
   tmpl <- analysis_template(a$analysis_type)
-  # Pre-0.3.0 files kept the type-specific fields at the top level, so they
-  # load with no migration step. is.null(), not %||%: an empty parameters
-  # object reads back as a zero-length list, which %||% would take for
-  # absent and then mistake a 0.3.0 file for an old one.
-  params <- if (is.null(a$parameters)) a else a$parameters
+  params <- a$parameters %||% list()
   # A serialised_type template splits its type across two levels of the
   # file; hand flatten() the raw label so it can recover its inputs. The
   # canonical type in the common half shadows this key in the prefill.

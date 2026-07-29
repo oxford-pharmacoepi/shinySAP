@@ -8,12 +8,12 @@ backend as a single JSON dictionary and written to `output/`.
 
 | Tab | Captures |
 | --- | --- |
-| **Study** | Title, study code, authors, SAP version, date, rationale & background, aim / research question, specific objectives, and an amendment history (version, date, description of change) |
+| **Study** | Title, study code, authors, SAP version, date, minimum cell count, the source protocol this plan implements (reference, version, date, URL), rationale & background, aim / research question, specific objectives, and an amendment history (version, date, description of change) |
 | **CDM Sources** | The databases the study runs against — name, short key, country/region |
 | **CDM Changes** | Extra CDM validations and database-specific alterations applied before analysis — a change type (extra validation; subset a CDM table; limit observation periods; remap concepts; remove people with no year of birth or sex data; remove people with implausible dates; other), the data sources it applies to, and a description |
 | **Codelists** | The concept sets cohorts cite in `[square brackets]` — name, an optional category (Index event, Comorbidity, Medicine, …, which the document groups by), description/provenance, and the codes themselves, uploaded from a `.csv` (concept_id column), `.txt` (one code per line) or `.json` (plain array or Atlas concept-set expression). The codes are stored in the SAP JSON, so the plan is self-contained |
-| **Cohorts** | Name, kind and the CDM sources the cohort is built against (the SAP-level counterpart of the generators' `cdm` argument) — plus a set of inputs that **depends on the cohort's kind**. A denominator is *generated*, so it asks for the generator's arguments (cohort date range, age groups, sex, prior observation); a target denominator asks for those plus the target cohort and the time at risk; every other kind (target, outcome, comparator, censoring, strata) is a plain cohort *definition* — entry events (citing the codelist inline in `[square brackets]`), inclusion & exclusion criteria (including the index-date rule), exit criteria |
-| **Analyses** | Name, analysis type, CDM sources it runs on — plus a set of inputs that **depends on the analysis type** (an incidence asks for a denominator, a washout and an interval; a prevalence asks for time points instead) |
+| **Cohorts** | Name, kind and the CDM sources the cohort is built against (the SAP-level counterpart of the generators' `cdm` argument) — plus a set of inputs that **depends on the cohort's kind**. A denominator is *generated*, so it asks for the generator's arguments (cohort date range, age groups, sex, prior observation); a target denominator asks for those plus the target cohort and the time at risk; every other kind (target, outcome, censoring, other) is a plain cohort *definition* — entry events (citing the codelist inline in `[square brackets]`), inclusion & exclusion criteria (including the index-date rule), exit criteria |
+| **Analyses** | Name, analysis type, role (primary or sensitivity), the objectives it answers, CDM sources it runs on — plus a set of inputs that **depends on the analysis type** (an incidence asks for a denominator, a washout and an interval; a prevalence asks for time points instead) |
 | **Review** | Live JSON preview, document preview, and download as JSON or Word. Saving sits in the navbar: one file per SAP, created on the first save (you choose the folder once) and rewritten in place by every save and autosave after it — loading a SAP adopts that file |
 
 **Load SAP** sits in the navbar, visible from every tab: it reloads a saved
@@ -66,7 +66,7 @@ JSON arrays even when they hold a single entry.
 
 ```json
 {
-  "sap_schema_version": "0.4.22",
+  "sap_schema_version": "0.4.27",
   "generated_at": "2026-07-09T14:02:11+0100",
   "study": {
     "title": "Metformin and lactic acidosis",
@@ -75,6 +75,12 @@ JSON arrays even when they hold a single entry.
     "version": "1.1",
     "min_cell_count": 5,
     "date": "2026-07-09",
+    "protocol": {
+      "reference": "DARWIN EU® Study Protocol P3-C1-006",
+      "version": "2.0",
+      "date": "2026-05-14",
+      "url": "https://catalogues.ema.europa.eu/..."
+    },
     "background": "...",
     "aim": "The aim of this study is to ...",
     "objectives": [
@@ -150,6 +156,7 @@ JSON arrays even when they hold a single entry.
     {
       "name": "Incidence of lactic acidosis",
       "analysis_type": "Incidence",
+      "role": "primary",
       "objectives": ["obj_1"],
       "data_sources": ["cprd"],
       "parameters": {
@@ -171,11 +178,81 @@ JSON arrays even when they hold a single entry.
 }
 ```
 
-An analysis carries four keys of its own — `name`, `analysis_type`, `objectives`
-(the objectives it answers, many-to-many) and `data_sources` — and everything
+An analysis carries five keys of its own — `name`, `analysis_type`, `role`
+(`primary` or `sensitivity`), `objectives` (the objectives it answers,
+many-to-many) and `data_sources` — and everything
 else under `parameters`. Which keys appear there
 is decided by `analysis_type`, so a reader can tell "no comparator, because this
 is an incidence analysis" from "the comparator was left blank".
+
+**Every field on an analysis reaches the generated code.** That is the contract:
+a field the app captures but the script ignores is a plan that says something the
+study does not do. Where each one lands:
+
+| Field | In the generated script |
+| --- | --- |
+| `name` | the `results[["…"]]` key, the comment above the call, and `sap_analysis` in the result's settings |
+| `analysis_type` | *which estimator is called* — `estimatePointPrevalence` / `estimatePeriodPrevalence` / `estimateIncidence` |
+| `role` | `(primary)` / `(sensitivity)` in that comment, **and** `sap_role` in the result's settings |
+| `objectives` | `[objectives 1, 3]` in that comment, **and** `sap_objectives` in the result's settings |
+| `data_sources` | an `omopgenerics::cdmName(cdm) %in% c(…)` guard, when the analysis runs on fewer than all the study's sources |
+| `parameters.*` | the estimator's arguments, by the same name, in signature order |
+
+A `parameters` key is omitted from the call only when it holds the package's own
+default (`denominatorCohortId = NULL` meaning all cohorts in the set, `strata =
+list()`, and `includeOverallStrata`, which is inert with no strata). Writing those
+out would put a decision in the code that nobody made; the omission falls back to
+the documented default. Every argument name and default above was checked against
+IncidencePrevalence 1.2.1 and omopgenerics 1.4.1.
+
+**`name`, `role` and `objectives` travel with the RESULT, not just the code.**
+None of the three is an argument to any DARWIN function, and that is not an
+oversight in the packages: neither is a computational choice, since the primary
+analysis and its sensitivity analyses call the same estimator with the same
+arguments and differ only in which one the study may conclude from. But the
+exported results are what a study report is written from, and a results file that
+cannot say which of nine prevalence estimates is the primary one just moves the
+problem downstream. So the generated script defines a `sapTag()` helper and
+labels each estimate:
+
+```r
+results[["…"]] <- sapTag(
+  results[["…"]],
+  analysis = "Partial prevalence (5-year) – annual point prevalence as of 1st January",
+  role = "primary",
+  objectives = "1, 2, 3, 4, 5, 6"
+)
+```
+
+`omopgenerics` allows extra settings columns beyond the required ones, and they
+survive `bind()`, `suppress()` and the export/import round trip — verified by
+running the generated C1-001 estimates against IncidencePrevalence 1.2.1 on a mock
+CDM and reading `sap_role` back out of the exported CSV. An unstated role passes
+no `role` argument at all, so the helper's `NA` default stands for "the plan never
+said", and an empty result is left alone because it has no settings rows to label.
+
+**`data_sources` is a run-time guard, not a build-time one**, because a DARWIN
+study package ships one script to every partner and each runs it against their own
+CDM — so "this analysis runs on SIDIAP and CPRD GOLD" can only be a test the
+script performs. A guarded estimate is written `x <- if (…) estimate…(…) else
+omopgenerics::emptySummarisedResult()`, never a bare `if`: the estimates are bound
+together before export, so the variable has to exist at every partner or `bind()`
+fails with "object not found" wherever the guard is false. The guard compares the
+SAP's source keys against whatever `codeToRun.R` passed as `cdmName`, which
+nothing in the generated code can check — `study_export_notes()` says so whenever
+a guard is emitted. And because a cohort carries `data_sources` too,
+`cohort_source_coverage_problems()` reports an analysis that runs where one of its
+cohorts is never built, which would otherwise generate a script that dies at that
+partner.
+
+**`role` is not an estimator argument, and that is why it needs a key.** "Re-run
+with a 30-day washout" is a second *call*, not an argument to the first — which
+is why `sensitivity_analyses` was dropped from Incidence in `0.3.1` and from
+Prevalence in `0.4.0`. But primary-versus-sensitivity is the first thing a
+reviewer looks for, and with no field for it an author can only spell it into the
+analysis name, where nothing can group or check it. Unset is a real state, as
+with the analysis type; a plan that states roles but marks none of them primary
+is reported on Review.
 
 **A cohort's `kind` decides what it carries**, because the kinds are not the same
 object. A denominator is a cohort *set* produced by
@@ -228,7 +305,7 @@ default.
 own cohort. JSON has no `Infinity`, so an unbounded upper bound is written
 `null`: `[31, null]` is "day 31 onwards". Both of a time-at-risk pair's bounds are
 counted in days from *target cohort entry* — there is no anchoring on cohort end,
-which is why the pre-0.3.2 anchors could not survive the migration.
+which is why the pre-0.3.2 anchors were dropped rather than carried across.
 
 **The Incidence `parameters` map 1:1 onto
 `IncidencePrevalence::estimateIncidence()`** — the keys *are* the argument names,
@@ -276,21 +353,21 @@ repopulates every section, so a SAP can be revised and re-saved.
 
 ### Schema versions
 
+**There is no migration layer.** `0.4.25`–`0.4.26` removed `migrate_sap()` and its
+helpers: the app is pre-release, no SAPs exist in the wild, and every one of
+those repairs was fixing a file that cannot exist. A file is read as the current
+schema — unknown keys are ignored, expected-but-missing ones come back empty.
+
+The history below is kept as the *rationale* for why each field is shaped the way
+it is, which is still worth reading. Read it as history, not as behaviour: where
+an entry says an older file still loads, that is no longer true.
+
 `0.2.0` added `cdm_sources` and renamed `analyses` to `proposed_analyses`.
-Loading a `0.1.0` file still works — its `analyses` are read into Proposed
-Analyses.
 
 `0.3.0` gave each analysis type its own set of inputs and moved the
 type-specific fields under `parameters`. It also replaced a cohort's `role`
 (Target / Comparator / …) with `kind` (`denominator`, `target_denominator`, …),
 and moved `time_at_risk` from the analysis onto the cohort.
-
-Older files still load. `migrate_sap()` in `R/utils.R` runs before any section
-does: a cohort's old `role` is aliased to a `kind`; an analysis with no
-`parameters` is read from its top-level keys; `"Incidence rate"` is read as
-`"Incidence"`; and the generic form's `target_cohort` is read as the incidence
-`denominator_cohort`. (`0.3.2` below revised how `time_at_risk` is carried across,
-so the account there supersedes this one.)
 
 `0.3.1` made the Incidence `parameters` map 1:1 onto `estimateIncidence()`: it
 added `strata` (as variable groups) and `include_overall_strata`, and dropped
@@ -342,8 +419,7 @@ generator's own order: `target_cohort` → `targetCohortTable`, `time_at_risk` �
 `requirement_interactions` → `requirementInteractions`. The two keys
 `cohort_date_range_start` / `_end` became the single `cohortDateRange` pair the
 argument actually takes. The input ids are the argument names too, so a field and
-the key it produces cannot drift apart. Older files still load: `migrate_cohort()`
-renames the old keys and folds the two date keys into the pair.
+the key it produces cannot drift apart.
 
 `0.4.3` finished aligning **Incidence** the same way. `0.3.1` had matched the *set*
 of fields to `estimateIncidence()` but still wrote them snake_case and wrapped in
@@ -359,28 +435,25 @@ present, matching the signature and the Prevalence template. The Incidence
 `flatten()` un-nests any old `estimand` and renames every field, so a pre-0.4.3
 file loads unchanged.
 
-Older files still load, and `migrate_sap()` in `R/utils.R` runs before any
-section does. Beyond the aliasing above, it repairs two things it cannot leave
-alone:
+`0.4.27` added the two facts a study protocol states that the SAP had nowhere to
+put. An analysis gained `role` (`primary` / `sensitivity`), and the study gained
+`protocol` — `{reference, version, date, url}`, the protocol this plan
+implements. `amendments` is the SAP's own version history, not the protocol's, so
+that provenance had been landing in whatever free-text field was nearest.
+`analysis_role_problems()` reports a plan that states roles but marks none of them
+primary; the document shows the role per analysis and the protocol in the study
+table.
 
-- A pre-0.3.2 analysis named a **plain target cohort** as its denominator and
-  carried its own `time_at_risk`. IncidencePrevalence has no such object, so the
-  missing denominator is *synthesised* — one per (target cohort, time at risk)
-  pair, since that is exactly what one generator call produces — and the analysis
-  is repointed at it. Two analyses sharing a target and a window therefore share
-  one denominator; a different window gets its own. This cannot be done in a
-  template's `flatten()`, which can only rewrite its own analysis, not add a
-  cohort.
-- The old anchored `time_at_risk` (`start_offset_days`, `start_anchor`,
-  `end_offset_days`, `end_anchor`) becomes a single `[start, end]` interval. The
-  anchors are dropped: the API has nowhere to put them, because both bounds are
-  relative to target cohort entry.
+`0.4.27` also made `data_sources` load-bearing in the generated code rather than
+documentation-only. It is the SAP-level counterpart of `cdm` — which databases an
+item runs against — and it reached the document and stopped there, so a plan
+restricting an analysis to two of five databases generated a script that ran it at
+all five. Restricted cohorts and estimates are now guarded with
+`omopgenerics::cdmName(cdm)`, and `cohort_source_coverage_problems()` reports an
+estimate that runs where its cohort is not built. No JSON key changed: the field
+was always there, it was simply ignored.
 
-An old cohort `role` of `Target` becomes the `target` **kind — a plain cohort**,
-not a denominator. Mapping it to one would silently discard its entry events,
-inclusion criteria and concept set, which a denominator's block does not carry.
-
-Saving writes the current schema version (`0.4.0`) back out.
+Saving writes the current schema version (`0.4.27`) back out.
 
 ### Validation
 
@@ -420,7 +493,7 @@ R/mod_cdm_changes.R       Section: CDM Changes
 R/mod_cohorts.R           Section: Cohorts
 R/mod_analyses.R          Section: Analyses
 R/mod_review.R            Review, save, download
-tests/testthat/           testthat suite: JSON contract, templates, migrations
+tests/testthat/           testthat suite: JSON contract, templates, validators
 tests/testthat.R          runner (Rscript tests/testthat.R)
 output/                   Saved SAPs
 ```
@@ -436,3 +509,21 @@ everything else. From the repo root:
 ```sh
 Rscript tests/testthat.R
 ```
+
+One file is **skipped by default**. `test-generated-runs.R` executes the analyses
+file the export writes — against real `IncidencePrevalence`, `omopgenerics` and
+`duckdb` — instead of grepping it. Parsing is not running, and the gap between
+them is where the expensive mistakes live: a guarded estimate that leaves its
+variable undefined parses perfectly and then takes `bind()` down at the data
+partner. This app does not depend on those packages (it generates text and never
+calls them), so they are not in `renv.lock` and the file skips wherever they are
+absent. To actually run it, install them into the project library:
+
+```r
+renv::install(c("IncidencePrevalence", "omopgenerics", "duckdb"))
+```
+
+That is a deliberate choice, not an oversight — it puts a heavy dependency tree
+into a Shiny app that has no run-time use for it, in exchange for proving the
+generated code executes. Worth it on a developer machine or in CI; unnecessary
+for someone who only wants to write a SAP.

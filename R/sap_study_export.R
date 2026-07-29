@@ -125,7 +125,10 @@ study_cohorts_r <- function(sap) {
     tbl <- cohort_table_name(co$name)
     idx <- if (is.na(tbl)) "" else sprintf(
       "\ncdm$%s <- cdm$%s |> addCohortTableIndex()", tbl, tbl)
-    sprintf("# %s\n%s%s", as.character(co$name %||% ""), code, idx)
+    # The index goes INSIDE the guard with the cohort it indexes: at a partner
+    # the plan excludes, cdm$<table> is never created and indexing it would fail.
+    sprintf("# %s\n%s", as.character(co$name %||% ""),
+            source_guard(paste0(code, idx), co, sap_source_keys(sap)))
   }))
   if (!length(blocks)) {
     return(paste0(
@@ -142,9 +145,13 @@ study_analyses_r <- function(sap) {
   analyses <- sap$proposed_analyses %||% list()
   out <- character(0)
 
+  all_sources <- sap_source_keys(sap)
+
   dens <- Filter(Negate(is.null), lapply(cohorts, function(co) {
     code <- cohort_r_code(co)
-    if (is.null(code)) NULL else sprintf("# %s\ncdm <- %s", as.character(co$name %||% ""), code)
+    if (is.null(code)) return(NULL)
+    sprintf("# %s\n%s", as.character(co$name %||% ""),
+            source_guard(sprintf("cdm <- %s", code), co, all_sources))
   }))
   if (length(dens)) {
     out <- c(out, paste0("# Denominator cohort sets ----\n\n",
@@ -162,13 +169,18 @@ study_analyses_r <- function(sap) {
       return(sprintf("# %s\n#   No IncidencePrevalence function maps onto analysis type '%s'.",
                      nm, as.character(a$analysis_type %||% "")))
     }
-    # The objective is carried into the code, so someone reading the study
-    # directory can see WHY an estimate is there without going back to the plan.
+    # The objective and the role are carried into the code, so someone reading
+    # the study directory can see WHY an estimate is there, and which one the
+    # study concludes from, without going back to the plan.
     obj <- objective_labels(sap, a)
-    sprintf('# %s%s\nresults[["%s"]] <- %s', nm, obj, vars[[i]], code)
+    slot <- sprintf('results[["%s"]]', vars[[i]])
+    sprintf("# %s%s%s\n%s\n%s", nm, role_label(a), obj,
+            source_guard_estimate(slot, code, a, all_sources),
+            sap_tag_call(slot, a, sap))
   }))
   if (length(est)) {
-    out <- c(out, paste0("# Estimates ----\n\n", paste(unlist(est), collapse = "\n\n")))
+    out <- c(out, paste0("# Estimates ----\n\n", SAP_TAG_HELPER, "\n\n",
+                         paste(unlist(est), collapse = "\n\n")))
   }
 
   if (!length(out)) {
@@ -177,13 +189,18 @@ study_analyses_r <- function(sap) {
   paste0(paste(out, collapse = "\n\n"), "\n")
 }
 
+# "  (primary)" for an analysis that states a role, "" otherwise. An unstated
+# role adds nothing rather than claiming one -- the same rule the field itself
+# follows.
+role_label <- function(a) {
+  role <- canonical_analysis_role(a$role)
+  if (!nzchar(role)) "" else sprintf("  (%s)", role)
+}
+
 # "  [objective 1, 3]" for an analysis that names them, "" otherwise. Numbered
 # as the document numbers them, so the two read the same way.
 objective_labels <- function(sap, a) {
-  objs <- sap$study$objectives %||% list()
-  ids  <- vapply(objs, function(o) objective_id(o) %||% "", character(1))
-  named <- as.character(unlist(a$objectives %||% list()))
-  hits  <- which(ids %in% named)
+  hits <- objective_indices(sap, a)
   if (!length(hits)) return("")
   sprintf("  [objective%s %s]", if (length(hits) == 1) "" else "s",
           paste(hits, collapse = ", "))
@@ -232,14 +249,34 @@ study_files <- function(sap) {
 # the study's would be exactly the kind of gap the plan exists to close.
 study_export_notes <- function(sap) {
   n <- sap$study$min_cell_count %||% NULL
-  if (is.null(n)) {
-    return(paste("This SAP states no minimum cell count. codeToRun.R ships with",
-                 "min_cell_count <- 5; confirm that is the threshold the data",
-                 "partners require."))
+  notes <- if (is.null(n)) {
+    paste("This SAP states no minimum cell count. codeToRun.R ships with",
+          "min_cell_count <- 5; confirm that is the threshold the data",
+          "partners require.")
+  } else {
+    sprintf(paste("Set min_cell_count <- %s in codeToRun.R to match this SAP.",
+                  "runStudy.R applies it once, in exportSummarisedResult(), so no",
+                  "suppression is generated here."), format(n))
   }
-  sprintf(paste("Set min_cell_count <- %s in codeToRun.R to match this SAP.",
-                "runStudy.R applies it once, in exportSummarisedResult(), so no",
-                "suppression is generated here."), format(n))
+
+  # The one thing the guards cannot check for themselves. A restricted cohort or
+  # estimate compares this SAP's source keys against omopgenerics::cdmName(cdm),
+  # which is whatever codeToRun.R passed when it built the cdm reference -- so if
+  # a partner connects as "sidiap" and the plan says "SIDIAP", the guard is
+  # silently false and the analysis produces nothing at all. Nothing in the
+  # generated code can detect that, which is exactly why it is said here.
+  all_sources <- sap_source_keys(sap)
+  restricted <- Filter(function(x) is_source_restricted(x, all_sources),
+                       c(sap$cohorts %||% list(), sap$proposed_analyses %||% list()))
+  if (length(restricted)) {
+    notes <- c(notes, sprintf(paste(
+      "%d cohorts or analyses are restricted to named databases, so the script",
+      "guards them with omopgenerics::cdmName(cdm). Check that codeToRun.R",
+      "creates the cdm reference with the same source keys this SAP uses (%s),",
+      "or the guard will never be true and those steps will silently not run."),
+      length(restricted), paste(all_sources, collapse = ", ")))
+  }
+  paste(notes, collapse = " ")
 }
 
 # Write the files into an OmopStudyBuilder studyCode/ directory. Returns the

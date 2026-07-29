@@ -22,33 +22,21 @@
 # Sourced before dynamic_items.R (entity_picker), utils.R (`%||%`) and bslib
 # (layout_columns), so nothing here may call them at the top level.
 
+# Only the roles IncidencePrevalence's own signatures name. `comparator` and
+# `strata` were offered until 0.4.23 and are gone, because neither is a cohort
+# here: no estimator takes a comparator (that is a comparative-cohort study, a
+# different package), and strata are the fixed age_group / sex columns the
+# denominator generator writes (STRATA_VARIABLES) -- never a cohort an author
+# defines.
 COHORT_KINDS <- c(
-  "Denominator (general population)"      = "denominator",
-  "Target denominator (from a cohort)"    = "target_denominator",
+  "Denominator (general population)"       = "denominator",
+  "Target denominator (from a cohort)"     = "target_denominator",
   "Target cohort (population of interest)" = "target",
-  "Outcome"                               = "outcome",
-  "Comparator"                            = "comparator",
-  "Censoring"                             = "censor",
-  "Strata"                                = "strata",
-  "Other"                                 = "other"
+  "Outcome"                                = "outcome",
+  "Censoring"                              = "censor",
+  "Other"                                  = "other"
 )
 
-# 0.3.0 replaced `role` with `kind`. Old files still carry the role vocabulary.
-#
-# "Target" maps to `target`, a PLAIN cohort -- not to `target_denominator`. They
-# are different objects: a target cohort is defined by entry criteria, and a
-# target denominator is *generated from* it by
-# generateTargetDenominatorCohortSet(). Mapping an old Target to a denominator
-# would drop its entry events, inclusion criteria and concept set, since a
-# denominator's block does not carry them. migrate_sap() synthesises the
-# denominator instead.
-COHORT_KIND_ALIASES <- c(
-  "Target"     = "target",
-  "Comparator" = "comparator",
-  "Outcome"    = "outcome",
-  "Strata"     = "strata",
-  "Other"      = "other"
-)
 
 # generateDenominatorCohortSet(sex =): "one or more of Male, Female, or Both".
 COHORT_SEXES <- c("Both", "Male", "Female")
@@ -89,7 +77,6 @@ COHORT_COMMON_FIELDS <- c("name", "kind", "data_sources")
 canonical_cohort_kind <- function(x) {
   if (length(x) != 1 || is.na(x) || !nzchar(x)) return("")
   if (x %in% COHORT_KINDS) return(x)                                  # already a kind
-  if (x %in% names(COHORT_KIND_ALIASES)) return(unname(COHORT_KIND_ALIASES[[x]]))
   "other"
 }
 
@@ -136,8 +123,7 @@ grouped_cohort_choices <- function(index) {
 # One saved (or live) cohort -> the prefill its card is rebuilt from. Shared by
 # cohorts load() and the Duplicate button, so the two can never drift.
 cohort_to_prefill <- function(ch) {
-  # 0.2.0 called it `role`, with a different vocabulary.
-  ch$kind <- canonical_cohort_kind(ch$kind %||% ch$role)
+  ch$kind <- canonical_cohort_kind(ch$kind)
   cohort_template(ch$kind)$flatten(ch)
 }
 
@@ -757,10 +743,10 @@ register_cohort_kind(
     cohort, cohort_names = names(cohorts %||% list()))
 )
 
-# Outcome, comparator, censoring, strata and anything else: a plain cohort. None
-# of the generator arguments apply -- and note there is no washout here, because
-# neither generator takes one. A washout is estimateIncidence(outcomeWashout =),
-# which the Incidence analysis captures.
+# Outcome, censoring, and anything else: a plain
+# cohort. None of the generator arguments apply -- and note there is no washout
+# here, because neither generator takes one. A washout is
+# estimateIncidence(outcomeWashout =), which the Incidence analysis captures.
 register_cohort_kind(
   "other",
   ui = function(ns, pf) cohort_definition_ui(ns, pf),

@@ -2,7 +2,7 @@
 
 # The changes a SAP applies to the CDM before analysis: extra validations, the
 # common database-specific alterations, and the standard person-cleaning steps.
-# The last entry is the catch-all, and where legacy change types land on load.
+# The last entry is the catch-all, for a change none of the others describe.
 CDM_CHANGE_TYPES <- c(
   "Extra CDM validation",
   "Subset a CDM table",

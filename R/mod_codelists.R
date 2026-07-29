@@ -62,9 +62,9 @@ codelist_item_server <- function(id, prefill = NULL, on_remove = function() {}) 
   moduleServer(id, function(input, output, session) {
     observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
 
-    # Seeded from the saved SAP; an upload replaces both wholesale. A SAP old
-    # enough to carry codes and no expression has already been through
-    # migrate_codelist() by the time a card is built.
+    # Seeded from the saved SAP; an upload replaces both wholesale. A file that
+    # carries codes but no expression seeds an empty one -- the expression is
+    # canonical, and nothing derives it back from the resolved snapshot.
     codes       <- reactiveVal(prefill$codes %||% list())
     expression  <- reactiveVal(prefill$concept_set_expression %||% list())
     source_file <- reactiveVal(prefill$source_file %||% NA)

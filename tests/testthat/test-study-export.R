@@ -187,6 +187,131 @@ test_that("each file names the SAP it was generated from", {
   }
 })
 
+# The plan fields carried into the result ------------------------------------------
+#
+# name, role and objectives are not arguments to any estimator -- none of them is
+# a computational choice -- so before 0.4.27 they reached the script only as a
+# comment. The exported results are what a study report is written from, and a
+# results file that cannot say which of nine prevalence estimates is the primary
+# one just moves "it is only in prose" one step downstream.
+#
+# The mechanism is verified against omopgenerics 1.4.1 and IncidencePrevalence
+# 1.2.1: extra settings columns survive bind(), suppress() and the export/import
+# round trip, and the C1-001 estimates block as generated runs and comes back
+# carrying its role.
+
+tagged_sap <- function() {
+  s <- sample_sap()
+  s$study$objectives <- list(list(id = "obj_1", text = "Estimate prevalence"))
+  s$proposed_analyses <- list(list(
+    name = "Point prevalence", analysis_type = "estimatePointPrevalence",
+    role = "primary", objectives = list("obj_1"),
+    parameters = list(denominatorTable = "General population", outcomeTable = "FL")))
+  s
+}
+
+test_that("an estimate is labelled with the plan fields no estimator takes", {
+  code <- study_files(tagged_sap())[["analyses/incidencePrevalence.R"]]
+  expect_match(code, "sapTag <- function(result, analysis", fixed = TRUE)
+  expect_match(code, 'analysis = "Point prevalence"', fixed = TRUE)
+  expect_match(code, 'role = "primary"', fixed = TRUE)
+  # Numbered as the document numbers them, from the same helper the comment uses.
+  expect_match(code, 'objectives = "1"', fixed = TRUE)
+  expect_match(code, "omopgenerics::newSummarisedResult(result, settings = s)", fixed = TRUE)
+})
+
+# The helper is one function, not one per estimate.
+test_that("the tag helper is defined exactly once", {
+  s <- tagged_sap()
+  s$proposed_analyses <- rep(s$proposed_analyses, 4)
+  code <- study_files(s)[["analyses/incidencePrevalence.R"]]
+  expect_length(gregexpr("sapTag <- function", code, fixed = TRUE)[[1]], 1)
+})
+
+# An unstated role must not become a claim. The helper's own NA default stands
+# for "the plan never said", so the argument is simply not passed.
+test_that("an analysis with no role passes no role", {
+  s <- tagged_sap()
+  s$proposed_analyses[[1]]$role <- NULL
+  code <- study_files(s)[["analyses/incidencePrevalence.R"]]
+  # The CALL, not the file: the helper's own signature carries `role =` as its
+  # NA default, which is exactly what an unstated role should fall back to.
+  call <- regmatches(code, regexpr("<- sapTag\\((?s).*?\\n\\)", code, perl = TRUE))
+  expect_length(call, 1)
+  expect_match(call, 'analysis = "Point prevalence"', fixed = TRUE)
+  expect_false(grepl("role =", call, fixed = TRUE))
+})
+
+# Data sources as a guard ----------------------------------------------------------
+#
+# `data_sources` is WHICH databases an item runs against -- the SAP-level
+# counterpart of `cdm`. It reached the document and stopped there, so a plan
+# restricting an analysis to two of five databases generated code that ran it at
+# all five: the plan said one thing and the code exported another.
+
+# Assigned, NOT passed through sample_sap(): modifyList() recurses into nested
+# lists, and two UNNAMED lists merge to the original -- so a `cohorts =` argument
+# is silently ignored and the fixture keeps the base cohorts. (The same trap
+# test-validators.R calls out.)
+restricted_sap <- function() {
+  s <- sample_sap()
+  s$cdm_sources <- list(list(name = "S", source_key = "SIDIAP"),
+                        list(name = "C", source_key = "CPRD GOLD"),
+                        list(name = "I", source_key = "IPCI"))
+  s$cohorts <- list(
+    list(name = "FL", kind = "target",
+         data_sources = list("SIDIAP", "CPRD GOLD"),   # not IPCI
+         operations = list(list(op = "concept_cohort", codelist = "cs_fl"),
+                           list(op = "require_first_entry"))),
+    list(name = "General population", kind = "denominator",
+         data_sources = list("SIDIAP", "CPRD GOLD", "IPCI"),
+         sex = list("Both"), ageGroup = list(c(0, 150)),
+         daysPriorObservation = list(0)))
+  s$proposed_analyses <- list(list(
+    name = "Point prevalence", analysis_type = "estimatePointPrevalence",
+    data_sources = list("SIDIAP"),
+    parameters = list(denominatorTable = "General population", outcomeTable = "FL")))
+  s
+}
+
+test_that("a restricted cohort is guarded by the database it names", {
+  code <- study_files(restricted_sap())[["cohorts/instantiateCohorts.R"]]
+  expect_match(code, 'omopgenerics::cdmName(cdm) %in% c("SIDIAP", "CPRD GOLD")',
+               fixed = TRUE)
+  # The index belongs INSIDE the guard: at IPCI the table is never created, and
+  # indexing a table that does not exist is an error, not a no-op.
+  guard_body <- sub("(?s).*cdmName\\(cdm\\)[^\n]*\\{(.*?)\n\\}.*", "\\1", code, perl = TRUE)
+  expect_match(guard_body, "addCohortTableIndex", fixed = TRUE)
+})
+
+test_that("an unrestricted item is emitted bare, with no always-true guard", {
+  code <- study_files(sample_sap())[["analyses/incidencePrevalence.R"]]
+  expect_false(grepl("cdmName", code, fixed = TRUE))
+})
+
+# The estimates are bound together at the end, so a guarded estimate must still
+# DEFINE its variable everywhere -- a bare `if` would leave it missing and take
+# bind() down with "object not found" at every excluded partner.
+test_that("a restricted estimate keeps its variable defined everywhere", {
+  code <- study_files(restricted_sap())[["analyses/incidencePrevalence.R"]]
+  expect_match(code, '<- if (omopgenerics::cdmName(cdm) %in% c("SIDIAP"))', fixed = TRUE)
+  expect_match(code, "omopgenerics::emptySummarisedResult()", fixed = TRUE)
+})
+
+test_that("guarded code is still syntactically valid R", {
+  for (nm in names(study_files(restricted_sap()))) {
+    if (!grepl("[.]R$", nm)) next
+    expect_silent(parse(text = study_files(restricted_sap())[[nm]]))
+  }
+})
+
+# The guard compares the SAP's source keys against whatever codeToRun.R passed as
+# cdmName. Nothing in the generated code can check that, so it is reported.
+test_that("a plan with guards says the source keys have to match codeToRun.R", {
+  expect_match(study_export_notes(restricted_sap()), "cdmName", fixed = TRUE)
+  expect_false(grepl("cdmName", study_export_notes(sample_sap()), fixed = TRUE))
+})
+
 # Writing --------------------------------------------------------------------------
 
 test_that("write_study_files creates the tree and leaves everything else alone", {

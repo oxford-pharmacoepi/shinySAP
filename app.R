@@ -110,7 +110,79 @@ library(jsonlite)
 #        the check that makes an incomplete plan visible rather than inferable.
 #        A pre-0.4.22 file migrates losslessly: position WAS the identity, so
 #        ids are minted in order.
-SAP_SCHEMA_VERSION <- "0.4.22"
+# 0.4.23 retired the `comparator` and `strata` cohort kinds. Neither is a cohort
+#        in an incidence-prevalence study: no estimator in IncidencePrevalence
+#        takes a comparator -- that is a comparative-cohort design, and a
+#        different package -- and strata are the fixed age_group / sex columns
+#        the denominator generator writes (STRATA_VARIABLES), chosen on the
+#        analysis, never defined as a cohort. Offering them invited a plan that
+#        could not be run. Nothing is lost on load: both kinds always rendered
+#        the plain-cohort block, and both now alias to `other`, which renders
+#        exactly the same fields.
+# 0.4.24 cut the analysis-type dropdown to Incidence, Prevalence and Other. The
+#        seven it dropped -- cohort characterisation, comparative cohort,
+#        self-controlled case series, case-control, survival analysis,
+#        patient-level prediction, drug utilisation -- never had a template, so
+#        each already rendered the generic "Other" block and serialised the same
+#        generic fields. The label was the only thing that distinguished them,
+#        and it promised an estimator this app cannot generate; each would need
+#        its own package before it meant anything.
+# 0.4.25 removed the migration layer: migrate_sap() and its six helpers, plus
+#        coalesce_key(). This app is pre-release and there are no SAPs in the
+#        wild, so every one of them was repairing a file that cannot exist. A
+#        file is now read as the current schema and nothing rewrites it on the
+#        way in.
+#
+#        The entries above are kept as the RATIONALE for why each field is
+#        shaped the way it is -- that is still worth reading. Their "a pre-X
+#        file migrates losslessly" claims are not: nothing migrates any more.
+#        Treat them as history, not as behaviour.
+# 0.4.26 finished the sweep 0.4.25 started, taking the legacy paths out of the
+#        templates themselves: the Incidence `estimand` wrapper and its
+#        snake_case renames, the Prevalence snake_case reads and the
+#        interval_length_days guess, the `stratifications` fallback, the
+#        top-level-parameters fallback in analysis_to_prefill(), the "unbounded"
+#        washout sentinel, the `role` cohort vocabulary, and the "Incidence rate"
+#        type alias. What is left in flatten() is its real job: the inverse of
+#        collect(), reconciling the few input ids that differ from their JSON
+#        keys, and defaulting the keys a type switch leaves absent.
+# 0.4.27 added the two facts a protocol states that the SAP had nowhere to put.
+#        An analysis gained `role` (primary / sensitivity): not an estimator
+#        argument -- 0.3.1 and 0.4.0 were right to drop `sensitivity_analyses`,
+#        since re-running with another washout is a second CALL -- but the
+#        distinction is the first thing a reviewer looks for, and without a field
+#        an author could only spell it into the analysis name, where nothing
+#        could group or check it. analysis_role_problems() reports a plan that
+#        states roles but marks none of them primary.
+#        The study gained `protocol` ({reference, version, date, url}): which
+#        protocol this SAP implements, and which VERSION of it. `amendments` is
+#        this SAP's own history, not the protocol's, so the provenance had been
+#        landing in whatever free-text field was nearest.
+#
+#        No key changed for the third fix in this version, because the key was
+#        already there and simply ignored. `data_sources` -- WHICH databases a
+#        cohort is built in and an estimate runs against -- reached the document
+#        and stopped there, so a plan restricting an analysis to two of five
+#        databases generated a script that ran it at all five. That is the
+#        dangerous direction: the plan a reviewer signed said one thing and the
+#        code exported another. Restricted cohorts and estimates are now guarded
+#        with omopgenerics::cdmName(cdm), and cohort_source_coverage_problems()
+#        reports an estimate that runs where its cohort is never built -- the
+#        inconsistency that guard makes possible.
+#
+#        The other three non-parameter fields -- name, role, objectives -- are
+#        now carried INTO the result, not just into a comment above the call.
+#        None of them is an estimator argument, because none is a computational
+#        choice: the primary analysis and its sensitivity analyses call the same
+#        function with the same arguments, and what separates them is which one
+#        the study may conclude from. omopgenerics settings are the documented
+#        home for that, so the generated script defines sapTag() and labels each
+#        estimate with sap_analysis / sap_role / sap_objectives. Verified against
+#        omopgenerics 1.4.1 and IncidencePrevalence 1.2.1: the columns survive
+#        bind(), suppress() and the export/import round trip, so a study report
+#        can tell the primary estimate from the other eight without going back
+#        to the plan.
+SAP_SCHEMA_VERSION <- "0.4.27"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")
@@ -249,17 +321,18 @@ server <- function(input, output, session) {
     proposed_analyses  = analyses$data()
   ))
 
+  # A file is read as the current schema, with no migration step: this app is
+  # pre-release and there are no SAPs in the wild to carry forward. A file
+  # written by an older build loads on a best-effort basis -- keys the current
+  # sections do not know are ignored, and ones they expect and do not find come
+  # back empty.
   load_sap <- function(loaded) {
-    # Anything that has to move between sections (0.3.0 put time at risk on the
-    # cohort, not the analysis) must happen before any section builds its cards.
-    loaded <- migrate_sap(loaded)
     study$load(loaded$study %||% list())
     sources$load(loaded$cdm_sources %||% list())
     cdm$load(loaded$cdm_changes %||% list())
     codelists$load(loaded$codelists %||% list())
     cohorts$load(loaded$cohorts %||% list())
-    # "analyses" is the pre-0.2.0 name for this section.
-    analyses$load(coalesce_key(loaded, "proposed_analyses", "analyses"))
+    analyses$load(loaded$proposed_analyses %||% list())
     nav_select("nav", selected = "Study", session = session)
   }
 
@@ -370,10 +443,17 @@ server <- function(input, output, session) {
   # the script creates -- which validates clean here and dies at the data partner.
   problems <- reactive(c(study_problems(study$data()),
                          objective_coverage_problems(study$data(), analyses$data()),
+                         analysis_role_problems(analyses$data()),
                          cohorts$problems(), analyses$problems(),
                          codelist_reference_problems(cohorts$data(), codelists$names()),
                          table_name_collisions(cohorts$data()),
-                         uninstantiated_cohort_problems(cohorts$data(), analyses$data())))
+                         uninstantiated_cohort_problems(cohorts$data(), analyses$data()),
+                         # Only reachable since data_sources became a guard in
+                         # the generated script: an estimate running where its
+                         # cohort is never built.
+                         cohort_source_coverage_problems(
+                           cohorts$data(), analyses$data(),
+                           sap_source_keys(list(cdm_sources = sources$data())))))
 
   # A clicked Save: once the working file exists it simply rewrites it (with
   # the title guard and the problems warning). Only the FIRST save has a
