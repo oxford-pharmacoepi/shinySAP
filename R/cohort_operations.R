@@ -37,7 +37,7 @@
 #
 # Signatures these emit against (verified against the package reference):
 #
-#   conceptCohort(cdm, conceptSet, name, exit, overlap, table,
+#   conceptCohort(cdm, conceptSet, name, exit, overlap, table, typeConceptId,
 #     useRecordsBeforeObservation, useSourceFields, subsetCohort, subsetCohortId)
 #   requireIsFirstEntry(cohort, cohortId, indexDate, name)
 #   requireDemographics(cohort, cohortId, indexDate, ageRange, sex,
@@ -62,15 +62,24 @@
 #           can load exactly what it uses. Declared per op rather than assumed:
 #           an op added later that reaches for a different package says so here
 #           and the script header follows, with nothing else to remember.
+# assigns   WHAT the entry op's call returns, and so where it has to be assigned:
+#           "table" for a call returning a cohort table (cdm$<name> <- ...), the
+#           case for every CohortConstructor verb, or "cdm" for one returning a
+#           cdm reference with the table already attached (cdm <- ...). The same
+#           split cohort_r_code() documents between conceptCohort() and
+#           generateDenominatorCohortSet(): getting it wrong does not fail
+#           loudly, it silently leaves the table unattached and every estimate
+#           pointing at it dies at the data partner.
 COHORT_OP_TEMPLATES <- list()
 cohort_op_registry_env <- environment()
 
 register_cohort_op <- function(op, prose, code = function(o, ctx) NULL,
                                validate = function(o, ctx) character(0),
-                               entry = FALSE, package = "CohortConstructor") {
+                               entry = FALSE, package = "CohortConstructor",
+                               assigns = "table") {
   cohort_op_registry_env$COHORT_OP_TEMPLATES[[op]] <- list(
     prose = prose, code = code, validate = validate,
-    entry = entry, package = package
+    entry = entry, package = package, assigns = assigns
   )
 }
 
@@ -347,6 +356,91 @@ register_cohort_op(
   }
 )
 
+# Several cohort definitions gathered into ONE table -----------------------------
+#
+# The op that lets one estimator call cover what would otherwise be several.
+#
+# estimatePrevalence()'s `outcomeTable` takes ONE table -- passing a vector fails
+# with "You can only read one table of a cdm_reference" -- but a table may hold
+# many cohorts, and the estimator runs across all of them in a single call,
+# labelling each in the result's group_level. That is already why C1-001's six
+# cancers are one analysis rather than six: conceptCohort() puts one cohort per
+# codelist in one table.
+#
+# What it could NOT do was combine definitions built by different pipelines --
+# two outcome families defined from different codelists, say, that one estimate
+# should cover. omopgenerics::bind() joins their tables, renumbering cohort ids
+# in argument order, so one call covers them all.
+#
+# The constraint that decides what may merge: the constituents' COHORT NAMES
+# must be disjoint. bind() aborts on a duplicated cohort_name -- and even if it
+# did not, the estimator labels its results by cohort_name, so two definitions
+# under one name would be indistinguishable in the output. conceptCohort() names
+# one cohort per codelist, AFTER the codelist, which is why definitions that
+# differ only in exit (C1-001's 5-year / 2-year / complete prevalence trio) do
+# not merge: same codelists, same names. bound_cohort_problems() reports the
+# collision, since no single op can see across tables.
+#
+# Verified against omopgenerics 1.4.1: bind() on cohort tables returns a CDM
+# REFERENCE with the combined table attached (hence assigns = "cdm"), the ids are
+# renumbered in argument order, and one estimatePeriodPrevalence() over the
+# result reports each constituent cohort separately.
+register_cohort_op(
+  "bind_cohorts",
+  entry   = TRUE,
+  assigns = "cdm",
+  # Namespaced rather than library()'d, exactly as suppression_r_code() writes
+  # omopgenerics::suppress(): the script needs no import for one call.
+  package = NULL,
+  prose = function(o) {
+    nms <- sprintf("'%s'", op_chr_vec(o, "cohorts") %||% "?")
+    listed <- if (length(nms) < 2) nms else paste(
+      paste(nms[-length(nms)], collapse = ", "), "and", nms[[length(nms)]])
+    sprintf("Entry: every cohort of %s, combined into one table so one estimate covers them all.",
+            listed)
+  },
+  code = function(o, ctx) {
+    nms <- op_chr_vec(o, "cohorts") %||% character(0)
+    tbls <- vapply(nms, function(n) {
+      t <- cohort_table_name(n)
+      if (is.na(t)) "cohort" else t
+    }, character(1), USE.NAMES = FALSE)
+    args <- c(sprintf("cdm$%s", tbls), sprintf("name = %s", r_string(ctx$table)))
+    one <- sprintf("omopgenerics::bind(%s)", paste(args, collapse = ", "))
+    if (nchar(one) <= 88) return(one)
+    sprintf("omopgenerics::bind(\n%s\n)", paste(sprintf("  %s", args), collapse = ",\n"))
+  },
+  validate = function(o, ctx) {
+    nms <- op_chr_vec(o, "cohorts")
+    if (is.null(nms)) {
+      return("A bind operation must name the cohorts it combines.")
+    }
+    # One cohort bound to nothing is a copy of that cohort under another name --
+    # legal R, but never what an author meant to write down.
+    if (length(nms) < 2) {
+      return("A bind operation combines two or more cohorts; naming one only copies it.")
+    }
+    if (anyDuplicated(nms)) {
+      return(sprintf("Binds '%s' more than once.",
+                     paste(unique(nms[duplicated(nms)]), collapse = "', '")))
+    }
+    # Binding the cohort into itself: the table would be read as an argument to
+    # the call that creates it.
+    if (any(vapply(nms, function(n) identical(cohort_table_name(n), ctx$table),
+                   logical(1)))) {
+      return("A bind operation cannot include the cohort it defines.")
+    }
+    if (length(ctx$cohorts)) {
+      missing <- nms[!nms %in% ctx$cohorts]
+      if (length(missing)) {
+        return(sprintf("Binds '%s', which this SAP does not define.",
+                       paste(missing, collapse = "', '")))
+      }
+    }
+    character(0)
+  }
+)
+
 # The escape hatch, and the reason the vocabulary can stay small. An operation
 # the registry does not cover is written out as free text and emitted as a TODO
 # comment -- visible in the script, never silently dropped. The same answer the
@@ -441,7 +535,8 @@ cohort_operations_code <- function(ch, codelists = list(), cohorts = character(0
         "No cohort operation is registered as '%s'.", cohort_op_type(o))))
     }
     note <- if (identical(cohort_op_type(o), "custom")) op_chr(o, "text") else NULL
-    list(code = tmpl$code(o, ctx), note = note, entry = isTRUE(tmpl$entry))
+    list(code = tmpl$code(o, ctx), note = note, entry = isTRUE(tmpl$entry),
+         assigns = tmpl$assigns %||% "table")
   })
 
   # An operation with no call becomes a comment in place, so a step the author
@@ -453,6 +548,21 @@ cohort_operations_code <- function(ch, codelists = list(), cohorts = character(0
 
   first  <- rendered[[1]]
   head_line <- as_line(first)
+  # An entry op whose call returns a CDM REFERENCE rather than a cohort table
+  # (bind_cohorts) cannot be the head of a `cdm$x <- ... |> ...` pipeline: the
+  # table is attached by the call itself. It becomes its own statement, and any
+  # steps after it pipe from the attached table instead.
+  if (identical(first$assigns, "cdm")) {
+    out <- sprintf("cdm <- %s", head_line)
+    if (length(rendered) > 1) {
+      steps <- vapply(rendered[-1], function(r) {
+        sprintf("  %s", gsub("\n", "\n  ", as_line(r), fixed = TRUE))
+      }, character(1))
+      out <- paste0(out, sprintf("\ncdm$%s <- cdm$%s |>\n%s",
+                                 ctx$table, ctx$table, paste(steps, collapse = " |>\n")))
+    }
+    return(out)
+  }
   # Without an entry op there is no cohort to pipe onto: the script says so
   # rather than emitting a pipeline that starts from nothing.
   if (!isTRUE(first$entry)) {
@@ -474,6 +584,121 @@ cohort_operations_code <- function(ch, codelists = list(), cohorts = character(0
     head_line
   }
   sprintf("cdm$%s <- %s", ctx$table, body)
+}
+
+# The cohort NAMES a built table will hold, as far as the plan can know them.
+#
+# conceptCohort() names one cohort per codelist, after the codelist; a bound
+# table holds the union of its constituents'. Anything else -- a prose cohort, an
+# entry the registry cannot see through -- returns NULL: "unknown", which is a
+# different answer from "none", so a collision is only ever reported between
+# tables whose names are actually known.
+cohort_set_names <- function(co, cohorts, nms, seen = character(0)) {
+  ops <- co$operations %||% list()
+  if (!length(ops)) return(NULL)
+  entry <- ops[[1]]
+  if (identical(cohort_op_type(entry), "concept_cohort")) {
+    return(op_chr_vec(entry, "codelist"))
+  }
+  if (identical(cohort_op_type(entry), "bind_cohorts")) {
+    nm <- as.character(co$name %||% "")[1]
+    if (nm %in% seen) return(NULL)  # a bind cycle; the order check reports it
+    parts <- lapply(op_chr_vec(entry, "cohorts") %||% character(0), function(ref) {
+      j <- match(ref, nms)
+      if (is.na(j)) return(NULL)
+      cohort_set_names(cohorts[[j]], cohorts, nms, c(seen, nm))
+    })
+    # One unknown constituent makes the whole table unknown: reporting a
+    # collision on a partial listing could accuse the wrong pair.
+    if (any(vapply(parts, is.null, logical(1)))) return(NULL)
+    return(unlist(parts))
+  }
+  NULL
+}
+
+# What a bind can get wrong that its own validate() cannot see -------------------
+#
+# An operation validates against a context of NAMES, so it can tell that a bound
+# cohort exists. It cannot tell whether that cohort is built, or built BEFORE it
+# -- both of which are properties of the whole cohort list, and both of which end
+# the same way: `cdm$<table>` read as an argument to a call, at a data partner,
+# for a table nothing has created yet.
+#
+# Order matters because the script emits cohorts in the order the SAP lists them.
+# Reordering silently would be the guess this design exists to avoid, so the plan
+# is asked to say it in the order it means.
+#
+# The fourth check is the one your own bind() call would make for you, too late
+# and too far away: constituents whose tables hold the SAME cohort name cannot
+# combine. omopgenerics::bind() aborts on a duplicated cohort_name, and even if
+# it did not, the estimator labels results by cohort_name, so the estimates from
+# two same-named definitions could never be told apart.
+bound_cohort_problems <- function(cohorts) {
+  cohorts <- cohorts %||% list()
+  if (!length(cohorts)) return(list())
+  nms <- vapply(cohorts, function(co) as.character(co$name %||% "")[1], character(1))
+  # Built = something in the generated script creates the table.
+  built <- vapply(cohorts, function(co) {
+    !is.null(cohort_operations_code(co)) || !is.null(cohort_r_code(co))
+  }, logical(1))
+  denom <- vapply(cohorts, function(co) is_denominator_kind(co$kind), logical(1))
+
+  found <- list()
+  for (i in seq_along(cohorts)) {
+    ops <- Filter(function(o) identical(cohort_op_type(o), "bind_cohorts"),
+                  cohorts[[i]]$operations %||% list())
+    if (!length(ops)) next
+    refs <- unique(unlist(lapply(ops, function(o) op_chr_vec(o, "cohorts") %||% character(0))))
+    msgs <- character(0)
+    for (ref in refs) {
+      j <- match(ref, nms)
+      if (is.na(j)) next            # the op's own validate() reports this one
+      if (denom[[j]]) {
+        msgs <- c(msgs, sprintf(paste(
+          "Binds '%s', which is a generated denominator cohort set. A denominator",
+          "is the population an estimate runs ON, never one of its outcomes."), ref))
+      } else if (!built[[j]]) {
+        msgs <- c(msgs, sprintf(paste(
+          "Binds '%s', which the generated script never creates -- it is a plain",
+          "cohort with no typed operations, so there is no table to bind."), ref))
+      } else if (j > i) {
+        msgs <- c(msgs, sprintf(paste(
+          "Binds '%s', which this SAP defines AFTER it. The script builds cohorts",
+          "in the order they are listed, so move '%s' above this one."), ref, ref))
+      }
+    }
+    # Constituents that are otherwise fine but hold the same cohort name. Only
+    # tables whose names are KNOWN take part: an unresolvable or unknowable
+    # constituent is either reported above or beyond what a plan can check.
+    inner <- list()
+    for (ref in refs) {
+      j <- match(ref, nms)
+      if (is.na(j) || denom[[j]] || !built[[j]]) next
+      v <- cohort_set_names(cohorts[[j]], cohorts, nms)
+      if (!is.null(v)) inner[[ref]] <- v
+    }
+    if (length(inner) > 1) {
+      dup <- unlist(inner, use.names = FALSE)
+      dup <- unique(dup[duplicated(dup)])
+      holders <- names(inner)[vapply(inner, function(v) any(v %in% dup), logical(1))]
+      if (length(dup) && length(holders) > 1) {
+        quoted <- sprintf("'%s'", holders)
+        listed <- paste(paste(quoted[-length(quoted)], collapse = ", "),
+                        "and", quoted[[length(quoted)]])
+        msgs <- c(msgs, sprintf(paste(
+          "Binds %s, whose tables each hold a cohort named [%s]. bind() refuses",
+          "a duplicated cohort name -- and the estimates it labels would be",
+          "indistinguishable anyway. Definitions built from the same codelists",
+          "stay separate analyses."),
+          listed, paste(dup, collapse = ", ")))
+      }
+    }
+    if (length(msgs)) {
+      found[[length(found) + 1]] <- list(name = nms[[i]] %||% "Untitled cohort",
+                                         messages = msgs)
+    }
+  }
+  found
 }
 
 # The codelists a cohort's typed entries actually enter on.

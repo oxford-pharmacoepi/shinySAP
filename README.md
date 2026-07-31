@@ -8,7 +8,7 @@ backend as a single JSON dictionary and written to `output/`.
 
 | Tab | Captures |
 | --- | --- |
-| **Study** | Title, study code, authors, SAP version, date, minimum cell count, the source protocol this plan implements (reference, version, date, URL), rationale & background, aim / research question, specific objectives, and an amendment history (version, date, description of change) |
+| **Study** | Title, study code, authors, SAP version, date, minimum cell count, rationale & background, aim / research question, specific objectives, and an amendment history (version, date, description of change) |
 | **CDM Sources** | The databases the study runs against — name, short key, country/region |
 | **CDM Changes** | Extra CDM validations and database-specific alterations applied before analysis — a change type (extra validation; subset a CDM table; limit observation periods; remap concepts; remove people with no year of birth or sex data; remove people with implausible dates; other), the data sources it applies to, and a description |
 | **Codelists** | The concept sets cohorts cite in `[square brackets]` — name, an optional category (Index event, Comorbidity, Medicine, …, which the document groups by), description/provenance, and the codes themselves, uploaded from a `.csv` (concept_id column), `.txt` (one code per line) or `.json` (plain array or Atlas concept-set expression). The codes are stored in the SAP JSON, so the plan is self-contained |
@@ -66,7 +66,7 @@ JSON arrays even when they hold a single entry.
 
 ```json
 {
-  "sap_schema_version": "0.4.27",
+  "sap_schema_version": "0.4.28",
   "generated_at": "2026-07-09T14:02:11+0100",
   "study": {
     "title": "Metformin and lactic acidosis",
@@ -75,12 +75,6 @@ JSON arrays even when they hold a single entry.
     "version": "1.1",
     "min_cell_count": 5,
     "date": "2026-07-09",
-    "protocol": {
-      "reference": "DARWIN EU® Study Protocol P3-C1-006",
-      "version": "2.0",
-      "date": "2026-05-14",
-      "url": "https://catalogues.ema.europa.eu/..."
-    },
     "background": "...",
     "aim": "The aim of this study is to ...",
     "objectives": [
@@ -435,14 +429,13 @@ present, matching the signature and the Prevalence template. The Incidence
 `flatten()` un-nests any old `estimand` and renames every field, so a pre-0.4.3
 file loads unchanged.
 
-`0.4.27` added the two facts a study protocol states that the SAP had nowhere to
-put. An analysis gained `role` (`primary` / `sensitivity`), and the study gained
-`protocol` — `{reference, version, date, url}`, the protocol this plan
-implements. `amendments` is the SAP's own version history, not the protocol's, so
-that provenance had been landing in whatever free-text field was nearest.
+`0.4.27` added `role` (`primary` / `sensitivity`) to an analysis: not an
+estimator argument — the primary analysis and its sensitivity analyses call the
+same function with the same arguments — but the distinction is the first thing a
+reviewer looks for, and without a field an author could only spell it into the
+analysis name, where nothing could group or check it.
 `analysis_role_problems()` reports a plan that states roles but marks none of them
-primary; the document shows the role per analysis and the protocol in the study
-table.
+primary; the document shows the role per analysis.
 
 `0.4.27` also made `data_sources` load-bearing in the generated code rather than
 documentation-only. It is the SAP-level counterpart of `cdm` — which databases an
@@ -453,7 +446,53 @@ all five. Restricted cohorts and estimates are now guarded with
 estimate that runs where its cohort is not built. No JSON key changed: the field
 was always there, it was simply ignored.
 
-Saving writes the current schema version (`0.4.27`) back out.
+`0.4.28` added the `bind_cohorts` operation: several cohort definitions gathered
+into **one table**, so one estimator call covers all of them.
+
+```json
+{ "op": "bind_cohorts",
+  "cohorts": ["Diabetes drugs", "Cardiovascular drugs"] }
+```
+
+`estimatePrevalence()`'s `outcomeTable` takes one table — passing a vector fails
+with *"You can only read one table of a cdm_reference"* — but a table may hold
+many cohorts, and the estimator runs across all of them in a single call,
+reporting each separately in the result's `group_level`. That is already why
+C1-001's six cancers are one analysis rather than six: `conceptCohort()` puts one
+cohort per codelist in one table. What it could not do was combine definitions
+built by *different pipelines*. `omopgenerics::bind()` joins their tables,
+renumbering the cohort ids in argument order, so one call covers them all.
+
+**Only cohorts with disjoint names can merge.** `bind()` aborts on a duplicated
+`cohort_name` — and even if it did not, the estimator labels its results by
+`cohort_name`, so two definitions under one name would be indistinguishable in
+the output. `conceptCohort()` names one cohort per codelist, *after* the
+codelist, which is why definitions that differ only in exit — C1-001's 5-year,
+2-year and complete prevalence trio, built from the same six codelists — do not
+merge, and stay separate analyses in that SAP.
+
+This is the first operation whose call returns a **CDM reference** rather than a
+cohort table, so `register_cohort_op()` gained `assigns`: `"cdm"` emits `cdm <-
+bind(...)`, and `"table"` (the default, every CohortConstructor verb) emits
+`cdm$x <- ...`. Getting that wrong does not fail loudly — it leaves the table
+unattached and every estimate on it dies at the data partner — so it is declared
+per operation rather than inferred. A step *after* a bind pipes from the attached
+table as a second statement, since there is no pipeline to sit in.
+
+`bound_cohort_problems()` reports the four things the operation's own
+`validate()` cannot see, because each is a property of the whole cohort list
+rather than of one operation. Three end the same way — `cdm$<table>` read before
+anything creates it: binding a cohort nothing builds, one the SAP defines
+*after* the bind (the script emits cohorts in listed order), or a generated
+denominator cohort set. The fourth is the name collision above, which the
+generated `bind()` would otherwise be the first to report, at the data partner.
+
+**Merge only what shares a role.** A merged call carries one `role`, so
+definitions that differ in role have to stay separate analyses even when their
+names are disjoint: the primary/sensitivity distinction is the whole point of
+stating a role.
+
+Saving writes the current schema version (`0.4.28`) back out.
 
 ### Validation
 

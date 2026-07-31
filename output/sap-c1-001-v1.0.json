@@ -1,6 +1,6 @@
 {
-  "sap_schema_version": "0.4.27",
-  "generated_at": "2026-07-29T18:14:03+0100",
+  "sap_schema_version": "0.4.28",
+  "generated_at": "2026-07-31T13:33:51+0100",
   "study": {
     "title": "Prevalence of rare blood cancers in Europe",
     "study_code": "C1-001",
@@ -8,12 +8,6 @@
     "version": "1.0",
     "min_cell_count": 5,
     "date": "2026-07-29",
-    "protocol": {
-      "reference": "DARWIN EU® Study Protocol C1-001 (D2.2.3), Prevalence of rare blood cancers in Europe",
-      "version": "2.0",
-      "date": "2022-11-01",
-      "url": "https://catalogues.ema.europa.eu/sites/default/files/document_files/D2.2.3_DARWIN_EU_Study%20Protocol%20C1-001_v2.0_EU_PAS.pdf"
-    },
     "background": "The Committee for Orphan Medicinal Products (COMP) is the European Medicines Agency's committee responsible for recommending orphan designation of medicines for rare diseases. One important criterion for granting an orphan designation is a prevalence threshold of maximum 5 in 10,000 for the associated condition at the time of application. Around 35% of submissions to the COMP are for oncological conditions, and around 42% of orphan designations in oncology granted between 2000 and 2015 related to rare haematological malignancies. Prevalence estimates for these malignancies are a frequent source of uncertainty when submissions are assessed: limited availability of population-based epidemiological studies has often led to indirect methods of calculation resting on various assumptions, and time trends mean conditions that previously satisfied the prevalence criterion may no longer do so. Substantial uncertainty therefore surrounds the prevalence of rare blood cancers. Using real-world data brought together as part of DARWIN EU®, this study estimates their prevalence in Europe over time, in order to see whether they still meet the condition to be classified as a rare disease.",
     "aim": "What is the prevalence of rare blood cancers in Europe?",
     "objectives": [
@@ -3307,7 +3301,14 @@
       "operations": [
         {
           "op": "concept_cohort",
-          "codelist": ["cs_follicular_lymphoma", "cs_diffuse_large_b_cell_lymphoma", "cs_multiple_myeloma", "cs_chronic_lymphocytic_leukaemia", "cs_acute_myeloid_leukaemia", "cs_acute_lymphocytic_leukaemia"],
+          "codelist": [
+            "cs_follicular_lymphoma",
+            "cs_diffuse_large_b_cell_lymphoma",
+            "cs_multiple_myeloma",
+            "cs_chronic_lymphocytic_leukaemia",
+            "cs_acute_myeloid_leukaemia",
+            "cs_acute_lymphocytic_leukaemia"
+          ],
           "exit": "event_start_date"
         },
         {
@@ -3329,7 +3330,14 @@
       "operations": [
         {
           "op": "concept_cohort",
-          "codelist": ["cs_follicular_lymphoma", "cs_diffuse_large_b_cell_lymphoma", "cs_multiple_myeloma", "cs_chronic_lymphocytic_leukaemia", "cs_acute_myeloid_leukaemia", "cs_acute_lymphocytic_leukaemia"],
+          "codelist": [
+            "cs_follicular_lymphoma",
+            "cs_diffuse_large_b_cell_lymphoma",
+            "cs_multiple_myeloma",
+            "cs_chronic_lymphocytic_leukaemia",
+            "cs_acute_myeloid_leukaemia",
+            "cs_acute_lymphocytic_leukaemia"
+          ],
           "exit": "event_start_date"
         },
         {
@@ -3351,7 +3359,14 @@
       "operations": [
         {
           "op": "concept_cohort",
-          "codelist": ["cs_follicular_lymphoma", "cs_diffuse_large_b_cell_lymphoma", "cs_multiple_myeloma", "cs_chronic_lymphocytic_leukaemia", "cs_acute_myeloid_leukaemia", "cs_acute_lymphocytic_leukaemia"]
+          "codelist": [
+            "cs_follicular_lymphoma",
+            "cs_diffuse_large_b_cell_lymphoma",
+            "cs_multiple_myeloma",
+            "cs_chronic_lymphocytic_leukaemia",
+            "cs_acute_myeloid_leukaemia",
+            "cs_acute_lymphocytic_leukaemia"
+          ]
         },
         {
           "op": "require_first_entry"
