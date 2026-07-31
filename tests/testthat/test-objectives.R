@@ -140,53 +140,6 @@ test_that("an analysis naming no objective gets no label rather than a blank one
                      fixed = TRUE))
 })
 
-# The source protocol ----------------------------------------------------------
-#
-# Which protocol this SAP implements, and which version of it. Always written as
-# a block of four keys so the shape is stable; the values are what say whether a
-# protocol was named at all.
-
-test_that("the study card collects the protocol it implements", {
-  testServer(study_server, {
-    session$setInputs(protocol_reference = "DARWIN EU® Study Protocol C1-001",
-                      protocol_version   = "2.0",
-                      protocol_date      = "2022-11-01",
-                      protocol_url       = "https://example.org/c1-001.pdf")
-    prot <- isolate(data())$protocol
-    expect_identical(prot$reference, "DARWIN EU® Study Protocol C1-001")
-    expect_identical(prot$version, "2.0")
-    expect_identical(prot$date, "2022-11-01")
-  })
-})
-
-test_that("a SAP naming no protocol writes the block as nulls, not blanks", {
-  testServer(study_server, {
-    session$setInputs(protocol_reference = "", protocol_version = "",
-                      protocol_date = "", protocol_url = "")
-    prot <- isolate(data())$protocol
-    expect_true(all(vapply(prot, is.na, logical(1))))
-    back <- fromJSON(as.character(sap_json(list(study = isolate(data())))),
-                     simplifyVector = FALSE)
-    expect_null(back$study$protocol$reference)
-  })
-})
-
-# load() must not trip over a file that has no protocol block at all -- every
-# SAP written before 0.4.27, and every SAP for a study with no separate protocol.
-#
-# The CLEARING half of that path (a card holding a protocol, loading a SAP that
-# names none, must end up empty rather than keeping the previous study's) is not
-# asserted here because it is not observable from testServer: update*Input()
-# sends a message to a browser that does not exist, so input$ never changes. It
-# is why the date is a textInput -- updateDateInput() cannot clear one at all.
-test_that("loading a SAP with no protocol block is not an error", {
-  testServer(study_server, {
-    session$setInputs(protocol_reference = "An earlier protocol")
-    expect_no_error(load(list(title = "Next study")))
-    expect_no_error(load(list(title = "Third study", protocol = list(version = "2.0"))))
-  })
-})
-
 # The card ---------------------------------------------------------------------------
 
 test_that("the study card keeps objective ids across an edit to another line", {

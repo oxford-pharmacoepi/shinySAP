@@ -392,3 +392,144 @@ test_that("an op that emits no call contributes no library", {
     operations = list(list(op = "custom", text = "done by hand"))))))
   expect_false(grepl("library(", script, fixed = TRUE))
 })
+
+# Binding several definitions into one table -------------------------------------
+#
+# The op that lets ONE estimator call cover what would otherwise be several
+# identical analyses. estimatePrevalence()'s outcomeTable takes one table -- a
+# vector fails with "You can only read one table of a cdm_reference" -- but a
+# table may hold many cohorts and the estimator reports each separately. That is
+# already why six cancers are one call; this lets definitions built by different
+# pipelines share a call too -- PROVIDED their cohort names are disjoint, which
+# is the collision check at the bottom of this file.
+#
+# Verified against omopgenerics 1.4.1: the generated bind runs verbatim, ids are
+# renumbered in argument order, and one estimatePeriodPrevalence() over the
+# result reports each constituent.
+
+three <- c("RBC 5-year partial", "RBC 2-year partial", "RBC complete")
+bound <- function(cohorts = three) list(
+  name = "RBC all definitions", kind = "outcome",
+  operations = list(list(op = "bind_cohorts", cohorts = as.list(cohorts))))
+# Distinct codelist per cohort by default: conceptCohort() names cohorts AFTER
+# their codelists, and same-named cohorts cannot bind.
+built <- function(name, codelist = paste0("cs_", gsub("\\W+", "_", tolower(name)))) {
+  list(name = name, kind = "outcome",
+       operations = list(list(op = "concept_cohort", codelist = codelist)))
+}
+
+# bind() returns a CDM REFERENCE with the table attached, not a cohort table, so
+# it is `cdm <- ` and never `cdm$x <- `. Getting this wrong does not fail loudly:
+# it leaves the table unattached and every estimate on it dies at the partner.
+test_that("a bind is assigned to cdm, not into a cdm slot", {
+  code <- cohort_operations_code(bound())
+  expect_match(code, "cdm <- omopgenerics::bind(", fixed = TRUE)
+  expect_false(grepl("cdm$rbc_all_definitions <- omopgenerics::bind", code, fixed = TRUE))
+  expect_match(code, 'name = "rbc_all_definitions"', fixed = TRUE)
+  for (nm in c("cdm$rbc_5_year_partial", "cdm$rbc_2_year_partial", "cdm$rbc_complete")) {
+    expect_match(code, nm, fixed = TRUE)
+  }
+})
+
+test_that("a bind needs no library: it is namespaced", {
+  expect_length(cohort_operations_packages(bound()), 0)
+})
+
+test_that("the bind prose names every cohort it combines", {
+  line <- cohort_operations_prose(bound())[[1]]
+  for (nm in three) expect_match(line, nm, fixed = TRUE)
+})
+
+# Steps after a bind cannot pipe from it -- the table is attached by the call
+# itself -- so they become a second statement piping from the attached table.
+test_that("a step after a bind pipes from the attached table", {
+  code <- cohort_operations_code(list(
+    name = "RBC all definitions", kind = "outcome",
+    operations = list(list(op = "bind_cohorts", cohorts = as.list(three)),
+                      list(op = "require_first_entry"))))
+  expect_match(code, "cdm$rbc_all_definitions <- cdm$rbc_all_definitions |>", fixed = TRUE)
+  expect_match(code, "requireIsFirstEntry()", fixed = TRUE)
+})
+
+# The op's own validate(), which sees names only.
+test_that("a bind must name two or more cohorts it can resolve", {
+  probs <- function(co, cohorts = three) cohort_operations_problems(co, cohort_names = cohorts)
+  expect_match(probs(bound(three[1])), "two or more", fixed = TRUE)
+  expect_match(probs(bound(character(0))), "must name the cohorts", fixed = TRUE)
+  expect_match(probs(bound(c(three[1], three[1]))), "more than once", fixed = TRUE)
+  expect_match(probs(bound(c(three[1], "Nowhere"))), "does not define", fixed = TRUE)
+  expect_match(probs(bound(c(three[1], "RBC all definitions"))),
+               "cannot include the cohort it defines", fixed = TRUE)
+  expect_length(probs(bound()), 0)
+})
+
+# What the op cannot see: whether the cohorts it binds are BUILT, built FIRST,
+# or denominators. All three end as `cdm$<table>` read before it exists.
+test_that("binding a cohort the script never creates is reported", {
+  found <- bound_cohort_problems(list(
+    list(name = three[1], kind = "outcome", entry_events = list("prose only")),
+    bound(three[1:1])))
+  expect_length(found, 1)
+  expect_match(found[[1]]$messages, "never creates", fixed = TRUE)
+})
+
+test_that("binding a cohort defined later is reported, with the fix", {
+  found <- bound_cohort_problems(c(list(bound()), lapply(three, built)))
+  expect_length(found, 1)
+  expect_match(found[[1]]$messages[[1]], "defines AFTER it", fixed = TRUE)
+  expect_match(found[[1]]$messages[[1]], "move", fixed = TRUE)
+})
+
+test_that("binding a denominator cohort set is reported", {
+  found <- bound_cohort_problems(list(
+    list(name = "Denom", kind = "denominator", sex = list("Both"),
+         ageGroup = list(c(0, 150)), daysPriorObservation = list(0)),
+    bound("Denom")))
+  expect_length(found, 1)
+  expect_match(found[[1]]$messages, "denominator", fixed = TRUE)
+})
+
+test_that("cohorts bound in the right order raise nothing", {
+  expect_length(bound_cohort_problems(c(lapply(three, built), list(bound()))), 0)
+})
+
+# The fourth thing the op cannot see, and the one bind() itself would only say at
+# the data partner: constituents whose tables hold the SAME cohort name.
+# conceptCohort() names one cohort per codelist, after the codelist, so
+# definitions that differ only in exit collide -- bind() aborts on a duplicated
+# cohort_name, and the estimates it labels would be indistinguishable anyway.
+test_that("binding definitions that share a codelist is reported", {
+  found <- bound_cohort_problems(list(
+    built(three[1], codelist = "cs_fl"), built(three[2], codelist = "cs_fl"),
+    bound(three[1:2])))
+  expect_length(found, 1)
+  expect_match(found[[1]]$messages, "cohort named [cs_fl]", fixed = TRUE)
+  expect_match(found[[1]]$messages, three[1], fixed = TRUE)
+  expect_match(found[[1]]$messages, three[2], fixed = TRUE)
+})
+
+# The collision reaches THROUGH a nested bind: a bound table holds the union of
+# its constituents' names.
+test_that("a shared codelist is found through a nested bind", {
+  found <- bound_cohort_problems(list(
+    built("A", codelist = "cs_shared"), built("B"),
+    list(name = "AB", kind = "outcome",
+         operations = list(list(op = "bind_cohorts", cohorts = list("A", "B")))),
+    built("C", codelist = "cs_shared"),
+    list(name = "All", kind = "outcome",
+         operations = list(list(op = "bind_cohorts", cohorts = list("AB", "C"))))))
+  expect_length(found, 1)
+  expect_identical(found[[1]]$name, "All")
+  expect_match(found[[1]]$messages, "cs_shared", fixed = TRUE)
+})
+
+# A constituent whose table holds names the plan cannot know (a prose cohort is
+# already reported as never built; this one has a custom entry) stays out of the
+# collision check rather than being guessed at.
+test_that("unknowable constituent names are not guessed at", {
+  custom <- list(name = "Hand-built", kind = "outcome",
+                 operations = list(list(op = "custom", text = "by hand"),
+                                   list(op = "require_first_entry")))
+  expect_length(bound_cohort_problems(list(
+    built(three[1]), custom, bound(c(three[1], "Hand-built")))), 0)
+})

@@ -159,11 +159,8 @@ save_working <- function(sap, path, n_problems = 0) {
 # defaults the author never typed, so they do not count as content.
 sap_is_empty <- function(sap) {
   s <- sap$study %||% list()
-  # The protocol block is always written (four keys, null until filled), so it is
-  # its VALUES that count as content -- naming the protocol and nothing else is a
-  # real start on a plan, and one worth keeping.
   authored <- c(s$title, s$study_code, unlist(s$authors), s$background, s$aim,
-                unlist(s$objectives), unlist(s$protocol))
+                unlist(s$objectives))
   authored <- authored[!is.na(authored)]
   !any(nzchar(as.character(authored))) &&
     !length(s$amendments) &&

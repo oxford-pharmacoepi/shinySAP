@@ -146,20 +146,15 @@ library(jsonlite)
 #        type alias. What is left in flatten() is its real job: the inverse of
 #        collect(), reconciling the few input ids that differ from their JSON
 #        keys, and defaulting the keys a type switch leaves absent.
-# 0.4.27 added the two facts a protocol states that the SAP had nowhere to put.
-#        An analysis gained `role` (primary / sensitivity): not an estimator
+# 0.4.27 gave an analysis `role` (primary / sensitivity): not an estimator
 #        argument -- 0.3.1 and 0.4.0 were right to drop `sensitivity_analyses`,
 #        since re-running with another washout is a second CALL -- but the
 #        distinction is the first thing a reviewer looks for, and without a field
 #        an author could only spell it into the analysis name, where nothing
 #        could group or check it. analysis_role_problems() reports a plan that
 #        states roles but marks none of them primary.
-#        The study gained `protocol` ({reference, version, date, url}): which
-#        protocol this SAP implements, and which VERSION of it. `amendments` is
-#        this SAP's own history, not the protocol's, so the provenance had been
-#        landing in whatever free-text field was nearest.
 #
-#        No key changed for the third fix in this version, because the key was
+#        No key changed for the other fix in this version, because the key was
 #        already there and simply ignored. `data_sources` -- WHICH databases a
 #        cohort is built in and an estimate runs against -- reached the document
 #        and stopped there, so a plan restricting an analysis to two of five
@@ -182,7 +177,33 @@ library(jsonlite)
 #        bind(), suppress() and the export/import round trip, so a study report
 #        can tell the primary estimate from the other eight without going back
 #        to the plan.
-SAP_SCHEMA_VERSION <- "0.4.27"
+# 0.4.28 added the `bind_cohorts` operation: several cohort definitions gathered
+#        into ONE table, so one estimator call covers all of them.
+#
+#        estimatePrevalence()'s outcomeTable takes one table -- a vector fails
+#        with "You can only read one table of a cdm_reference" -- but a table may
+#        hold many cohorts and the estimator reports each separately. That is
+#        already why C1-001's six cancers are one analysis; what it could not do
+#        was combine definitions built by DIFFERENT pipelines.
+#
+#        Only cohorts with disjoint NAMES can merge: bind() aborts on a
+#        duplicated cohort_name, and the estimator labels results by cohort_name,
+#        so two definitions under one name could never be told apart anyway.
+#        conceptCohort() names cohorts after their codelists, so definitions that
+#        differ only in exit (C1-001's three prevalence definitions) collide and
+#        stay separate analyses.
+#
+#        The op is the first whose call returns a CDM REFERENCE rather than a
+#        cohort table, so register_cohort_op() gained `assigns`: "cdm" emits
+#        `cdm <- bind(...)`, "table" (the default, every CohortConstructor verb)
+#        emits `cdm$x <- ...`. Getting that wrong does not fail loudly -- it
+#        leaves the table unattached and every estimate on it dies at the data
+#        partner -- which is why it is declared per op rather than inferred.
+#
+#        bound_cohort_problems() reports the four things the op's own validate()
+#        cannot see: binding a cohort nothing builds, one defined AFTER the bind,
+#        a denominator, or constituents whose tables share a cohort name.
+SAP_SCHEMA_VERSION <- "0.4.28"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")
@@ -447,6 +468,10 @@ server <- function(input, output, session) {
                          cohorts$problems(), analyses$problems(),
                          codelist_reference_problems(cohorts$data(), codelists$names()),
                          table_name_collisions(cohorts$data()),
+                         # A bound cohort whose parts are unbuilt, listed after
+                         # it, a denominator, or holding colliding cohort names:
+                         # each one a bind() that dies at the data partner.
+                         bound_cohort_problems(cohorts$data()),
                          uninstantiated_cohort_problems(cohorts$data(), analyses$data()),
                          # Only reachable since data_sources became a guard in
                          # the generated script: an estimate running where its

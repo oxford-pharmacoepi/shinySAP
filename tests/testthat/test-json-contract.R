@@ -155,14 +155,6 @@ test_that("sap_is_empty: a fresh app is empty, anything authored is not", {
                 cdm_sources = list(), cdm_changes = list(), codelists = list(),
                 cohorts = list(), proposed_analyses = list())
   expect_true(sap_is_empty(fresh))
-  # The block the study card always writes, empty. Four nulls are not content.
-  blank_protocol <- fresh
-  blank_protocol$study$protocol <- list(reference = NA, version = NA,
-                                        date = NA, url = NA)
-  expect_true(sap_is_empty(blank_protocol))
-  named_protocol <- blank_protocol
-  named_protocol$study$protocol$reference <- "DARWIN EU® Study Protocol C1-001"
-  expect_false(sap_is_empty(named_protocol))
   titled <- fresh
   titled$study$title <- "My study"
   expect_false(sap_is_empty(titled))
