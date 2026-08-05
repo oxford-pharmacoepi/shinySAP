@@ -103,25 +103,6 @@ r_call_inline <- function(fn, args, width = 76) {
   if (nchar(one) <= width) one else r_call(fn, args)
 }
 
-# A long vector of concept ids, wrapped to a readable width. r_wrap_value() only
-# breaks a list(), and a codelist is one c() of seventy-odd numbers -- which
-# arrived as a single 900-character line.
-r_id_vector <- function(ids, indent = "    ", width = 88) {
-  if (!length(ids)) return("c()")
-  lines <- character(0)
-  cur   <- indent
-  for (i in seq_along(ids)) {
-    piece <- paste0(ids[[i]], if (i < length(ids)) "," else "")
-    if (nchar(cur) > nchar(indent) && nchar(cur) + 1 + nchar(piece) > width) {
-      lines <- c(lines, cur)
-      cur   <- paste0(indent, piece)
-    } else {
-      cur <- if (nchar(cur) > nchar(indent)) paste(cur, piece) else paste0(cur, piece)
-    }
-  }
-  sprintf("c(\n%s\n%s)", paste(c(lines, cur), collapse = "\n"), substr(indent, 1, nchar(indent) - 2))
-}
-
 # Field readers ----------------------------------------------------------------
 #
 # An operation arrives from JSON, so every field is untyped until read. These
@@ -480,37 +461,27 @@ concept_set_arg <- function(names) {
   if (length(vars) == 1) vars else sprintf("c(%s)", paste(vars, collapse = ", "))
 }
 
-# One codelist as the object conceptCohort(conceptSet =) takes.
+# One codelist as the assignment the conceptCohort(conceptSet =) call below
+# needs -- whose path the script cannot know, because the SAP names a codelist
+# without carrying its codes. Emitted as runnable code with a placeholder path
+# rather than as a comment: the entry call references the variable either way,
+# and an unfilled placeholder fails loudly at the importCodelist() call, with
+# this comment as the trail back to the plan, instead of at a bare reference
+# nothing explains.
 #
-# conceptCohort() documents that conceptSet accepts a plain codelist -- a named
-# list of concept ids -- which is exactly what a FLAT concept set expression is.
-# An EXPANDING expression (descendants or mapped) is deliberately NOT rendered as
-# one: emitting the seed ids as if they were the whole list would silently narrow
-# the codelist the author chose, which is the one failure this file exists to
-# prevent. It becomes a TODO instead, carrying the expression so the gap is
-# visible and fillable.
+# A PLACEHOLDER, deliberately not the study export's by-category path: the
+# document's appendix is read before any study directory exists -- laying out
+# that directory is OmopStudyBuilder's job, and the export names the real path
+# there (see codelist_csv_path() in sap_study_export.R, which the preview's
+# render session does not load).
 concept_set_r_code <- function(cl) {
-  expr <- cl$concept_set_expression %||% list()
-  nm   <- as.character(cl$name %||% "")[1]
-  if (!length(expr)) return(NULL)
+  nm  <- as.character(cl$name %||% "")[1]
   var <- concept_set_var(nm)
-  if (concept_set_expands(expr)) {
-    return(sprintf(paste0(
-      "# TODO: %s is a concept set EXPRESSION, not a fixed list -- %d of its %d\n",
-      "#   concepts pull in descendants or mapped concepts. Resolve it against the\n",
-      "#   vocabulary with omopgenerics::newConceptSetExpression() and\n",
-      "#   CodelistGenerator, then assign the result to `%s`."),
-      nm,
-      sum(vapply(expr, function(e) isTRUE(e$descendants) || isTRUE(e$mapped), logical(1))),
-      length(expr), var))
-  }
-  ids <- vapply(expr, function(e) as.character(e$concept_id %||% ""), character(1))
-  ids <- ids[nzchar(ids)]
-  if (!length(ids)) return(NULL)
-  # The named list conceptCohort(conceptSet =) documents, with the codelist's own
-  # name as the element name -- so the cohort table and the concept set it came
-  # from read the same in the script as they do in the SAP.
-  sprintf("%s <- list(\n  %s = %s\n)", var, var, r_id_vector(ids))
+  sprintf(paste0(
+    "# TODO: point `path` at the CSV (concept_id, concept_name) holding the\n",
+    "#   codes for '%s' -- the SAP names it but does not carry them.\n",
+    "%s <- omopgenerics::importCodelist(path = \"<path/to/%s.csv>\", type = \"csv\")"),
+    nm, var, var)
 }
 
 # Rendering --------------------------------------------------------------------

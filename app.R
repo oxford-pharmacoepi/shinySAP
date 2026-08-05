@@ -203,7 +203,20 @@ library(jsonlite)
 #        bound_cohort_problems() reports the four things the op's own validate()
 #        cannot see: binding a cohort nothing builds, one defined AFTER the bind,
 #        a denominator, or constituents whose tables share a cohort name.
-SAP_SCHEMA_VERSION <- "0.4.28"
+# 0.4.29 took the codes back out of the SAP, reversing 0.4.16/0.4.20: a codelist
+#        is now {name, category, description} -- no upload, no
+#        concept_set_expression, no resolved `codes` snapshot, no source_file or
+#        vocabulary_version. The codes live with the study (the CSVs a codelist
+#        tool produces, placed under studyCode/codelist/), not in the plan, so
+#        the document's codelist-contents appendix is gone and the generated
+#        code reads or TODO-marks each cited codelist instead of inlining it.
+# 0.4.30 cut the codelist categories to the three roles an incidence-prevalence
+#        study actually assigns -- Index event, Outcome, Covariate -- dropping
+#        Medicine / Procedure / Condition / Comorbidity (OMOP-domain-flavoured
+#        labels that said what the concepts WERE, not what the study uses them
+#        for) and replacing the explicit "Other" option with Covariate. Still
+#        free text for anything else; unset still renders under "Other".
+SAP_SCHEMA_VERSION <- "0.4.30"
 
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")
@@ -262,7 +275,50 @@ ui <- page_navbar(
     }
     .navbar-text a.navbar-save:hover,
     .navbar-text a.navbar-save:focus { color: var(--bs-success-text-emphasis, #146c43); }
-  "))),
+
+    /* Codelist references in cohort free text (www/codelist_refs.js). The
+       backdrop sits behind a transparent-background textarea and repeats its
+       text; only the [tokens] carry a tint -- blue like a selectize chip when
+       the codelist exists, amber when nothing defines it. The backdrop's text
+       itself is invisible; the textarea's text renders on top of the tint. */
+    .clref-wrap { position: relative; }
+    /* !important: the theme's own textarea.form-control background rule ties on
+       specificity and loads later, so without it the opaque white textarea sits
+       on top of the backdrop and no tint ever shows. */
+    .clref-wrap textarea.form-control {
+      position: relative;
+      background-color: transparent !important;
+    }
+    .clref-backdrop {
+      position: absolute; inset: 0;
+      overflow: hidden;
+      white-space: pre-wrap; overflow-wrap: break-word;
+      color: transparent;
+      background: var(--bs-body-bg, #fff);
+      pointer-events: none;
+    }
+    .clref-backdrop mark { color: transparent; padding: 0; border-radius: 3px; }
+    .clref-backdrop mark.clref-known { background: var(--bs-primary-bg-subtle, #cfe2ff); }
+    .clref-backdrop mark.clref-unknown { background: var(--bs-warning-bg-subtle, #fff3cd); }
+    .clref-menu {
+      position: absolute; left: 0; top: 100%; z-index: 1050;
+      min-width: 14rem; max-width: 100%;
+      background: var(--bs-body-bg, #fff);
+      border: 1px solid var(--bs-border-color, #dee2e6);
+      border-radius: var(--bs-border-radius, .375rem);
+      box-shadow: var(--bs-box-shadow-sm, 0 .125rem .25rem rgba(0,0,0,.075));
+    }
+    .clref-item {
+      display: block; width: 100%; text-align: left;
+      border: none; background: none;
+      padding: .25rem .75rem;
+      font-family: var(--bs-font-monospace, monospace);
+      font-size: .875em;
+    }
+    .clref-item:hover, .clref-item.active {
+      background: var(--bs-primary-bg-subtle, #cfe2ff);
+    }
+  ")), tags$script(src = "codelist_refs.js")),
   nav_panel("Study", div(class = "container-fluid py-3", study_ui("study"))),
   nav_panel("CDM Sources", div(class = "container-fluid py-3", cdm_sources_ui("sources"))),
   nav_panel("CDM Changes", div(class = "container-fluid py-3", cdm_changes_ui("cdm"))),
@@ -299,7 +355,8 @@ server <- function(input, output, session) {
   sources  <- cdm_sources_server("sources")
   cdm      <- cdm_changes_server("cdm", source_names = sources$names)
   codelists <- codelists_server("codelists")
-  cohorts  <- cohorts_server("cohorts", source_names = sources$names)
+  cohorts  <- cohorts_server("cohorts", source_names = sources$names,
+                             codelist_names = codelists$names)
   # by_name, not just names: the templates echo what the denominator cohort
   # already fixes, and validate against it.
   # Objective ids, labelled with their text, for the analysis cards' picker.

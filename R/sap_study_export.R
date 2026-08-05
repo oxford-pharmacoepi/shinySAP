@@ -30,8 +30,8 @@
 #      gets CohortConstructor::addCohortTableIndex(). Both are what a real DARWIN
 #      study does -- neither is a decision the PLAN makes, which is why the
 #      document's appendix shows neither: an index is a performance step a
-#      reviewer does not need to sign, and the appendix inlines its concept ids
-#      because it is read on a page rather than sitting beside a CSV.
+#      reviewer does not need to sign, and the codes live in CSVs the study team
+#      supplies beside the script, not in the plan.
 #
 # Only the ASSIGNMENT differs between the two hosts. Every call still comes from
 # cohort_operations_code() / cohort_r_code() / analysis_r_code(), so the study
@@ -46,9 +46,12 @@ STUDY_PATHS <- list(
   codes_dir = "codelist"
 )
 
-# A codelist's CSV, under its own category folder -- the layout DARWIN studies
-# already use (Comorbidities/, Outcomes/, Symptoms/ ...). An uncategorised
-# codelist falls into Other, the same answer the document's appendix gives.
+# Where a codelist's CSV is expected, under its own category folder
+# (Index_event/, Outcome/, Covariate/) -- the by-role layout DARWIN studies
+# already use. An uncategorised codelist falls into Other, the same answer the
+# document gives. The SAP does not carry the codes, so the export never writes these
+# files; the path is where the study team places the CSV their codelist tool
+# produced, and where codelistCreation.R reads it from.
 codelist_csv_path <- function(cl) {
   cat_dir <- as.character(cl$category %||% "")[1]
   if (is.na(cat_dir) || !nzchar(trimws(cat_dir))) cat_dir <- "Other"
@@ -60,28 +63,11 @@ codelist_csv_path <- function(cl) {
             sprintf("%s.csv", cohort_table_name(cl$name) %||% "codelist"))
 }
 
-# One codelist as its CSV: the resolved snapshot, which is what a study reads.
-# concept_id and concept_name are the column names CodelistGenerator and the
-# Atlas exports use, so the file drops straight into an existing pipeline.
-codelist_csv_content <- function(cl) {
-  codes <- cl$codes %||% list()
-  if (!length(codes)) return(NULL)
-  rows <- vapply(codes, function(cd) {
-    nm <- as.character(cd$name %||% "")[1]
-    if (is.na(nm)) nm <- ""
-    # Quoted because concept names contain commas ("Follicular lymphoma, grade 1").
-    sprintf('%s,"%s"', as.character(cd$code %||% ""), gsub('"', '""', nm))
-  }, character(1))
-  paste(c("concept_id,concept_name", rows, ""), collapse = "\n")
-}
-
-# codelist/codelistCreation.R: every concept set the cohorts enter on, read back
-# from the CSVs written beside it.
-#
-# Read from file rather than inlined as literals, unlike the document's appendix.
-# The appendix is read on a page, so the ids have to be visible there; a study
-# directory has the CSV sitting next to the script, and a reviewer diffing a
-# codelist wants the CSV, not a 75-element c().
+# codelist/codelistCreation.R: every concept set the cohorts enter on, read from
+# the CSVs the study team places beside it. The SAP names its codelists but does
+# not carry their codes, so the export cannot write the CSVs -- the script says
+# where each one is expected instead, and reading a path nobody filled fails
+# loudly at the importCodelist() call rather than somewhere downstream.
 #
 # importCodelist() rather than read.csv(): it is omopgenerics' own reader, it
 # returns a codelist keyed by the file name -- which is the codelist's name, so
@@ -90,22 +76,18 @@ codelist_csv_content <- function(cl) {
 # benefit.
 study_codelists_r <- function(sap) {
   cited <- cited_codelist_names(sap$cohorts)
-  cls   <- Filter(function(cl) {
-    nm <- as.character(cl$name %||% "")[1]
-    nm %in% cited && length(cl$codes %||% list())
-  }, sap$codelists %||% list())
+  cls   <- Filter(function(cl) as.character(cl$name %||% "")[1] %in% cited,
+                  sap$codelists %||% list())
   if (!length(cls)) {
     return(paste("# No concept sets: no cohort in this SAP enters on a codelist yet.\n"))
   }
   blocks <- vapply(cls, function(cl) {
     var <- concept_set_var(cl$name)
-    warn <- if (concept_set_expands(cl$concept_set_expression %||% list())) {
-      paste0("# TODO: ", cl$name, " is a concept set EXPRESSION -- the CSV holds the\n",
-             "#   concepts it names, not the descendants it also covers. Resolve it\n",
-             "#   with CodelistGenerator before running.\n")
-    } else ""
-    sprintf('%s# %s\n%s <- importCodelist(path = here("%s"), type = "csv")',
-            warn, as.character(cl$name %||% ""), var, codelist_csv_path(cl))
+    sprintf(paste0(
+      "# %s\n",
+      "# TODO: place this codelist's CSV (concept_id, concept_name) at the path below.\n",
+      '%s <- importCodelist(path = here("%s"), type = "csv")'),
+      as.character(cl$name %||% ""), var, codelist_csv_path(cl))
   }, character(1))
   paste0(paste(blocks, collapse = "\n\n"), "\n")
 }
@@ -233,13 +215,6 @@ study_files <- function(sap) {
     study_file_header(sap, "Study cohorts"), "\n", study_cohorts_r(sap))
   files[[STUDY_PATHS$analyses]] <- paste0(
     study_file_header(sap, "Incidence and prevalence"), "\n", study_analyses_r(sap))
-
-  cited <- cited_codelist_names(sap$cohorts)
-  for (cl in sap$codelists %||% list()) {
-    if (!as.character(cl$name %||% "")[1] %in% cited) next
-    content <- codelist_csv_content(cl)
-    if (!is.null(content)) files[[codelist_csv_path(cl)]] <- content
-  }
   files
 }
 

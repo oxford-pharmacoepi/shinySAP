@@ -6,11 +6,7 @@ sample_sap <- function(...) {
   base <- list(
     study = list(study_code = "C1-001", version = "1.0", min_cell_count = 5),
     sap_schema_version = "0.4.21",
-    codelists = list(list(
-      name = "cs_fl", category = "Condition / observation",
-      concept_set_expression = list(
-        list(concept_id = "111", excluded = FALSE, descendants = FALSE, mapped = FALSE)),
-      codes = list(list(code = "111", name = "Follicular lymphoma, grade 1")))),
+    codelists = list(list(name = "cs_fl", category = "Index event")),
     cohorts = list(
       list(name = "FL", kind = "target", operations = list(
         list(op = "concept_cohort", codelist = "cs_fl"),
@@ -75,36 +71,31 @@ test_that("cohorts are rendered from the same generator the appendix uses", {
 
 # Codelists ---------------------------------------------------------------------
 
-# The layout DARWIN studies already use: one folder per category, one CSV per
-# codelist, so a study directory looks like the ones a team already reads.
-test_that("a codelist becomes a CSV under its category folder", {
-  files <- study_files(sample_sap())
-  expect_true("codelist/Condition_observation/cs_fl.csv" %in% names(files))
-  expect_match(files[["codelist/Condition_observation/cs_fl.csv"]],
-               "concept_id,concept_name", fixed = TRUE)
-})
-
-test_that("an uncategorised codelist falls into Other, as in the document", {
-  sap <- sample_sap()
-  sap$codelists[[1]]$category <- NULL
-  expect_true("codelist/Other/cs_fl.csv" %in% names(study_files(sap)))
-})
-
-# A concept name containing a comma would otherwise split into two columns.
-test_that("concept names are quoted so commas survive the CSV", {
-  csv <- study_files(sample_sap())[["codelist/Condition_observation/cs_fl.csv"]]
-  expect_match(csv, '"Follicular lymphoma, grade 1"', fixed = TRUE)
+# The SAP names its codelists but does not carry their codes, so the export
+# writes no CSVs -- the study team places them at the paths the script reads.
+test_that("the export writes no codelist CSVs", {
+  expect_false(any(grepl("[.]csv$", names(study_files(sample_sap())))))
 })
 
 # omopgenerics' own reader, not a hand-rolled read.csv(): it keys the codelist by
 # the file name, which is the codelist's name, so conceptCohort(conceptSet =)
-# takes the result directly. It is also what a real DARWIN study writes.
-test_that("codelistCreation.R reads its CSVs with importCodelist", {
+# takes the result directly. It is also what a real DARWIN study writes. The
+# path follows the layout DARWIN studies use: one folder per category.
+test_that("codelistCreation.R expects each CSV under its category folder", {
   files <- study_files(sample_sap())
   expect_match(files[["codelist/codelistCreation.R"]],
-               'cs_fl <- importCodelist(path = here("codelist/Condition_observation/cs_fl.csv"), type = "csv")',
+               'cs_fl <- importCodelist(path = here("codelist/Index_event/cs_fl.csv"), type = "csv")',
                fixed = TRUE)
+  # Said out loud, not implied by a failing read: the CSV is the team's to supply.
+  expect_match(files[["codelist/codelistCreation.R"]], "# TODO", fixed = TRUE)
   expect_false(grepl("read.csv", files[["codelist/codelistCreation.R"]], fixed = TRUE))
+})
+
+test_that("an uncategorised codelist is expected under Other, as in the document", {
+  sap <- sample_sap()
+  sap$codelists[[1]]$category <- NULL
+  expect_match(study_files(sap)[["codelist/codelistCreation.R"]],
+               'here("codelist/Other/cs_fl.csv")', fixed = TRUE)
 })
 
 # An index changes no result, so it belongs in the code that runs and not in the
@@ -142,21 +133,11 @@ test_that("the restriction is stated in the generated prose too", {
 
 # A codelist cited only in prose is documentation, not an input -- the same rule
 # the standalone script applies.
-test_that("only codelists a typed entry cites get a CSV", {
+test_that("only codelists a typed entry cites reach codelistCreation.R", {
   sap <- sample_sap()
-  sap$codelists[[2]] <- list(name = "cs_unused", category = "Outcome",
-                             codes = list(list(code = "222")))
-  files <- study_files(sap)
-  expect_false(any(grepl("cs_unused", names(files), fixed = TRUE)))
-})
-
-# An expanding expression's CSV holds the concepts it NAMES, not the descendants
-# it also covers, so the file must say so rather than look complete.
-test_that("an expanding concept set carries its warning into the study code", {
-  sap <- sample_sap()
-  sap$codelists[[1]]$concept_set_expression <- list(
-    list(concept_id = "111", excluded = FALSE, descendants = TRUE, mapped = FALSE))
-  expect_match(study_files(sap)[["codelist/codelistCreation.R"]], "# TODO", fixed = TRUE)
+  sap$codelists[[2]] <- list(name = "cs_unused", category = "Covariate")
+  expect_false(grepl("cs_unused",
+                     study_files(sap)[["codelist/codelistCreation.R"]], fixed = TRUE))
 })
 
 # Empty SAPs ---------------------------------------------------------------------
@@ -321,6 +302,6 @@ test_that("write_study_files creates the tree and leaves everything else alone",
   paths <- write_study_files(sample_sap(), dir)
 
   expect_true(all(file.exists(paths)))
-  expect_true(file.exists(file.path(dir, "codelist/Condition_observation/cs_fl.csv")))
+  expect_true(file.exists(file.path(dir, "codelist/codelistCreation.R")))
   expect_identical(readLines(file.path(dir, "codeToRun.R")), "min_cell_count <- 99")
 })

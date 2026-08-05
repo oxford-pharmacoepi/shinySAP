@@ -494,19 +494,28 @@ format_denominator_cohort <- function(x) {
 # teach both conventions. Brackets, not <angle> or `backticks`: angle brackets
 # read as placeholders and pandoc may eat them; backticks render literally in
 # the Word tables.
+# Marks a free-text field as one that cites codelists in [square brackets]:
+# www/codelist_refs.js gives it autocomplete on "[" and tints every reference
+# like a selectize chip -- blue when the codelist exists, amber when nothing
+# defines it (the same distinction Review reports).
+codelist_aware <- function(x) tagAppendAttributes(x, class = "codelist-aware")
+
 cohort_definition_ui <- function(ns, pf) tagList(
   layout_columns(
     col_widths = c(6, 6),
-    textAreaInput(ns("entry_events"), "Entry events (one per line)",
-                  join_lines(pf("entry_events", character(0))), rows = 4, width = "100%",
-                  placeholder = "Influenza vaccination [cs_influenza_vaccine]"),
-    textAreaInput(ns("exit_criteria"), "Exit criteria (one per line)",
-                  join_lines(pf("exit_criteria", character(0))), rows = 4, width = "100%",
-                  placeholder = "End of continuous observation")
+    codelist_aware(
+      textAreaInput(ns("entry_events"), "Entry events (one per line)",
+                    join_lines(pf("entry_events", character(0))), rows = 4, width = "100%",
+                    placeholder = "Influenza vaccination [cs_influenza_vaccine]")),
+    codelist_aware(
+      textAreaInput(ns("exit_criteria"), "Exit criteria (one per line)",
+                    join_lines(pf("exit_criteria", character(0))), rows = 4, width = "100%",
+                    placeholder = "End of continuous observation"))
   ),
-  textAreaInput(ns("inclusion_criteria"), "Inclusion / exclusion criteria (one per line)",
-                join_lines(pf("inclusion_criteria", character(0))), rows = 3, width = "100%",
-                placeholder = "Index on the first occurrence per influenza season\nAged 18 or over at index"),
+  codelist_aware(
+    textAreaInput(ns("inclusion_criteria"), "Inclusion / exclusion criteria (one per line)",
+                  join_lines(pf("inclusion_criteria", character(0))), rows = 3, width = "100%",
+                  placeholder = "Index on the first occurrence per influenza season\nAged 18 or over at index")),
   cohort_operations_block(ns, pf)
 )
 

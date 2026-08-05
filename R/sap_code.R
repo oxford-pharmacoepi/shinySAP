@@ -318,9 +318,9 @@ table_name_collisions <- function(cohorts) {
 # Legitimate, but not free. The script still emits the estimator call, so run as
 # it stands it fails at the data partner with "<table> does not exist in the
 # cdm_reference object" -- and nothing anywhere said so. Every other gap in the
-# generated code is reported: a colliding table name above, an expanding concept
-# set as a TODO, an unregistered operation as a comment in place. This one was
-# the exception, and it is the one that stops the script dead.
+# generated code is reported: a colliding table name above, an uncarried
+# codelist as a TODO, an unregistered operation as a comment in place. This one
+# was the exception, and it is the one that stops the script dead.
 #
 # A reference to a cohort NOBODY DEFINED lands here too. It is a different
 # mistake with the same ending -- a call against a table the script never creates
@@ -708,8 +708,7 @@ sap_script_sections <- function(sap) {
   for (cl in codelists) {
     nm <- as.character(cl$name %||% "")[1]
     if (!nm %in% cited) next
-    code <- concept_set_r_code(cl)
-    if (!is.null(code)) add("Concept sets", nm, code = code)
+    add("Concept sets", nm, code = concept_set_r_code(cl))
   }
 
   all_sources <- sap_source_keys(sap)

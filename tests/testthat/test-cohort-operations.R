@@ -148,23 +148,24 @@ test_that("a cohort with no operations is not validated as if it had some", {
 
 # Concept sets ------------------------------------------------------------------
 
-test_that("a flat concept set becomes the named list conceptCohort takes", {
-  code <- concept_set_r_code(list(name = "cs_fl", concept_set_expression = list(
-    list(concept_id = "111", excluded = FALSE, descendants = FALSE, mapped = FALSE),
-    list(concept_id = "222", excluded = FALSE, descendants = FALSE, mapped = FALSE))))
-  expect_match(code, "cs_fl <- list(", fixed = TRUE)
-  expect_match(code, "cs_fl = c(", fixed = TRUE)
-  expect_match(code, "111", fixed = TRUE)
-})
-
-# Emitting the seed ids as if they were the whole list would silently narrow the
-# codelist the author chose -- the one failure mode this file exists to prevent.
-test_that("an expanding concept set becomes a TODO, never a narrowed list", {
-  code <- concept_set_r_code(list(name = "cs_fl", concept_set_expression = list(
-    list(concept_id = "111", excluded = FALSE, descendants = TRUE, mapped = FALSE))))
+# The SAP names a codelist without carrying its codes, so the script cannot
+# know the path -- but the conceptCohort() call references the variable either
+# way, so the assignment is emitted as runnable code with a placeholder path:
+# left unfilled it fails loudly at importCodelist(), with the TODO above it as
+# the trail back to the plan, rather than at a bare reference nothing explains.
+#
+# A placeholder rather than the export's by-category path, for two reasons that
+# have to stay true together: the appendix is read before OmopStudyBuilder has
+# laid out any study directory, and the preview's render session (see
+# inst/sap_preview.Rmd) does not load sap_study_export.R -- so this function
+# must not call into it.
+test_that("a cited codelist becomes code with a placeholder path, not a comment", {
+  code <- concept_set_r_code(list(name = "cs_fl", category = "Index event"))
   expect_match(code, "# TODO", fixed = TRUE)
-  expect_match(code, "newConceptSetExpression", fixed = TRUE)
-  expect_false(grepl("cs_fl <- list(", code, fixed = TRUE))
+  expect_match(code, "'cs_fl'", fixed = TRUE)
+  # The assignment is code (start of line), not part of the comment block.
+  expect_match(code, "\ncs_fl <- omopgenerics::importCodelist", fixed = TRUE)
+  expect_match(code, 'path = "<path/to/cs_fl.csv>"', fixed = TRUE)
 })
 
 # The script ---------------------------------------------------------------------
@@ -174,8 +175,7 @@ test_that("an expanding concept set becomes a TODO, never a narrowed list", {
 test_that("the script builds concept sets, then cohorts, then estimates", {
   script <- sap_r_script(list(
     study = list(min_cell_count = 5),
-    codelists = list(list(name = "cs_fl", concept_set_expression = list(
-      list(concept_id = "111", excluded = FALSE, descendants = FALSE, mapped = FALSE)))),
+    codelists = list(list(name = "cs_fl")),
     cohorts = list(
       list(name = "FL", kind = "target", operations = standard_ops),
       list(name = "General population", kind = "denominator", sex = list("Both"),
@@ -185,26 +185,22 @@ test_that("the script builds concept sets, then cohorts, then estimates", {
       parameters = list(denominatorTable = "General population", outcomeTable = "FL")))))
 
   pos <- function(s) regexpr(s, script, fixed = TRUE)[[1]]
-  expect_lt(pos("cs_fl <- list("), pos("conceptCohort("))
+  expect_lt(pos("codelist 'cs_fl'"), pos("conceptCohort("))
   expect_lt(pos("conceptCohort("), pos("generateDenominatorCohortSet("))
   expect_lt(pos("generateDenominatorCohortSet("), pos("estimatePointPrevalence("))
   # The cohort table the pipeline creates is the one the estimate points at.
   expect_match(script, 'outcomeTable     = "fl"', fixed = TRUE)
 })
 
-# A codelist nothing enters on is cited in prose, not in code, so assigning it
-# would leave an unused object in the script.
-test_that("only codelists a typed entry cites are assigned in the script", {
+# A codelist nothing enters on is cited in prose, not in code, so marking it
+# would leave an unused TODO in the script.
+test_that("only codelists a typed entry cites get a block in the script", {
   script <- sap_r_script(list(
-    codelists = list(
-      list(name = "cs_used", concept_set_expression = list(
-        list(concept_id = "111", excluded = FALSE, descendants = FALSE, mapped = FALSE))),
-      list(name = "cs_unused", concept_set_expression = list(
-        list(concept_id = "222", excluded = FALSE, descendants = FALSE, mapped = FALSE)))),
+    codelists = list(list(name = "cs_used"), list(name = "cs_unused")),
     cohorts = list(list(name = "FL", kind = "target", operations = list(
       list(op = "concept_cohort", codelist = "cs_used"))))))
-  expect_true(grepl("cs_used <- list(", script, fixed = TRUE))
-  expect_false(grepl("cs_unused <- list(", script, fixed = TRUE))
+  expect_true(grepl("cs_used <- omopgenerics::importCodelist", script, fixed = TRUE))
+  expect_false(grepl("cs_unused", script, fixed = TRUE))
 })
 
 # An entry naming several codelists ----------------------------------------------
@@ -239,14 +235,12 @@ test_that("prose names every codelist the entry cites", {
   expect_match(line, "[cs_fl, cs_mm]", fixed = TRUE)
 })
 
-test_that("every cited codelist is assigned in the script, not just the first", {
-  cs <- function(nm, id) list(name = nm, concept_set_expression = list(
-    list(concept_id = id, excluded = FALSE, descendants = FALSE, mapped = FALSE)))
+test_that("every cited codelist gets a block in the script, not just the first", {
   script <- sap_r_script(list(
-    codelists = list(cs("cs_fl", "111"), cs("cs_mm", "222")),
+    codelists = list(list(name = "cs_fl"), list(name = "cs_mm")),
     cohorts   = list(fl_cohort(many_ops))))
-  expect_true(grepl("cs_fl <- list(", script, fixed = TRUE))
-  expect_true(grepl("cs_mm <- list(", script, fixed = TRUE))
+  expect_true(grepl("cs_fl <- omopgenerics::importCodelist", script, fixed = TRUE))
+  expect_true(grepl("cs_mm <- omopgenerics::importCodelist", script, fixed = TRUE))
 })
 
 # Reading only the first name would leave the rest looking uncited, which is the

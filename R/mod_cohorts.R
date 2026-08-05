@@ -192,7 +192,8 @@ cohorts_ui <- function(id) {
   )
 }
 
-cohorts_server <- function(id, source_names = reactive(character(0))) {
+cohorts_server <- function(id, source_names = reactive(character(0)),
+                           codelist_names = reactive(character(0))) {
   moduleServer(id, function(input, output, session) {
 
     # The target-cohort picker on a cohort card is fed by the cohort list, which
@@ -202,6 +203,16 @@ cohorts_server <- function(id, source_names = reactive(character(0))) {
     names_v <- reactiveVal(character(0))
     settled <- debounce(reactive(names_v()), 600)
     settled_sources <- debounce(source_names, 600)
+
+    # The defined codelist names, shipped to the browser for the [bracket]
+    # autocomplete and reference tinting in the cohort text fields
+    # (www/codelist_refs.js). Debounced like the pickers: renaming a codelist
+    # re-tints on the settled name, not on every keystroke.
+    settled_codelists <- debounce(codelist_names, 600)
+    observe({
+      session$sendCustomMessage("codelist-names",
+                                as.list(as.character(settled_codelists())))
+    })
 
     # The same cycle-breaking trick for the picker's OPTGROUPS, which need each
     # cohort's kind as well as its name. Deriving this from by_name_r() would put

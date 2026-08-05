@@ -558,3 +558,11 @@ test_that("denominator_cohort_set_ui: a large set scrolls instead of growing the
   # The last entry is reachable -- the point of listing them all.
   expect_match(html, "Age 140, 149 | Female | 1095 days prior observation", fixed = TRUE)
 })
+
+# The [bracket] convention is usable, not just documented: the three free-text
+# fields carry the class www/codelist_refs.js keys its autocomplete and
+# reference tinting on.
+test_that("every cohort text field is marked for codelist autocomplete", {
+  html <- as.character(cohort_definition_ui(NS("x"), prefiller(NULL)))
+  expect_length(gregexpr("codelist-aware", html, fixed = TRUE)[[1]], 3)
+})

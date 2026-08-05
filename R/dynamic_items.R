@@ -120,10 +120,12 @@ dynamic_items <- function(prefix, container, item_ui, item_server,
   )
 }
 
-# A one-shot script inserted right after a new card: scroll it into view and
-# put the cursor in its first field. Without this, "Add" appends below the fold
-# of a long section and visibly does nothing. insertUI() executes scripts on
-# insertion; the timeout lets the card finish rendering first.
+# A one-shot script inserted right after a new card: expand it, scroll it into
+# view and put the cursor in its first field. Without this, "Add" appends below
+# the fold of a long section and visibly does nothing -- and since cards start
+# collapsed, without the expand step it would appear as a bare header with
+# nothing to type into. insertUI() executes scripts on insertion; the timeout
+# lets the card finish rendering first.
 #
 # Only PLAIN text fields (.form-control) are focused. Selectize renders its own
 # bare <input> inside every select, and focusing that one auto-opens the
@@ -133,6 +135,8 @@ reveal_item_script <- function(box_id) {
   tags$script(HTML(sprintf(
     paste0("setTimeout(function(){",
            "var b=document.getElementById('%s');if(!b)return;",
+           "var c=b.querySelector(':scope > .collapse');",
+           "if(c)bootstrap.Collapse.getOrCreateInstance(c,{toggle:false}).show();",
            "b.scrollIntoView({behavior:'smooth',block:'center'});",
            "var f=b.querySelector('.card-body input.form-control[type=text],",
            ".card-body textarea.form-control');",
@@ -150,6 +154,12 @@ reveal_item_script <- function(box_id) {
 # navigation worse rather than better -- hence `card_label`, which each item server
 # fills with the item's own name (item_card_label()).
 #
+# Cards start COLLAPSED: a section is first read as a list of names, and opening
+# a loaded SAP as a wall of expanded forms buried that list. The one exception
+# is a card the user just created -- Add, Duplicate and Undo pass reveal = TRUE
+# to dynamic_items(), and reveal_item_script() expands the new card so there is
+# something to type into.
+#
 # Collapsing hides the body with display: none, and a hidden output does not
 # render. Every uiOutput inside a card body that *contains inputs* already sets
 # suspendWhenHidden = FALSE -- it had to, because the tab pane itself is hidden
@@ -164,11 +174,11 @@ item_card <- function(id, title, ...) {
       class = "card-header d-flex justify-content-between align-items-center py-2",
       tags$button(
         class = paste("btn btn-sm btn-link text-body text-decoration-none p-0",
-                      "d-flex align-items-center gap-2 item-card-toggle"),
+                      "d-flex align-items-center gap-2 item-card-toggle collapsed"),
         type = "button",
         `data-bs-toggle` = "collapse",
         `data-bs-target` = paste0("#", body),
-        `aria-expanded` = "true",
+        `aria-expanded` = "false",
         `aria-controls` = body,
         icon("chevron-down", class = "item-card-chevron small"),
         tags$strong(title),
@@ -183,7 +193,7 @@ item_card <- function(id, title, ...) {
         actionButton(ns("remove"), "Remove", class = "btn btn-sm btn-outline-danger")
       )
     ),
-    div(id = body, class = "collapse show", div(class = "card-body", ...))
+    div(id = body, class = "collapse", div(class = "card-body", ...))
   )
 }
 
