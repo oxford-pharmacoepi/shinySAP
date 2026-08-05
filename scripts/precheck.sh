@@ -157,7 +157,7 @@ if wants render; then
                 "cohort_operations.R")) source(file.path("R", f))
     saps <- list.files("output", pattern = "[.]json$", full.names = TRUE)
     if (!length(saps)) { cat("no SAP in output/ to render\n"); quit(status = 0) }
-    sap <- migrate_sap(read_sap(saps[[1]]))
+    sap <- read_sap(saps[[1]])
     rmarkdown::render("inst/sap_preview.Rmd",
       output_format = rmarkdown::html_document(self_contained = TRUE),
       output_file = tempfile(fileext = ".html"),
