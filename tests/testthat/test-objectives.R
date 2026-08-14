@@ -179,7 +179,7 @@ test_that("objective choices reach the analysis card's picker", {
 })
 
 test_that("app.R hands analyses_server its objective choices", {
-  app <- readLines(testthat::test_path("..", "..", "app.R"))
+  app <- readLines(testthat::test_path("..", "..", "extras", "app.R"))
   call <- paste(app, collapse = "\n")
   expect_match(call, "objective_choices = objective_choices", fixed = TRUE)
 })

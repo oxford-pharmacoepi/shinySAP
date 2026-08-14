@@ -5,8 +5,8 @@
 # THIS SCRIPT IS THE SINGLE SOURCE. .github/workflows/ci.yaml calls it rather
 # than restating the commands, so a check cannot pass locally and fail on
 # GitHub because the two drifted. The workflow still owns the ENVIRONMENTS --
-# which R, which library, whether renv is restored -- because that is what a CI
-# runner is for; this owns what "passing" means.
+# which R and which library -- because that is what a CI runner is for; this
+# owns what "passing" means.
 #
 #   scripts/precheck.sh                  every step
 #   scripts/precheck.sh readme lint      only those steps
@@ -14,16 +14,16 @@
 #
 # The two CI jobs run different subsets because they have different libraries:
 #
-#   test job  renv restored          ->  renv parse tests smoke
+#   test job  project dependencies   ->  parse tests smoke
 #   lint job  stock library + lintr  ->  readme lint
 #
 # --fix only touches things with exactly one right answer -- today the README's
-# schema version, mechanically derived from app.R. Lints and failing tests are
+# schema version, mechanically derived from extras/app.R. Lints and failing tests are
 # never auto-fixed: a linter that rewrites your code is one you stop reading.
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-ALL_STEPS=(readme lint renv parse tests smoke render)
+ALL_STEPS=(readme lint parse tests smoke render)
 FIX=0
 STEPS=()
 for arg in "$@"; do
@@ -63,14 +63,14 @@ ok()   { printf '   \033[32mOK\033[0m   %s\n' "$1"; }
 bad()  { printf '   \033[31mFAIL\033[0m %s\n' "$1"; failed+=("$1"); }
 wants() { [[ " ${STEPS[*]} " == *" $1 "* ]]; }
 
-# The README's example JSON must carry the schema version app.R defines.
+# The README's example JSON must carry the schema version extras/app.R defines.
 #
 # A step of the CI "lint" job but NOT a lint, which is worth knowing: it is the
 # one that fails whenever a schema bump lands without the README following it,
 # and a red X on a job called "lint" reads as a style problem when it is not.
 if wants readme; then
   step "README documents the current schema version"
-  version=$(sed -nE 's/^SAP_SCHEMA_VERSION <- "([0-9.]+)"/\1/p' app.R)
+  version=$(sed -nE 's/^SAP_SCHEMA_VERSION <- "([0-9.]+)"/\1/p' extras/app.R)
   if [ -z "$version" ]; then
     bad "SAP_SCHEMA_VERSION not found in app.R"
   elif grep -qF "\"sap_schema_version\": \"$version\"" README.md; then
@@ -88,8 +88,7 @@ if wants readme; then
 fi
 
 # lintr, against a STOCK library: lintr is not a runtime dependency, so the
-# project .Rprofile must not pull in the renv library here. Scoped to this step
-# -- the test steps below need renv exactly as the workflow restored it.
+# project startup files must not interfere with the stock lint library.
 if wants lint; then
   step "Lint (config in .lintr)"
   # The version is reported because CI installs `any::lintr` and a laptop
@@ -106,18 +105,12 @@ if wants lint; then
   if [ $code -eq 0 ]; then ok "no lints ($version_line)"; else printf '%s\n' "$out"; bad "lintr reported problems"; fi
 fi
 
-if wants renv; then
-  step "Lockfile is in sync with the code"
-  out=$(Rscript -e 'status <- renv::status(); quit(status = if (!isTRUE(status$synchronized)) 1 else 0)' 2>&1)
-  if [ $? -eq 0 ]; then ok "renv.lock synchronized"; else printf '%s\n' "$out" | tail -20; bad "renv.lock out of sync"; fi
-fi
-
 # The suite only sources part of R/, so this is what catches a syntax error in a
-# module the tests never load, or in app.R itself.
+# module the tests never load, or in extras/app.R itself.
 if wants parse; then
   step "Parse all R sources"
-  out=$(Rscript -e 'invisible(lapply(c("app.R", list.files("R", full.names = TRUE)), parse))' 2>&1)
-  if [ $? -eq 0 ]; then ok "app.R and R/ parse"; else printf '%s\n' "$out" | tail -10; bad "a source file does not parse"; fi
+  out=$(Rscript -e 'invisible(lapply(c("extras/app.R", list.files("R", full.names = TRUE)), parse))' 2>&1)
+  if [ $? -eq 0 ]; then ok "extras/app.R and R/ parse"; else printf '%s\n' "$out" | tail -10; bad "a source file does not parse"; fi
 fi
 
 if wants tests; then
@@ -133,7 +126,7 @@ fi
 if wants smoke; then
   step "Smoke test — the app starts and serves HTTP 200"
   log=$(mktemp)
-  Rscript -e 'shiny::runApp(".", port = 8123)' > "$log" 2>&1 &
+  Rscript -e 'shiny::runApp("extras", port = 8123)' > "$log" 2>&1 &
   app_pid=$!
   served=1
   for _ in $(seq 1 30); do

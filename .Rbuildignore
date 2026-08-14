@@ -1,0 +1,13 @@
+^\.Rproj\.user$
+^.*\.Rproj$
+^\.Rhistory$
+^\.Rprofile$
+^\.github$
+^\.git$
+^\.gitignore$
+^\.lintr$
+^renv$
+^scripts$
+^output$
+^README\.md$
+^LICENSE\.md$

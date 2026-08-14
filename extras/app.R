@@ -1,6 +1,6 @@
 # shinySAP -- structured capture of a Statistical Analysis Plan as JSON.
 #
-# Run with:  shiny::runApp("Documents/shinySAP")
+# Run with:  shiny::runApp("Documents/shinySAP/extras")
 #
 # Files in R/ are sourced automatically by Shiny.
 
@@ -10,6 +10,7 @@ if (!nzchar(Sys.getenv("RSTUDIO_PANDOC")))
 library(shiny)
 library(bslib)
 library(jsonlite)
+library(shinySAP)
 
 # 0.2.0 added cdm_sources and renamed analyses -> proposed_analyses.
 # 0.3.0 moved the type-specific analysis fields under `parameters`.

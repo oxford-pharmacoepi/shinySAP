@@ -29,32 +29,19 @@ accept free text, so you can reference something you have not written down yet.
 
 ## Running
 
-Dependencies are pinned with [renv](https://rstudio.github.io/renv/); the exact
-package versions (and the R version they were locked against) live in
-`renv.lock`. First time in a fresh clone, restore them:
+Install the package, then run the extra Shiny app from the package root:
 
 ```r
-# in R, with the repo root as the working directory
-renv::restore()
-shiny::runApp()
+pak::local_install()
+shiny::runApp(system.file("extras", package = "shinySAP"))
 ```
-
-renv activates automatically through the project `.Rprofile` on every later
-session, so after that first restore it is just:
-
-```r
-shiny::runApp("path/to/shinySAP")
-```
-
-To upgrade dependencies, run `renv::update()` followed by `renv::snapshot()`
-and commit the resulting `renv.lock`.
 
 By default the app writes to `output/` relative to the working directory. Point
 it somewhere else with:
 
 ```r
 options(shinySAP.output_dir = "~/saps")
-shiny::runApp("path/to/shinySAP")
+shiny::runApp("path/to/shinySAP/extras")
 ```
 
 ## Output
@@ -511,7 +498,9 @@ out the rules, including why the template files have to sit flat in `R/`.
 ## Layout
 
 ```
-app.R                     UI, server, and the reactive that assembles the JSON
+extras/app.R               Extra Shiny app: UI, server, and JSON assembly
+DESCRIPTION               R package metadata
+NAMESPACE                 R package namespace
 R/utils.R                 JSON helpers, slugify, save/read
 R/dynamic_items.R         add/remove machinery and pickers for repeating sections
 R/analysis_registry.R     analysis type registry, resolver, shared input blocks
@@ -532,7 +521,7 @@ re-rendered block, so adding or removing one never resets its siblings.
 
 ## Tests
 
-The suite needs `testthat`, which `renv::restore()` installs along with
+The suite needs `testthat`, which should be installed along with
 everything else. From the repo root:
 
 ```sh
@@ -545,11 +534,11 @@ file the export writes — against real `IncidencePrevalence`, `omopgenerics` an
 them is where the expensive mistakes live: a guarded estimate that leaves its
 variable undefined parses perfectly and then takes `bind()` down at the data
 partner. This app does not depend on those packages (it generates text and never
-calls them), so they are not in `renv.lock` and the file skips wherever they are
+calls them), so the file skips wherever they are
 absent. To actually run it, install them into the project library:
 
 ```r
-renv::install(c("IncidencePrevalence", "omopgenerics", "duckdb"))
+install.packages(c("IncidencePrevalence", "omopgenerics", "duckdb"))
 ```
 
 That is a deliberate choice, not an oversight — it puts a heavy dependency tree
