@@ -39,7 +39,7 @@ blank_to_na <- function(x) {
 # A dateInput's `value`: a Date, or NULL to start the field genuinely blank.
 #
 # A hand-edited file may hold something a calendar cannot show ("Q1 2024",
-# "unknown"). dateInput() would warn and render blank anyway; coercing here makes
+# "unknown"). shiny::dateInput() would warn and render blank anyway; coercing here makes
 # that explicit and keeps the console quiet. A date the picker cannot represent
 # is not one this app can capture.
 as_date_value <- function(x) {
@@ -63,13 +63,13 @@ as_date_value <- function(x) {
 # neither undefined nor null, so the picker starts empty and stays that way.
 #
 # A blank field then needs to say what typing into it looks like, and
-# dateInput() takes no placeholder either -- so that attribute goes on the same
+# shiny::dateInput() takes no placeholder either -- so that attribute goes on the same
 # way. It shows the FORMAT, not what blank means: blank is meaningful per field,
 # so each call site says so in its own help text.
 date_input <- function(inputId, label, value = NULL, # nolint: object_name_linter.
                        placeholder = "YYYY-MM-DD", ...) {
   value <- as_date_value(value)
-  di <- dateInput(inputId, label, value = value, width = "100%", ...)
+  di <- shiny::dateInput(inputId, label, value = value, width = "100%", ...)
   tq <- htmltools::tagQuery(di)$find("input")$addAttrs(placeholder = placeholder)
   if (is.null(value)) tq <- tq$addAttrs("data-initial-date" = "")
   tq$allTags()
@@ -138,17 +138,17 @@ write_sap <- function(sap, path) {
 # (showNotification).
 save_working <- function(sap, path, n_problems = 0) {
   if (is.na(sap$study$title %||% NA)) {
-    showNotification("Give the study a title before saving.", type = "warning")
+    shiny::showNotification("Give the study a title before saving.", type = "warning")
     return(invisible(NULL))
   }
   path <- write_sap(sap, path)
   if (n_problems > 0) {
-    showNotification(
+    shiny::showNotification(
       sprintf("Saved %s, but %d item(s) still need attention.", basename(path), n_problems),
       type = "warning", duration = 8
     )
   } else {
-    showNotification(paste("Saved", basename(path)), type = "message")
+    shiny::showNotification(paste("Saved", basename(path)), type = "message")
   }
   invisible(path)
 }

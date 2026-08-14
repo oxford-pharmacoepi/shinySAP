@@ -12,13 +12,13 @@
 # Analyses reads those back rather than restating them (denominator_summary()).
 
 cohort_item_ui <- function(id, prefill = NULL) {
-  ns <- NS(id)
+  ns <- shiny::NS(id)
   pf <- prefiller(prefill)
   item_card(
     id, "Cohort",
-    layout_columns(
+    bslib::layout_columns(
       col_widths = c(4, 4, 4),
-      textInput(ns("name"), "Cohort name", pf("name"), width = "100%"),
+      shiny::textInput(ns("name"), "Cohort name", pf("name"), width = "100%"),
       # The SAP-level counterpart of the generators' `cdm` argument: WHICH
       # databases this cohort is built against. A live handle is not a plan
       # field, so the plan names the CDM sources instead -- the same shape the
@@ -28,31 +28,31 @@ cohort_item_ui <- function(id, prefill = NULL) {
                     placeholder = "One or more CDM sources"),
       # A new card starts with NO kind: which kind a cohort is decides everything
       # else on the card, so it is the author's first decision, not a default.
-      selectInput(ns("kind"), "Kind", c("Choose a kind…" = "", COHORT_KINDS),
+      shiny::selectInput(ns("kind"), "Kind", c("Choose a kind..." = "", COHORT_KINDS),
                   selected = canonical_cohort_kind(pf("kind")),
                   width = "100%")
     ),
-    tags$hr(class = "my-3"),
-    uiOutput(ns("kind_fields"))
+    shiny::tags$hr(class = "my-3"),
+    shiny::uiOutput(ns("kind_fields"))
   )
 }
 
 cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
-                               cohort_names = reactive(character(0)),
+                               cohort_names = shiny::reactive(character(0)),
                                on_rename = function(old, new) {},
-                               renames = reactive(NULL),
-                               source_names = reactive(character(0)),
-                               cohort_index = reactive(list())) {
-  moduleServer(id, function(input, output, session) {
-    observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
+                               renames = shiny::reactive(NULL),
+                               source_names = shiny::reactive(character(0)),
+                               cohort_index = shiny::reactive(list())) {
+  shiny::moduleServer(id, function(input, output, session) {
+    shiny::observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
 
     # Rename propagation, the EMIT half. The card knows its own previous name,
     # so a change is reported upward as {old -> new}; cohorts_server decides
     # whether it is unambiguous enough to act on. A blank emits nothing:
     # clearing a name is not a rename, and the previous name is kept so typing
     # a fresh one still links back to it.
-    prev_name <- reactiveVal(NULL)
-    observeEvent(input$name, {
+    prev_name <- shiny::reactiveVal(NULL)
+    shiny::observeEvent(input$name, {
       new <- trimws(input$name %||% "")
       old <- prev_name()
       if (nzchar(new)) prev_name(new)
@@ -65,12 +65,12 @@ cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
     base_pf <- prefiller(prefill)
 
     # What a collapsed card says it is: the cohort's name and kind.
-    item_card_label(output, reactive({
+    item_card_label(output, shiny::reactive({
       nm   <- trimws(input$name %||% "")
       kind <- kind_r()
       kind_label <- if (!nzchar(kind)) "no kind chosen" else
         names(COHORT_KINDS)[match(kind, COHORT_KINDS)]
-      paste0(if (nzchar(nm)) nm else "Untitled", " — ", kind_label)
+      paste0(if (nzchar(nm)) nm else "Untitled", " -- ", kind_label)
     }))
 
     # Same rule as the analysis card: Shiny keeps an input's last value after its
@@ -79,35 +79,35 @@ cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # length-1 NA means the user cleared a numeric, and must stay cleared.
     # Pickers are excluded: sync_pickers() owns those.
     live_pf <- function(key, default = NULL) {
-      v <- isolate(input[[key]])
+      v <- shiny::isolate(input[[key]])
       if (is.null(v)) return(base_pf(key, default))
       if (length(v) == 1 && is.na(v)) return(NULL)
       v
     }
 
     # "" until the author picks -- canonical_cohort_kind() maps NULL/NA/"" there.
-    kind_r <- reactive(
+    kind_r <- shiny::reactive(
       canonical_cohort_kind(input$kind %||% base_pf("kind"))
     )
 
     # Only the kind may invalidate this -- everything else is isolated inside
     # live_pf(), or typing would rebuild the block and steal focus.
-    output$kind_fields <- renderUI({
+    output$kind_fields <- shiny::renderUI({
       kind <- kind_r()
       if (!nzchar(kind)) {
-        return(p(class = "text-muted small mb-0",
+        return(shiny::p(class = "text-muted small mb-0",
                  "Choose a kind above to see the fields this cohort carries."))
       }
       tmpl <- cohort_template(kind)
-      tagList(
-        if (!is.null(tmpl$hint)) p(class = "text-muted small mb-3", tmpl$hint),
+      shiny::tagList(
+        if (!is.null(tmpl$hint)) shiny::p(class = "text-muted small mb-3", tmpl$hint),
         tmpl$ui(ns, live_pf)
       )
     })
     # The Cohorts tab is a hidden tab-pane until selected, and a hidden output
     # does not render -- without this a loaded SAP would leave every kind block
     # unbuilt, so its inputs would read NULL and every cohort would save empty.
-    outputOptions(output, "kind_fields", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "kind_fields", suspendWhenHidden = FALSE)
 
     # The kind block above is deliberately static; the generated-set preview is
     # the one live piece, so it is its own output, filled here the same way
@@ -115,17 +115,17 @@ cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # recomputing on every keystroke steals no focus -- which is exactly the
     # point: flip requirementInteractions, or reorder the age groups, and the
     # list of cohorts it will generate changes in place.
-    output$cohort_set_preview <- renderUI({
+    output$cohort_set_preview <- shiny::renderUI({
       kind <- kind_r()
       if (!is_denominator_kind(kind)) return(NULL)
       cohort <- c(list(kind = kind), cohort_template(kind)$collect(input))
       # The same panel the Analyses tab shows for this cohort, so what the
       # author sees while editing IS what an analysis will inherit. Unset
-      # fields read "—" in the facts; the generator's defaults still fill
+      # fields read "--" in the facts; the generator's defaults still fill
       # them in the generated set underneath.
       denominator_panel(
         cohort,
-        "As the generator will read this card — unset fields use its defaults:",
+        "As the generator will read this card -- unset fields use its defaults:",
         lead = function(n) sprintf(
           "These requirements generate %d denominator cohort%s; every analysis built on this cohort runs on %s:",
           n, if (n == 1) "" else "s", if (n == 1) "it" else "all of them"
@@ -136,21 +136,21 @@ cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # A target denominator names the cohort it is built from, so the cohort
     # pickers on a cohort card are fed by the cohort list itself.
     sync_pickers(session, function() cohort_template(kind_r())$pickers$cohorts %||% character(0),
-                 reactive(grouped_cohort_choices(cohort_index())), base_pf)
+                 shiny::reactive(grouped_cohort_choices(cohort_index())), base_pf)
     sync_pickers(session, "data_sources", source_names, base_pf)
 
     # Rename propagation, the FOLLOW half: another cohort's rename lands on any
     # of this card's cohort pickers still holding the old name (a target
     # denominator's targetCohortTable). ignoreInit: a card built after the
     # event must not replay it.
-    observeEvent(renames(), {
+    shiny::observeEvent(renames(), {
       ev <- renames()
       apply_rename_to_pickers(session, input,
                               cohort_template(kind_r())$pickers$cohorts %||% character(0),
                               ev$old, ev$new, available = cohort_names())
     }, ignoreInit = TRUE)
 
-    data_r <- reactive({
+    data_r <- shiny::reactive({
       kind <- kind_r()
       common <- list(
         name         = blank_to_na(input$name),
@@ -165,51 +165,51 @@ cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
       c(common, cohort_template(kind)$collect(input))
     })
 
-    reactive(list(data = data_r()))
+    shiny::reactive(list(data = data_r()))
   })
 }
 
 cohorts_ui <- function(id) {
-  ns <- NS(id)
-  tagList(
-    div(
+  ns <- shiny::NS(id)
+  shiny::tagList(
+    shiny::div(
       class = "d-flex justify-content-between align-items-center mb-3",
-      div(
-        h3("Cohorts", class = "mb-1"),
-        p(class = "text-muted mb-0", "Populations the analyses are run against.")
+      shiny::div(
+        shiny::h3("Cohorts", class = "mb-1"),
+        shiny::p(class = "text-muted mb-0", "Populations the analyses are run against.")
       ),
-      div(
+      shiny::div(
         class = "d-flex gap-2",
         collapse_all_button(paste0("#", ns("items"))),
-        actionButton(ns("add"), "Add cohort", class = "btn btn-primary", icon = icon("plus"))
+        shiny::actionButton(ns("add"), "Add cohort", class = "btn btn-primary", icon = shiny::icon("plus"))
       )
     ),
-    conditionalPanel(
+    shiny::conditionalPanel(
       condition = sprintf("output['%s'] == 0", ns("n")),
       empty_state("No cohorts defined yet.")
     ),
-    div(id = ns("items"))
+    shiny::div(id = ns("items"))
   )
 }
 
-cohorts_server <- function(id, source_names = reactive(character(0)),
-                           codelist_names = reactive(character(0))) {
-  moduleServer(id, function(input, output, session) {
+cohorts_server <- function(id, source_names = shiny::reactive(character(0)),
+                           codelist_names = shiny::reactive(character(0))) {
+  shiny::moduleServer(id, function(input, output, session) {
 
     # The target-cohort picker on a cohort card is fed by the cohort list, which
     # is derived from the cards -- a cycle. reactiveVal only invalidates when the
     # value actually changes, which breaks it: editing anything other than a name
     # no longer re-triggers every picker on the tab.
-    names_v <- reactiveVal(character(0))
-    settled <- debounce(reactive(names_v()), 600)
-    settled_sources <- debounce(source_names, 600)
+    names_v <- shiny::reactiveVal(character(0))
+    settled <- shiny::debounce(shiny::reactive(names_v()), 600)
+    settled_sources <- shiny::debounce(source_names, 600)
 
     # The defined codelist names, shipped to the browser for the [bracket]
     # autocomplete and reference tinting in the cohort text fields
     # (www/codelist_refs.js). Debounced like the pickers: renaming a codelist
     # re-tints on the settled name, not on every keystroke.
-    settled_codelists <- debounce(codelist_names, 600)
-    observe({
+    settled_codelists <- shiny::debounce(codelist_names, 600)
+    shiny::observe({
       session$sendCustomMessage("codelist-names",
                                 as.list(as.character(settled_codelists())))
     })
@@ -219,8 +219,8 @@ cohorts_server <- function(id, source_names = reactive(character(0)),
     # the whole cohort back in the loop, so every keystroke in an entry-event box
     # would re-trigger every picker on the tab. Name and kind are all the grouping
     # reads, so only those invalidate it.
-    kinds_v <- reactiveVal(list())
-    settled_index <- debounce(reactive(kinds_v()), 600)
+    kinds_v <- shiny::reactiveVal(list())
+    settled_index <- shiny::debounce(shiny::reactive(kinds_v()), 600)
 
     # Rename propagation, the GATE. A card reports {old -> new}; if no OTHER
     # card still holds the old name, one event goes out and every cohort picker
@@ -231,9 +231,9 @@ cohorts_server <- function(id, source_names = reactive(character(0)),
     # makes consecutive identical renames distinct, or reactiveVal would
     # swallow the second one.
     rename_seq <- 0
-    rename_ev  <- reactiveVal(NULL)
+    rename_ev  <- shiny::reactiveVal(NULL)
     emit_rename <- function(old, new) {
-      nms <- vapply(isolate(items$data()), function(x) {
+      nms <- vapply(shiny::isolate(items$data()), function(x) {
         nm <- as.character(x$data$name %||% "")[1]
         if (is.na(nm)) "" else trimws(nm)
       }, character(1))
@@ -252,24 +252,24 @@ cohorts_server <- function(id, source_names = reactive(character(0)),
                            to_prefill = function(x) cohort_to_prefill(x$data),
                            noun = "Cohort")
 
-    observeEvent(input$add, items$add(reveal = TRUE))
+    shiny::observeEvent(input$add, items$add(reveal = TRUE))
 
-    output$n <- renderText(items$count())
-    outputOptions(output, "n", suspendWhenHidden = FALSE)
+    output$n <- shiny::renderText(items$count())
+    shiny::outputOptions(output, "n", suspendWhenHidden = FALSE)
 
-    data_r <- reactive(lapply(items$data(), function(x) x$data))
+    data_r <- shiny::reactive(lapply(items$data(), function(x) x$data))
 
-    observe({
+    shiny::observe({
       d    <- data_r()
       raw  <- vapply(d, function(x) as.character(x$name %||% ""), character(1))
       keep <- nzchar(raw)
       nms  <- sort(unique(raw[keep]))
-      if (!identical(nms, isolate(names_v()))) names_v(nms)
+      if (!identical(nms, shiny::isolate(names_v()))) names_v(nms)
 
       idx <- stats::setNames(
         lapply(which(keep), function(i) list(kind = canonical_cohort_kind(d[[i]]$kind))),
         raw[keep])
-      if (!identical(idx, isolate(kinds_v()))) kinds_v(idx)
+      if (!identical(idx, shiny::isolate(kinds_v()))) kinds_v(idx)
     })
 
     load <- function(cohorts) {
@@ -280,19 +280,19 @@ cohorts_server <- function(id, source_names = reactive(character(0)),
     }
 
     # Feeds the cohort pickers in the Analyses section.
-    names_r <- reactive(names_v())
+    names_r <- shiny::reactive(names_v())
 
     # Feeds the denominator summary and the analysis validators, which need the
     # whole cohort, not just its name.
-    by_name_r <- reactive({
+    by_name_r <- shiny::reactive({
       d   <- data_r()
       nms <- vapply(d, function(x) as.character(x$name %||% ""), character(1))
       keep <- nzchar(nms)
       stats::setNames(d[keep], nms[keep])
     })
-    settled_names <- debounce(names_r, 600)
+    settled_names <- shiny::debounce(names_r, 600)
 
-    problems_r <- reactive({
+    problems_r <- shiny::reactive({
       idx   <- by_name_r()
       found <- lapply(data_r(), function(ch) {
         msgs <- cohort_problems(ch, idx)

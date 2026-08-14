@@ -25,8 +25,8 @@ register_analysis_template(
 
   hint = "Events per unit of person-time contributed by a denominator population.",
 
-  ui = function(ns, pf) tagList(
-    layout_columns(
+  ui = function(ns, pf) shiny::tagList(
+    bslib::layout_columns(
       col_widths = c(6, 6),
       entity_picker(ns("denominatorTable"), "Denominator cohort", pf("denominatorTable"),
                     placeholder = "Population at risk"),
@@ -40,11 +40,11 @@ register_analysis_template(
 
     # Filled by the analyses module (see `subcohorts` below) only when the picked
     # cohort spans a set; all of the set's IDs selected by default.
-    uiOutput(ns("denominatorCohortId_ui")),
-    uiOutput(ns("outcomeCohortId_ui")),
+    shiny::uiOutput(ns("denominatorCohortId_ui")),
+    shiny::uiOutput(ns("outcomeCohortId_ui")),
 
     section_heading("Risk set"),
-    layout_columns(
+    bslib::layout_columns(
       col_widths = c(6, 6),
       # Washout and repeated events are ONE decision pair -- the validator ties
       # them together (repeated events needs a finite washout) -- so they share
@@ -57,38 +57,38 @@ register_analysis_template(
       # A number field cannot hold Inf, and blanking it already means "never
       # stated", so unbounded is a checkbox. See parse_washout() for the three
       # states the pair encodes.
-      div(
-        numericInput(ns("outcomeWashout"), "Outcome washout (days)",
+      shiny::div(
+        shiny::numericInput(ns("outcomeWashout"), "Outcome washout (days)",
                      value = washout_days_value(pf("outcomeWashout", NULL)),
                      min = 0, step = 1, width = "100%"),
-        checkboxInput(ns("outcomeWashout_unbounded"), "Unbounded (one event per person)",
+        shiny::checkboxInput(ns("outcomeWashout_unbounded"), "Unbounded (one event per person)",
                       value = isTRUE(pf("outcomeWashout_unbounded", FALSE))),
-        div(class = "form-text", "Leave both blank and the SAP is incomplete."),
-        checkboxInput(ns("repeatedEvents"), "Count repeated events",
+        shiny::div(class = "form-text", "Leave both blank and the SAP is incomplete."),
+        shiny::checkboxInput(ns("repeatedEvents"), "Count repeated events",
                       value = isTRUE(pf("repeatedEvents", FALSE)), width = "100%"),
-        div(class = "form-text",
+        shiny::div(class = "form-text",
             "Requires a finite washout: after each event's washout elapses, the
              person re-enters time at risk.")
       ),
-      div(
+      shiny::div(
         entity_picker(ns("censorTable"), "Censoring cohort", pf("censorTable"),
                       placeholder = "None (optional)"),
         # estimateIncidence(censorTable =): "must only include one record per
         # person". A data-level constraint the SAP cannot check -- but it can
         # say it, so the author picks a suitable cohort.
-        div(class = "form-text",
+        shiny::div(class = "form-text",
             "Follow-up ends at this cohort's event. It must hold one record per person."),
-        uiOutput(ns("censorCohortId_ui"))
+        shiny::uiOutput(ns("censorCohortId_ui"))
       )
     ),
     cohort_role_notes_ui(ns, pf),
 
     section_heading("Time granularity"),
-    layout_columns(
+    bslib::layout_columns(
       col_widths = c(6, 6),
-      selectizeInput(ns("interval"), "Interval", INTERVALS, multiple = TRUE,
+      shiny::selectizeInput(ns("interval"), "Interval", INTERVALS, multiple = TRUE,
                      selected = pf("interval", "years"), width = "100%"),
-      checkboxInput(ns("completeDatabaseIntervals"), "Require complete intervals",
+      shiny::checkboxInput(ns("completeDatabaseIntervals"), "Require complete intervals",
                     value = isTRUE(pf("completeDatabaseIntervals", TRUE)))
     ),
 

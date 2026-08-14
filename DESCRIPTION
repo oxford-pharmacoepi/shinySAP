@@ -1,0 +1,31 @@
+Package: shinySAP
+Title: Structured Capture of Statistical Analysis Plans
+Version: 0.0.0.900
+Authors@R: c(
+    person("Shihao", "Shenzhang", , "shihao.shenzhang@kcl.ac.uk", role = "aut",
+           comment = c(ORCID = "0009-0007-0785-3486")),
+    person("Niko", "Moller-Grell", , "niko.moeller-grell@kcl.ac.uk", role = "aut",
+           comment = c(ORCID = "0009-0005-2461-9187")),
+    person("Martí", "Català", , "marti.catalasabate@ndorms.ox.ac.uk", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0003-3308-9905"))
+  )
+Description: Tools for capturing Statistical Analysis Plans in a structured,
+    machine-readable format, with an accompanying Shiny application.
+License: Apache License (>= 2)
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+Imports:
+    bslib,
+    htmltools,
+    jsonlite,
+    shiny
+Suggests:
+    IncidencePrevalence,
+    knitr,
+    omopgenerics,
+    officedown,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+Config/roxygen2/version: 8.0.0

@@ -22,8 +22,8 @@ register_analysis_template(
   hint = paste0("Proportion of a denominator population with the condition, at a point ",
                 "(point prevalence) or across an interval (period prevalence)."),
 
-  ui = function(ns, pf) tagList(
-    layout_columns(
+  ui = function(ns, pf) shiny::tagList(
+    bslib::layout_columns(
       col_widths = c(6, 6),
       entity_picker(ns("denominatorTable"), "Denominator cohort", pf("denominatorTable"),
                     placeholder = "Population assessed (defined on the Cohorts tab)"),
@@ -37,41 +37,41 @@ register_analysis_template(
 
     # Filled by the analyses module (see `subcohorts` below) only when the
     # picked cohort spans a set; all of the set's IDs selected by default.
-    uiOutput(ns("denominatorCohortId_ui")),
-    uiOutput(ns("outcomeCohortId_ui")),
+    shiny::uiOutput(ns("denominatorCohortId_ui")),
+    shiny::uiOutput(ns("outcomeCohortId_ui")),
     cohort_role_notes_ui(ns, pf),
     # No time-at-risk block: prevalence is measured at points or over calendar
     # intervals, not across a window anchored on cohort entry.
-    selectInput(ns("prevalence_type"), "Prevalence type", PREVALENCE_TYPES,
+    shiny::selectInput(ns("prevalence_type"), "Prevalence type", PREVALENCE_TYPES,
                 selected = pf("prevalence_type", PREVALENCE_TYPES[1]), width = "100%"),
 
     # Point prevalence: timePoint locates the measurement within each interval.
-    conditionalPanel(
+    shiny::conditionalPanel(
       condition = sprintf("input['%s'] == 'Point prevalence'", ns("prevalence_type")),
-      layout_columns(
+      bslib::layout_columns(
         col_widths = c(6, 6),
-        selectInput(ns("point_interval"), "Interval", POINT_PREVALENCE_INTERVALS,
+        shiny::selectInput(ns("point_interval"), "Interval", POINT_PREVALENCE_INTERVALS,
                     selected = pf("point_interval", "years"), width = "100%"),
-        selectInput(ns("timePoint"), "Time point within interval", PREVALENCE_TIMEPOINTS,
+        shiny::selectInput(ns("timePoint"), "Time point within interval", PREVALENCE_TIMEPOINTS,
                     selected = pf("timePoint", PREVALENCE_TIMEPOINTS[1]), width = "100%")
       )
     ),
 
     # Period prevalence: who counts within an interval, and how records combine.
-    conditionalPanel(
+    shiny::conditionalPanel(
       condition = sprintf("input['%s'] == 'Period prevalence'", ns("prevalence_type")),
-      layout_columns(
+      bslib::layout_columns(
         col_widths = c(6, 6),
-        selectInput(ns("period_interval"), "Interval", PERIOD_PREVALENCE_INTERVALS,
+        shiny::selectInput(ns("period_interval"), "Interval", PERIOD_PREVALENCE_INTERVALS,
                     selected = pf("period_interval", "years"), width = "100%"),
-        selectInput(ns("level"), "Estimation level", PREVALENCE_LEVELS,
+        shiny::selectInput(ns("level"), "Estimation level", PREVALENCE_LEVELS,
                     selected = pf("level", PREVALENCE_LEVELS[1]), width = "100%")
       ),
-      layout_columns(
+      bslib::layout_columns(
         col_widths = c(6, 6),
-        checkboxInput(ns("fullContribution"), "Require full interval contribution",
+        shiny::checkboxInput(ns("fullContribution"), "Require full interval contribution",
                       value = isTRUE(pf("fullContribution", FALSE)), width = "100%"),
-        checkboxInput(ns("completeDatabaseIntervals"), "Complete database intervals only",
+        shiny::checkboxInput(ns("completeDatabaseIntervals"), "Complete database intervals only",
                       value = isTRUE(pf("completeDatabaseIntervals", TRUE)), width = "100%")
       )
     ),

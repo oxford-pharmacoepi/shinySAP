@@ -5,6 +5,9 @@
 # drops the event if another card still holds the old name. Follow half:
 # apply_rename_to_pickers() moves matching picker values.
 
+skip_if_not(file.exists(file.path(app_root, "R", "mod_cohorts.R")),
+            "source tree is not available")
+
 test_that("rename: a unique rename emits one gated event", {
   testServer(cohorts_server, {
     session$setInputs(add = 1)
@@ -82,3 +85,4 @@ test_that("rename: a target denominator's picker follows the rename end to end",
   )
   expect_identical(seen$targetCohortTable$selected, "B")
 })
+skip_if_not(dir.exists(file.path(app_root, "R")), "source tree is not available")

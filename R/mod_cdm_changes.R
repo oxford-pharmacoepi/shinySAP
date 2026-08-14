@@ -14,20 +14,20 @@ CDM_CHANGE_TYPES <- c(
 )
 
 cdm_item_ui <- function(id, prefill = NULL) {
-  ns <- NS(id)
+  ns <- shiny::NS(id)
   pf <- prefiller(prefill)
   item_card(
     id, "CDM change",
-    layout_columns(
+    bslib::layout_columns(
       col_widths = c(6, 6),
-      selectInput(
+      shiny::selectInput(
         ns("change_type"), "Type of change", CDM_CHANGE_TYPES,
         selected = pf("change_type", CDM_CHANGE_TYPES[1]), width = "100%"
       ),
       entity_picker(ns("data_sources"), "Data sources", pf("data_sources", character(0)),
                     multiple = TRUE, placeholder = "Select or type CDM sources")
     ),
-    textAreaInput(
+    shiny::textAreaInput(
       ns("description"), "Description of change", pf("description"),
       rows = 3, width = "100%",
       placeholder = "e.g. restrict drug_exposure to records with quantity > 0"
@@ -36,15 +36,15 @@ cdm_item_ui <- function(id, prefill = NULL) {
 }
 
 cdm_item_server <- function(id, prefill = NULL, on_remove = function() {},
-                            source_names = reactive(character(0))) {
-  moduleServer(id, function(input, output, session) {
-    observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
+                            source_names = shiny::reactive(character(0))) {
+  shiny::moduleServer(id, function(input, output, session) {
+    shiny::observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
     sync_pickers(session, "data_sources", source_names, prefiller(prefill))
 
     # A CDM change has no name -- what identifies it is its type.
-    item_card_label(output, reactive(input$change_type %||% "Untitled"))
+    item_card_label(output, shiny::reactive(input$change_type %||% "Untitled"))
 
-    reactive(list(
+    shiny::reactive(list(
       change_type  = input$change_type,
       data_sources = as_array(input$data_sources %||% character(0)),
       description  = blank_to_na(input$description)
@@ -53,32 +53,32 @@ cdm_item_server <- function(id, prefill = NULL, on_remove = function() {},
 }
 
 cdm_changes_ui <- function(id) {
-  ns <- NS(id)
-  tagList(
-    div(
+  ns <- shiny::NS(id)
+  shiny::tagList(
+    shiny::div(
       class = "d-flex justify-content-between align-items-center mb-3",
-      div(
-        h3("CDM changes", class = "mb-1"),
-        p(class = "text-muted mb-0",
+      shiny::div(
+        shiny::h3("CDM changes", class = "mb-1"),
+        shiny::p(class = "text-muted mb-0",
           "Extra validations and database-specific alterations applied to the CDM before analysis.")
       ),
-      div(
+      shiny::div(
         class = "d-flex gap-2",
         collapse_all_button(paste0("#", ns("items"))),
-        actionButton(ns("add"), "Add change", class = "btn btn-primary", icon = icon("plus"))
+        shiny::actionButton(ns("add"), "Add change", class = "btn btn-primary", icon = shiny::icon("plus"))
       )
     ),
-    conditionalPanel(
+    shiny::conditionalPanel(
       condition = sprintf("output['%s'] == 0", ns("n")),
       empty_state("No CDM changes recorded yet.")
     ),
-    div(id = ns("items"))
+    shiny::div(id = ns("items"))
   )
 }
 
-cdm_changes_server <- function(id, source_names = reactive(character(0))) {
-  moduleServer(id, function(input, output, session) {
-    settled_names <- debounce(source_names, 600)
+cdm_changes_server <- function(id, source_names = shiny::reactive(character(0))) {
+  shiny::moduleServer(id, function(input, output, session) {
+    settled_names <- shiny::debounce(source_names, 600)
 
     item_server <- function(iid, prefill, on_remove) {
       cdm_item_server(iid, prefill, on_remove, settled_names)
@@ -86,10 +86,10 @@ cdm_changes_server <- function(id, source_names = reactive(character(0))) {
     items <- dynamic_items("cdm", "items", cdm_item_ui, item_server,
                            noun = "CDM change")
 
-    observeEvent(input$add, items$add(reveal = TRUE))
+    shiny::observeEvent(input$add, items$add(reveal = TRUE))
 
-    output$n <- renderText(items$count())
-    outputOptions(output, "n", suspendWhenHidden = FALSE)
+    output$n <- shiny::renderText(items$count())
+    shiny::outputOptions(output, "n", suspendWhenHidden = FALSE)
 
     load <- function(changes) {
       items$clear()

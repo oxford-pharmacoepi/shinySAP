@@ -2,38 +2,38 @@
 # (Loading a saved SAP lives in the navbar, in app.R: it acts on every section.)
 
 review_ui <- function(id) {
-  ns <- NS(id)
-  tagList(
-    h3("Review"),
-    p(class = "text-muted",
+  ns <- shiny::NS(id)
+  shiny::tagList(
+    shiny::h3("Review"),
+    shiny::p(class = "text-muted",
       "Review and export the statistical analysis plan. Saving lives in the navbar,
        next to Load: one file per SAP, created on the first save and rewritten by
        every save and autosave after it."),
-    layout_columns(
+    bslib::layout_columns(
       col_widths = c(3, 3, 3, 3),
-      value_box("CDM sources",       textOutput(ns("n_sources")),  theme = "primary"),
-      value_box("CDM changes",       textOutput(ns("n_cdm")),      theme = "primary"),
-      value_box("Cohorts",           textOutput(ns("n_cohorts")),  theme = "primary"),
-      value_box("Analyses",          textOutput(ns("n_analyses")), theme = "primary")
+      bslib::value_box("CDM sources",       shiny::textOutput(ns("n_sources")),  theme = "primary"),
+      bslib::value_box("CDM changes",       shiny::textOutput(ns("n_cdm")),      theme = "primary"),
+      bslib::value_box("Cohorts",           shiny::textOutput(ns("n_cohorts")),  theme = "primary"),
+      bslib::value_box("Analyses",          shiny::textOutput(ns("n_analyses")), theme = "primary")
     ),
-    div(
+    shiny::div(
       class = "d-flex gap-2 my-3 align-items-center flex-wrap",
-      downloadButton(ns("download"), "Download JSON",   class = "btn btn-outline-secondary"),
-      downloadButton(ns("dl_word"),  "Download Word",   class = "btn btn-outline-secondary"),
-      actionButton(ns("refresh"),    "Refresh preview", class = "btn btn-primary", icon = icon("rotate"))
+      shiny::downloadButton(ns("download"), "Download JSON",   class = "btn btn-outline-secondary"),
+      shiny::downloadButton(ns("dl_word"),  "Download Word",   class = "btn btn-outline-secondary"),
+      shiny::actionButton(ns("refresh"),    "Refresh preview", class = "btn btn-primary", icon = shiny::icon("rotate"))
     ),
-    uiOutput(ns("problems")),
-    navset_tab(
-      nav_panel(
+    shiny::uiOutput(ns("problems")),
+    bslib::navset_tab(
+      bslib::nav_panel(
         "Document preview",
-        div(class = "pt-3", uiOutput(ns("preview_area")))
+        shiny::div(class = "pt-3", shiny::uiOutput(ns("preview_area")))
       ),
-      nav_panel(
+      bslib::nav_panel(
         "JSON",
-        div(
+        shiny::div(
           class = "pt-3",
-          tagAppendAttributes(
-            verbatimTextOutput(ns("json")),
+          shiny::tagAppendAttributes(
+            shiny::verbatimTextOutput(ns("json")),
             class = "border rounded p-3 bg-body-tertiary",
             style = "max-height: 60vh; overflow: auto;"
           )
@@ -45,30 +45,30 @@ review_ui <- function(id) {
 
 # Saving is NOT here: the navbar's Save link (app.R) owns it, via
 # save_working(). This tab reviews, downloads and previews.
-review_server <- function(id, sap, problems = reactive(list())) {
-  moduleServer(id, function(input, output, session) {
+review_server <- function(id, sap, problems = shiny::reactive(list())) {
+  shiny::moduleServer(id, function(input, output, session) {
 
-    output$problems <- renderUI({
+    output$problems <- shiny::renderUI({
       found <- problems()
       if (!length(found)) return(NULL)
-      div(
+      shiny::div(
         class = "alert alert-warning",
-        tags$strong(sprintf("%d item(s) need attention before this SAP is complete:",
+        shiny::tags$strong(sprintf("%d item(s) need attention before this SAP is complete:",
                             length(found))),
-        tags$ul(class = "mb-0 mt-2", lapply(found, function(p) {
-          tags$li(tags$strong(p$name), tags$ul(lapply(p$messages, tags$li)))
+        shiny::tags$ul(class = "mb-0 mt-2", lapply(found, function(p) {
+          shiny::tags$li(shiny::tags$strong(p$name), shiny::tags$ul(lapply(p$messages, shiny::tags$li)))
         }))
       )
     })
 
-    output$n_sources  <- renderText(length(sap()$cdm_sources))
-    output$n_cdm      <- renderText(length(sap()$cdm_changes))
-    output$n_cohorts  <- renderText(length(sap()$cohorts))
-    output$n_analyses <- renderText(length(sap()$proposed_analyses))
+    output$n_sources  <- shiny::renderText(length(sap()$cdm_sources))
+    output$n_cdm      <- shiny::renderText(length(sap()$cdm_changes))
+    output$n_cohorts  <- shiny::renderText(length(sap()$cohorts))
+    output$n_analyses <- shiny::renderText(length(sap()$proposed_analyses))
 
-    output$json <- renderText(as.character(sap_json(sap())))
+    output$json <- shiny::renderText(as.character(sap_json(sap())))
 
-    output$download <- downloadHandler(
+    output$download <- shiny::downloadHandler(
       filename = function() sprintf("%s.json", sap_file_base(sap()$study)),
       content  = function(file) writeLines(sap_json(sap()), file)
     )
@@ -114,38 +114,38 @@ review_server <- function(id, sap, problems = reactive(list())) {
       out
     }
 
-    html_path <- reactiveVal(NULL)
+    html_path <- shiny::reactiveVal(NULL)
 
-    observeEvent(input$refresh, {
+    shiny::observeEvent(input$refresh, {
       sap_val <- sap()
-      withProgress(message = "Rendering preview…", value = 0.5, {
+      shiny::withProgress(message = "Rendering preview...", value = 0.5, {
         path <- tryCatch(render_html(sap_val), error = function(e) {
-          showNotification(paste("Render failed:", conditionMessage(e)), type = "error")
+          shiny::showNotification(paste("Render failed:", conditionMessage(e)), type = "error")
           NULL
         })
       })
       html_path(path)
     })
 
-    output$preview_area <- renderUI({
+    output$preview_area <- shiny::renderUI({
       path <- html_path()
       if (is.null(path)) {
-        div(class = "text-muted p-4 border rounded",
+        shiny::div(class = "text-muted p-4 border rounded",
             "Click \"Refresh preview\" to render the document.")
       } else {
-        addResourcePath("sap_preview", dirname(path))
+        shiny::addResourcePath("sap_preview", dirname(path))
         url <- paste0("sap_preview/", basename(path))
-        tags$iframe(
+        shiny::tags$iframe(
           src   = url,
           style = "width: 100%; height: 80vh; border: 1px solid #dee2e6; border-radius: 4px;"
         )
       }
     })
 
-    output$dl_word <- downloadHandler(
+    output$dl_word <- shiny::downloadHandler(
       filename = function() sprintf("%s.docx", sap_file_base(sap()$study)),
       content  = function(file) {
-        withProgress(message = "Rendering Word document…", value = 0.5,
+        shiny::withProgress(message = "Rendering Word document...", value = 0.5,
                      file.copy(render_word(sap()), file))
       }
     )
