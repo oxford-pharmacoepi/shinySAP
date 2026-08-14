@@ -9,5 +9,5 @@
 ^renv$
 ^scripts$
 ^output$
-^README\.md$
+^README\.Rmd$
 ^LICENSE\.md$

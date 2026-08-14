@@ -1,57 +1,66 @@
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
 # shinySAP
 
-A Shiny app for writing a Statistical Analysis Plan (SAP) through a structured
-form rather than a prose document. Everything the user enters is captured on the
-backend as a single JSON dictionary and written to `output/`.
+[![R-CMD-check](https://github.com/oxford-pharmacoepi/shinySAP/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/oxford-pharmacoepi/shinySAP/actions/workflows/R-CMD-check.yaml)
+[![Codecov test
+coverage](https://codecov.io/gh/oxford-pharmacoepi/shinySAP/graph/badge.svg)](https://app.codecov.io/gh/oxford-pharmacoepi/shinySAP)
+
+A Shiny app for writing a Statistical Analysis Plan (SAP) through a
+structured form rather than a prose document. Everything the user enters
+is captured on the backend as a single JSON dictionary and written to
+`output/`.
 
 ## Sections
 
 | Tab | Captures |
-| --- | --- |
+|----|----|
 | **Study** | Title, study code, authors, SAP version, date, minimum cell count, rationale & background, aim / research question, specific objectives, and an amendment history (version, date, description of change) |
 | **CDM Sources** | The databases the study runs against — name, short key, country/region |
 | **CDM Changes** | Extra CDM validations and database-specific alterations applied before analysis — a change type (extra validation; subset a CDM table; limit observation periods; remap concepts; remove people with no year of birth or sex data; remove people with implausible dates; other), the data sources it applies to, and a description |
 | **Codelists** | The concept sets cohorts cite in `[square brackets]` — name, an optional category (Index event, Outcome or Covariate, which the document groups by) and description. The codes themselves live with the study (the CSVs a codelist tool produces, placed under `studyCode/codelist/`), not in the plan |
-| **Cohorts** | Name, kind and the CDM sources the cohort is built against (the SAP-level counterpart of the generators' `cdm` argument) — plus a set of inputs that **depends on the cohort's kind**. A denominator is *generated*, so it asks for the generator's arguments (cohort date range, age groups, sex, prior observation); a target denominator asks for those plus the target cohort and the time at risk; every other kind (target, outcome, censoring, other) is a plain cohort *definition* — entry events (citing the codelist inline in `[square brackets]`), inclusion & exclusion criteria (including the index-date rule), exit criteria |
+| **Cohorts** | Name, kind and the CDM sources the cohort is built against (the SAP-level counterpart of the generators’ `cdm` argument) — plus a set of inputs that **depends on the cohort’s kind**. A denominator is *generated*, so it asks for the generator’s arguments (cohort date range, age groups, sex, prior observation); a target denominator asks for those plus the target cohort and the time at risk; every other kind (target, outcome, censoring, other) is a plain cohort *definition* — entry events (citing the codelist inline in `[square brackets]`), inclusion & exclusion criteria (including the index-date rule), exit criteria |
 | **Analyses** | Name, analysis type, role (primary or sensitivity), the objectives it answers, CDM sources it runs on — plus a set of inputs that **depends on the analysis type** (an incidence asks for a denominator, a washout and an interval; a prevalence asks for time points instead) |
 | **Review** | Live JSON preview, document preview, and download as JSON or Word. Saving sits in the navbar: one file per SAP, created on the first save (you choose the folder once) and rewritten in place by every save and autosave after it — loading a SAP adopts that file |
 
-**Load SAP** sits in the navbar, visible from every tab: it reloads a saved
-plan into all sections at once.
+**Load SAP** sits in the navbar, visible from every tab: it reloads a
+saved plan into all sections at once.
 
-CDM sources, CDM changes, cohorts and analyses are repeating sections — use
-**Add** to append another, **Remove** to drop one.
+CDM sources, CDM changes, cohorts and analyses are repeating sections —
+use **Add** to append another, **Remove** to drop one.
 
 Sections cross-reference each other. The cohort pickers on Analyses are
-populated from the cohorts you have defined; the data-source pickers on CDM
-Changes and Analyses are populated from the CDM Sources tab. All of them
-accept free text, so you can reference something you have not written down yet.
+populated from the cohorts you have defined; the data-source pickers on
+CDM Changes and Analyses are populated from the CDM Sources tab. All of
+them accept free text, so you can reference something you have not
+written down yet.
 
 ## Running
 
 Install the package, then run the extra Shiny app from the package root:
 
-```r
+``` r
 pak::local_install()
-shiny::runApp(system.file("extras", package = "shinySAP"))
+shinySAP::shinySap()
 ```
 
-By default the app writes to `output/` relative to the working directory. Point
-it somewhere else with:
+By default the app writes to `output/` relative to the working
+directory. Point it somewhere else with:
 
-```r
+``` r
 options(shinySAP.output_dir = "~/saps")
-shiny::runApp("path/to/shinySAP/extras")
+shinySAP::shinySap()
 ```
 
 ## Output
 
-Files are named `sap-<study-code-or-title-slug>-v<version>.json`, one file per
-SAP, rewritten in place by every save and autosave. The shape is stable:
-optional text fields serialise to `null` when blank, and list fields are always
-JSON arrays even when they hold a single entry.
+Files are named `sap-<study-code-or-title-slug>-v<version>.json`, one
+file per SAP, rewritten in place by every save and autosave. The shape
+is stable: optional text fields serialise to `null` when blank, and list
+fields are always JSON arrays even when they hold a single entry.
 
-```json
+``` json
 {
   "sap_schema_version": "0.4.30",
   "generated_at": "2026-07-09T14:02:11+0100",
@@ -149,44 +158,46 @@ JSON arrays even when they hold a single entry.
 }
 ```
 
-An analysis carries five keys of its own — `name`, `analysis_type`, `role`
-(`primary` or `sensitivity`), `objectives` (the objectives it answers,
-many-to-many) and `data_sources` — and everything
-else under `parameters`. Which keys appear there
-is decided by `analysis_type`, so a reader can tell "no comparator, because this
-is an incidence analysis" from "the comparator was left blank".
+An analysis carries five keys of its own — `name`, `analysis_type`,
+`role` (`primary` or `sensitivity`), `objectives` (the objectives it
+answers, many-to-many) and `data_sources` — and everything else under
+`parameters`. Which keys appear there is decided by `analysis_type`, so
+a reader can tell “no comparator, because this is an incidence analysis”
+from “the comparator was left blank”.
 
-**Every field on an analysis reaches the generated code.** That is the contract:
-a field the app captures but the script ignores is a plan that says something the
-study does not do. Where each one lands:
+**Every field on an analysis reaches the generated code.** That is the
+contract: a field the app captures but the script ignores is a plan that
+says something the study does not do. Where each one lands:
 
 | Field | In the generated script |
-| --- | --- |
-| `name` | the `results[["…"]]` key, the comment above the call, and `sap_analysis` in the result's settings |
+|----|----|
+| `name` | the `results[["…"]]` key, the comment above the call, and `sap_analysis` in the result’s settings |
 | `analysis_type` | *which estimator is called* — `estimatePointPrevalence` / `estimatePeriodPrevalence` / `estimateIncidence` |
-| `role` | `(primary)` / `(sensitivity)` in that comment, **and** `sap_role` in the result's settings |
-| `objectives` | `[objectives 1, 3]` in that comment, **and** `sap_objectives` in the result's settings |
-| `data_sources` | an `omopgenerics::cdmName(cdm) %in% c(…)` guard, when the analysis runs on fewer than all the study's sources |
-| `parameters.*` | the estimator's arguments, by the same name, in signature order |
+| `role` | `(primary)` / `(sensitivity)` in that comment, **and** `sap_role` in the result’s settings |
+| `objectives` | `[objectives 1, 3]` in that comment, **and** `sap_objectives` in the result’s settings |
+| `data_sources` | an `omopgenerics::cdmName(cdm) %in% c(…)` guard, when the analysis runs on fewer than all the study’s sources |
+| `parameters.*` | the estimator’s arguments, by the same name, in signature order |
 
-A `parameters` key is omitted from the call only when it holds the package's own
-default (`denominatorCohortId = NULL` meaning all cohorts in the set, `strata =
-list()`, and `includeOverallStrata`, which is inert with no strata). Writing those
-out would put a decision in the code that nobody made; the omission falls back to
-the documented default. Every argument name and default above was checked against
+A `parameters` key is omitted from the call only when it holds the
+package’s own default (`denominatorCohortId = NULL` meaning all cohorts
+in the set, `strata = list()`, and `includeOverallStrata`, which is
+inert with no strata). Writing those out would put a decision in the
+code that nobody made; the omission falls back to the documented
+default. Every argument name and default above was checked against
 IncidencePrevalence 1.2.1 and omopgenerics 1.4.1.
 
-**`name`, `role` and `objectives` travel with the RESULT, not just the code.**
-None of the three is an argument to any DARWIN function, and that is not an
-oversight in the packages: neither is a computational choice, since the primary
-analysis and its sensitivity analyses call the same estimator with the same
-arguments and differ only in which one the study may conclude from. But the
-exported results are what a study report is written from, and a results file that
-cannot say which of nine prevalence estimates is the primary one just moves the
-problem downstream. So the generated script defines a `sapTag()` helper and
+**`name`, `role` and `objectives` travel with the RESULT, not just the
+code.** None of the three is an argument to any DARWIN function, and
+that is not an oversight in the packages: neither is a computational
+choice, since the primary analysis and its sensitivity analyses call the
+same estimator with the same arguments and differ only in which one the
+study may conclude from. But the exported results are what a study
+report is written from, and a results file that cannot say which of nine
+prevalence estimates is the primary one just moves the problem
+downstream. So the generated script defines a `sapTag()` helper and
 labels each estimate:
 
-```r
+``` r
 results[["…"]] <- sapTag(
   results[["…"]],
   analysis = "Partial prevalence (5-year) – annual point prevalence as of 1st January",
@@ -195,353 +206,383 @@ results[["…"]] <- sapTag(
 )
 ```
 
-`omopgenerics` allows extra settings columns beyond the required ones, and they
-survive `bind()`, `suppress()` and the export/import round trip — verified by
-running the generated C1-001 estimates against IncidencePrevalence 1.2.1 on a mock
-CDM and reading `sap_role` back out of the exported CSV. An unstated role passes
-no `role` argument at all, so the helper's `NA` default stands for "the plan never
-said", and an empty result is left alone because it has no settings rows to label.
+`omopgenerics` allows extra settings columns beyond the required ones,
+and they survive `bind()`, `suppress()` and the export/import round trip
+— verified by running the generated C1-001 estimates against
+IncidencePrevalence 1.2.1 on a mock CDM and reading `sap_role` back out
+of the exported CSV. An unstated role passes no `role` argument at all,
+so the helper’s `NA` default stands for “the plan never said”, and an
+empty result is left alone because it has no settings rows to label.
 
-**`data_sources` is a run-time guard, not a build-time one**, because a DARWIN
-study package ships one script to every partner and each runs it against their own
-CDM — so "this analysis runs on SIDIAP and CPRD GOLD" can only be a test the
-script performs. A guarded estimate is written `x <- if (…) estimate…(…) else
-omopgenerics::emptySummarisedResult()`, never a bare `if`: the estimates are bound
-together before export, so the variable has to exist at every partner or `bind()`
-fails with "object not found" wherever the guard is false. The guard compares the
-SAP's source keys against whatever `codeToRun.R` passed as `cdmName`, which
-nothing in the generated code can check — `study_export_notes()` says so whenever
-a guard is emitted. And because a cohort carries `data_sources` too,
-`cohort_source_coverage_problems()` reports an analysis that runs where one of its
-cohorts is never built, which would otherwise generate a script that dies at that
-partner.
+**`data_sources` is a run-time guard, not a build-time one**, because a
+DARWIN study package ships one script to every partner and each runs it
+against their own CDM — so “this analysis runs on SIDIAP and CPRD GOLD”
+can only be a test the script performs. A guarded estimate is written
+`x <- if (…) estimate…(…) else omopgenerics::emptySummarisedResult()`,
+never a bare `if`: the estimates are bound together before export, so
+the variable has to exist at every partner or `bind()` fails with
+“object not found” wherever the guard is false. The guard compares the
+SAP’s source keys against whatever `codeToRun.R` passed as `cdmName`,
+which nothing in the generated code can check — `study_export_notes()`
+says so whenever a guard is emitted. And because a cohort carries
+`data_sources` too, `cohort_source_coverage_problems()` reports an
+analysis that runs where one of its cohorts is never built, which would
+otherwise generate a script that dies at that partner.
 
-**`role` is not an estimator argument, and that is why it needs a key.** "Re-run
-with a 30-day washout" is a second *call*, not an argument to the first — which
-is why `sensitivity_analyses` was dropped from Incidence in `0.3.1` and from
-Prevalence in `0.4.0`. But primary-versus-sensitivity is the first thing a
-reviewer looks for, and with no field for it an author can only spell it into the
-analysis name, where nothing can group or check it. Unset is a real state, as
-with the analysis type; a plan that states roles but marks none of them primary
+**`role` is not an estimator argument, and that is why it needs a key.**
+“Re-run with a 30-day washout” is a second *call*, not an argument to
+the first — which is why `sensitivity_analyses` was dropped from
+Incidence in `0.3.1` and from Prevalence in `0.4.0`. But
+primary-versus-sensitivity is the first thing a reviewer looks for, and
+with no field for it an author can only spell it into the analysis name,
+where nothing can group or check it. Unset is a real state, as with the
+analysis type; a plan that states roles but marks none of them primary
 is reported on Review.
 
-**A cohort's `kind` decides what it carries**, because the kinds are not the same
-object. A denominator is a cohort *set* produced by
+**A cohort’s `kind` decides what it carries**, because the kinds are not
+the same object. A denominator is a cohort *set* produced by
 `generateDenominatorCohortSet()`; a `target_denominator` is produced by
-`generateTargetDenominatorCohortSet()`. **A denominator kind's keys are its
-generator's argument names, in the generator's own order** — so the JSON reads as
-the call it describes, and nothing can drift:
+`generateTargetDenominatorCohortSet()`. **A denominator kind’s keys are
+its generator’s argument names, in the generator’s own order** — so the
+JSON reads as the call it describes, and nothing can drift:
 
-| `denominator` | `target_denominator` |
-| --- | --- |
-| | `targetCohortTable` |
-| `cohortDateRange` | `cohortDateRange` |
-| | `timeAtRisk` |
-| `ageGroup` | `ageGroup` |
-| `sex` | `sex` |
-| `daysPriorObservation` | `daysPriorObservation` |
-| | `requirementsAtEntry` |
+| `denominator`             | `target_denominator`      |
+|---------------------------|---------------------------|
+|                           | `targetCohortTable`       |
+| `cohortDateRange`         | `cohortDateRange`         |
+|                           | `timeAtRisk`              |
+| `ageGroup`                | `ageGroup`                |
+| `sex`                     | `sex`                     |
+| `daysPriorObservation`    | `daysPriorObservation`    |
+|                           | `requirementsAtEntry`     |
 | `requirementInteractions` | `requirementInteractions` |
 
-`cdm` is a live database handle, not a plan field, and `name` is the cohort's own
-name in the common half of the card, so neither is repeated in the block.
-`targetCohortId` is not captured yet — cohort IDs are handled internally for now.
-Neither kind carries entry criteria: a denominator cohort set is *generated*, not
-defined by them. Every other kind — `target`, `outcome`, `comparator`, `censor`,
-`strata` — is a plain cohort *definition*: entry events, inclusion and exit
-criteria, a concept set, and none of the generator arguments.
+`cdm` is a live database handle, not a plan field, and `name` is the
+cohort’s own name in the common half of the card, so neither is repeated
+in the block. `targetCohortId` is not captured yet — cohort IDs are
+handled internally for now. Neither kind carries entry criteria: a
+denominator cohort set is *generated*, not defined by them. Every other
+kind — `target`, `outcome`, `comparator`, `censor`, `strata` — is a
+plain cohort *definition*: entry events, inclusion and exit criteria, a
+concept set, and none of the generator arguments.
 
 The distinction that matters most is between a **target** and a **target
-denominator**. A target cohort is defined by entry criteria ("first metformin
-dispensation"); a target denominator is *generated from* that target, restricted
-to the time each person spends in it. They are two entries, not one — which is
-why the example above has both.
+denominator**. A target cohort is defined by entry criteria (“first
+metformin dispensation”); a target denominator is *generated from* that
+target, restricted to the time each person spends in it. They are two
+entries, not one — which is why the example above has both.
 
-**Time at risk belongs to the denominator, not the analysis**, and so do the
-cohort date range, the age groups and the sex. Two analyses on the same
-denominator cannot disagree about them, and an analysis inherits them rather than
-restating them — the Analyses tab shows a read-only echo of what the chosen
-denominator already fixes.
+**Time at risk belongs to the denominator, not the analysis**, and so do
+the cohort date range, the age groups and the sex. Two analyses on the
+same denominator cannot disagree about them, and an analysis inherits
+them rather than restating them — the Analyses tab shows a read-only
+echo of what the chosen denominator already fixes.
 
-**`cohortDateRange` is ONE key holding TWO dates**, because that is what the
-argument takes — its default is literally `as.Date(c(NA, NA))`. A missing bound is
-`null`, meaning exactly what `NA` means to the generator: use the earliest (or
-latest) observation period in the database. So `["2015-01-01", null]` is
-"from 2015 to the end of the data", and `[null, null]` is the argument's own
-default.
+**`cohortDateRange` is ONE key holding TWO dates**, because that is what
+the argument takes — its default is literally `as.Date(c(NA, NA))`. A
+missing bound is `null`, meaning exactly what `NA` means to the
+generator: use the earliest (or latest) observation period in the
+database. So `["2015-01-01", null]` is “from 2015 to the end of the
+data”, and `[null, null]` is the argument’s own default.
 
-**`ageGroup` and `timeAtRisk` are lists of numeric pairs** — `[[0, 17], [18,
-64]]` and `[[0, 30], [31, null]]` — matching `ageGroup = list(c(0, 17), c(18,
-64))` and `timeAtRisk = list(c(0, 30), c(31, Inf))`. Each interval generates its
-own cohort. JSON has no `Infinity`, so an unbounded upper bound is written
-`null`: `[31, null]` is "day 31 onwards". Both of a time-at-risk pair's bounds are
-counted in days from *target cohort entry* — there is no anchoring on cohort end,
-which is why the pre-0.3.2 anchors were dropped rather than carried across.
+**`ageGroup` and `timeAtRisk` are lists of numeric pairs** —
+`[[0, 17], [18, 64]]` and `[[0, 30], [31, null]]` — matching
+`ageGroup = list(c(0, 17), c(18, 64))` and
+`timeAtRisk = list(c(0, 30), c(31, Inf))`. Each interval generates its
+own cohort. JSON has no `Infinity`, so an unbounded upper bound is
+written `null`: `[31, null]` is “day 31 onwards”. Both of a time-at-risk
+pair’s bounds are counted in days from *target cohort entry* — there is
+no anchoring on cohort end, which is why the pre-0.3.2 anchors were
+dropped rather than carried across.
 
 **The Incidence `parameters` map 1:1 onto
-`IncidencePrevalence::estimateIncidence()`** — the keys *are* the argument names,
-flat and in the function's own order, with no wrapper object. If a field is not one
-of that function's arguments, it is not part of an Incidence analysis. So there is
-no "rate per 1,000" and no denominator unit — those are presentation choices made
-downstream when the result is tabled — and no sensitivity-analysis list, because
-"re-run with a 30-day washout" is a second call, not an argument to this one. `cdm`
-is a runtime database handle, so it is the only argument absent. The three
-`*CohortId` arguments select which cohorts of a set to use; `null` (the default)
-means all of them.
+`IncidencePrevalence::estimateIncidence()`** — the keys *are* the
+argument names, flat and in the function’s own order, with no wrapper
+object. If a field is not one of that function’s arguments, it is not
+part of an Incidence analysis. So there is no “rate per 1,000” and no
+denominator unit — those are presentation choices made downstream when
+the result is tabled — and no sensitivity-analysis list, because “re-run
+with a 30-day washout” is a second call, not an argument to this one.
+`cdm` is a runtime database handle, so it is the only argument absent.
+The three `*CohortId` arguments select which cohorts of a set to use;
+`null` (the default) means all of them.
 
-**`strata` is a list of variable groups**, naming columns on the denominator
-cohort: `[["sex"], ["sex", "age_group"]]` means one stratification by sex and
-another by the cross of sex and age group — exactly
-`strata = list("sex", c("sex", "age_group"))`. The only columns available are
-`age_group` and `sex` — the ones `generateDenominatorCohortSet()` puts on the
-denominator table — and an analysis may only stratify by those. This is **not** a
-field on the cohort: the generator makes those two columns and no others, so there
-is nothing for an author to decide, and the strata picker on an analysis offers
-exactly them.
+**`strata` is a list of variable groups**, naming columns on the
+denominator cohort: `[["sex"], ["sex", "age_group"]]` means one
+stratification by sex and another by the cross of sex and age group —
+exactly `strata = list("sex", c("sex", "age_group"))`. The only columns
+available are `age_group` and `sex` — the ones
+`generateDenominatorCohortSet()` puts on the denominator table — and an
+analysis may only stratify by those. This is **not** a field on the
+cohort: the generator makes those two columns and no others, so there is
+nothing for an author to decide, and the strata picker on an analysis
+offers exactly them.
 
 **`outcomeWashout` is a number of days**, matching
-`estimateIncidence(outcomeWashout =)`, which takes a number and defaults to `Inf`.
-It is written as a **one-element numeric array**, for the same reason
-`timeAtRisk` is a list of pairs: JSON has no `Infinity`, so `Inf` travels as
-`null` *inside* an array, leaving a bare `null` to keep its schema-wide meaning of
-"absent".
+`estimateIncidence(outcomeWashout =)`, which takes a number and defaults
+to `Inf`. It is written as a **one-element numeric array**, for the same
+reason `timeAtRisk` is a list of pairs: JSON has no `Infinity`, so `Inf`
+travels as `null` *inside* an array, leaving a bare `null` to keep its
+schema-wide meaning of “absent”.
 
-| JSON | Means |
-| --- | --- |
-| `[365]` | a 365-day washout |
-| `[0]` | no washout |
+| JSON     | Means                                   |
+|----------|-----------------------------------------|
+| `[365]`  | a 365-day washout                       |
+| `[0]`    | no washout                              |
 | `[null]` | `Inf` — unbounded, one event per person |
-| `null` | the author never said |
+| `null`   | the author never said                   |
 
-All three of the first rows are numbers, and all four states are distinct — which
-is what the incidence validator needs. A 0-day washout is a substantively
-different analysis from an unstated one, and an unbounded washout is different
-again. `estimateIncidence()` defaults to `Inf`, but the SAP deliberately refuses
-to inherit that silently and makes the author choose.
+All three of the first rows are numbers, and all four states are
+distinct — which is what the incidence validator needs. A 0-day washout
+is a substantively different analysis from an unstated one, and an
+unbounded washout is different again. `estimateIncidence()` defaults to
+`Inf`, but the SAP deliberately refuses to inherit that silently and
+makes the author choose.
 
 Loading a saved file back into the form (**Load SAP**, in the navbar)
 repopulates every section, so a SAP can be revised and re-saved.
 
 ### Schema versions
 
-**There is no migration layer.** `0.4.25`–`0.4.26` removed `migrate_sap()` and its
-helpers: the app is pre-release, no SAPs exist in the wild, and every one of
-those repairs was fixing a file that cannot exist. A file is read as the current
-schema — unknown keys are ignored, expected-but-missing ones come back empty.
+**There is no migration layer.** `0.4.25`–`0.4.26` removed
+`migrate_sap()` and its helpers: the app is pre-release, no SAPs exist
+in the wild, and every one of those repairs was fixing a file that
+cannot exist. A file is read as the current schema — unknown keys are
+ignored, expected-but-missing ones come back empty.
 
-The history below is kept as the *rationale* for why each field is shaped the way
-it is, which is still worth reading. Read it as history, not as behaviour: where
-an entry says an older file still loads, that is no longer true.
+The history below is kept as the *rationale* for why each field is
+shaped the way it is, which is still worth reading. Read it as history,
+not as behaviour: where an entry says an older file still loads, that is
+no longer true.
 
-`0.2.0` added `cdm_sources` and renamed `analyses` to `proposed_analyses`.
+`0.2.0` added `cdm_sources` and renamed `analyses` to
+`proposed_analyses`.
 
 `0.3.0` gave each analysis type its own set of inputs and moved the
-type-specific fields under `parameters`. It also replaced a cohort's `role`
-(Target / Comparator / …) with `kind` (`denominator`, `target_denominator`, …),
-and moved `time_at_risk` from the analysis onto the cohort.
+type-specific fields under `parameters`. It also replaced a cohort’s
+`role` (Target / Comparator / …) with `kind` (`denominator`,
+`target_denominator`, …), and moved `time_at_risk` from the analysis
+onto the cohort.
 
-`0.3.1` made the Incidence `parameters` map 1:1 onto `estimateIncidence()`: it
-added `strata` (as variable groups) and `include_overall_strata`, and dropped
-`reporting` (`denominator_unit`, `rate_multiplier`) and `sensitivity_analyses`,
-none of which are arguments to that function. A `0.3.0` file still loads — those
-fields are simply discarded.
+`0.3.1` made the Incidence `parameters` map 1:1 onto
+`estimateIncidence()`: it added `strata` (as variable groups) and
+`include_overall_strata`, and dropped `reporting` (`denominator_unit`,
+`rate_multiplier`) and `sensitivity_analyses`, none of which are
+arguments to that function. A `0.3.0` file still loads — those fields
+are simply discarded.
 
-`0.3.2` did the same for cohorts: a cohort's `kind` now decides which fields it
-carries, and each denominator kind carries exactly its generator's arguments.
-`study_period_*` became `cohort_date_range_*`; `prior_observation_days` became
-`days_prior_observation` (a list, since the generator takes a vector);
-`age_groups` became numeric pairs rather than free text; and
-`requirement_interactions`, `requirements_at_entry` and `strata_variables` were
-added. `washout_days` was **dropped** — neither generator takes a washout, it is
-`estimateIncidence(outcomeWashout =)`, which the Incidence analysis already
-captures.
+`0.3.2` did the same for cohorts: a cohort’s `kind` now decides which
+fields it carries, and each denominator kind carries exactly its
+generator’s arguments. `study_period_*` became `cohort_date_range_*`;
+`prior_observation_days` became `days_prior_observation` (a list, since
+the generator takes a vector); `age_groups` became numeric pairs rather
+than free text; and `requirement_interactions`, `requirements_at_entry`
+and `strata_variables` were added. `washout_days` was **dropped** —
+neither generator takes a washout, it is
+`estimateIncidence(outcomeWashout =)`, which the Incidence analysis
+already captures.
 
 `0.3.2` also made the Incidence `outcome_washout` **numeric**, matching
-`estimateIncidence(outcomeWashout =)`. It was the string `"unbounded"` (or a bare
-number); it is now a one-element numeric array, with `Inf` as `[null]` — the same
-Inf-as-null-inside-an-array rule the cohort's `age_groups` and `time_at_risk` use.
-Both older shapes still load.
+`estimateIncidence(outcomeWashout =)`. It was the string `"unbounded"`
+(or a bare number); it is now a one-element numeric array, with `Inf` as
+`[null]` — the same Inf-as-null-inside-an-array rule the cohort’s
+`age_groups` and `time_at_risk` use. Both older shapes still load.
 
-`0.4.0` added cohort sets — a cohort gained `parent_cohort`, and prevalence
-gained `denominatorCohortId` / `outcomeCohortId` (null = all IDs in the set) —
-and aligned Prevalence with the estimators the way `0.3.1` aligned Incidence:
-`parameters` use the argument names and order, `strata` replaces
-`stratifications`, `sensitivity_analyses` is dropped there, and a prevalence
-`analysis_type` names the estimator (`estimatePointPrevalence` /
-`estimatePeriodPrevalence`).
+`0.4.0` added cohort sets — a cohort gained `parent_cohort`, and
+prevalence gained `denominatorCohortId` / `outcomeCohortId` (null = all
+IDs in the set) — and aligned Prevalence with the estimators the way
+`0.3.1` aligned Incidence: `parameters` use the argument names and
+order, `strata` replaces `stratifications`, `sensitivity_analyses` is
+dropped there, and a prevalence `analysis_type` names the estimator
+(`estimatePointPrevalence` / `estimatePeriodPrevalence`).
 
 `0.4.1` **dropped `strata_variables`** from the denominator kinds.
-`generateDenominatorCohortSet()` puts `age_group` and `sex` on the denominator
-table and nothing else, so the columns an analysis may stratify by were never the
-author's to choose. As a textarea it could only agree with that or be wrong — and
-being wrong was the dangerous case: naming an extra ETL column made the strata
-picker offer it and the validator accept it, for a `strata =` that the generator
-would never satisfy. The columns are now fixed (`STRATA_VARIABLES` in
-`R/cohort_kinds.R`). An older file's declared columns are dropped on load, and an
-analysis stratified by a column beyond those two now fails validation — which is
-the honest outcome, since it was never going to run.
+`generateDenominatorCohortSet()` puts `age_group` and `sex` on the
+denominator table and nothing else, so the columns an analysis may
+stratify by were never the author’s to choose. As a textarea it could
+only agree with that or be wrong — and being wrong was the dangerous
+case: naming an extra ETL column made the strata picker offer it and the
+validator accept it, for a `strata =` that the generator would never
+satisfy. The columns are now fixed (`STRATA_VARIABLES` in
+`R/cohort_kinds.R`). An older file’s declared columns are dropped on
+load, and an analysis stratified by a column beyond those two now fails
+validation — which is the honest outcome, since it was never going to
+run.
 
-`0.4.2` **aligned the denominator kinds with their generators**, the way `0.3.1`
-aligned Incidence with `estimateIncidence()` and `0.4.0` aligned Prevalence with
-the prevalence estimators. Every key is now the argument name it feeds, in the
-generator's own order: `target_cohort` → `targetCohortTable`, `time_at_risk` →
-`timeAtRisk`, `age_groups` → `ageGroup`, `days_prior_observation` →
-`daysPriorObservation`, `requirements_at_entry` → `requirementsAtEntry`,
+`0.4.2` **aligned the denominator kinds with their generators**, the way
+`0.3.1` aligned Incidence with `estimateIncidence()` and `0.4.0` aligned
+Prevalence with the prevalence estimators. Every key is now the argument
+name it feeds, in the generator’s own order: `target_cohort` →
+`targetCohortTable`, `time_at_risk` → `timeAtRisk`, `age_groups` →
+`ageGroup`, `days_prior_observation` → `daysPriorObservation`,
+`requirements_at_entry` → `requirementsAtEntry`,
 `requirement_interactions` → `requirementInteractions`. The two keys
-`cohort_date_range_start` / `_end` became the single `cohortDateRange` pair the
-argument actually takes. The input ids are the argument names too, so a field and
-the key it produces cannot drift apart.
+`cohort_date_range_start` / `_end` became the single `cohortDateRange`
+pair the argument actually takes. The input ids are the argument names
+too, so a field and the key it produces cannot drift apart.
 
-`0.4.3` finished aligning **Incidence** the same way. `0.3.1` had matched the *set*
-of fields to `estimateIncidence()` but still wrote them snake_case and wrapped in
-an `estimand` object the function has no concept of. Now the keys are the argument
-names, flat and in signature order — `denominator_cohort` → `denominatorTable`,
-`outcome_cohort` → `outcomeTable`, `censor_cohort` → `censorTable`,
-`complete_database_intervals` → `completeDatabaseIntervals`, `outcome_washout` →
-`outcomeWashout`, `repeated_events` → `repeatedEvents`, `include_overall_strata` →
-`includeOverallStrata`, and `interval` / `strata` unchanged. The `estimand` wrapper
-is gone, and the three `*CohortId` arguments (`denominatorCohortId`,
-`outcomeCohortId`, `censorCohortId`; `null` = all cohorts in the set) are now
-present, matching the signature and the Prevalence template. The Incidence
-`flatten()` un-nests any old `estimand` and renames every field, so a pre-0.4.3
-file loads unchanged.
+`0.4.3` finished aligning **Incidence** the same way. `0.3.1` had
+matched the *set* of fields to `estimateIncidence()` but still wrote
+them snake_case and wrapped in an `estimand` object the function has no
+concept of. Now the keys are the argument names, flat and in signature
+order — `denominator_cohort` → `denominatorTable`, `outcome_cohort` →
+`outcomeTable`, `censor_cohort` → `censorTable`,
+`complete_database_intervals` → `completeDatabaseIntervals`,
+`outcome_washout` → `outcomeWashout`, `repeated_events` →
+`repeatedEvents`, `include_overall_strata` → `includeOverallStrata`, and
+`interval` / `strata` unchanged. The `estimand` wrapper is gone, and the
+three `*CohortId` arguments (`denominatorCohortId`, `outcomeCohortId`,
+`censorCohortId`; `null` = all cohorts in the set) are now present,
+matching the signature and the Prevalence template. The Incidence
+`flatten()` un-nests any old `estimand` and renames every field, so a
+pre-0.4.3 file loads unchanged.
 
 `0.4.27` added `role` (`primary` / `sensitivity`) to an analysis: not an
-estimator argument — the primary analysis and its sensitivity analyses call the
-same function with the same arguments — but the distinction is the first thing a
-reviewer looks for, and without a field an author could only spell it into the
-analysis name, where nothing could group or check it.
-`analysis_role_problems()` reports a plan that states roles but marks none of them
-primary; the document shows the role per analysis.
+estimator argument — the primary analysis and its sensitivity analyses
+call the same function with the same arguments — but the distinction is
+the first thing a reviewer looks for, and without a field an author
+could only spell it into the analysis name, where nothing could group or
+check it. `analysis_role_problems()` reports a plan that states roles
+but marks none of them primary; the document shows the role per
+analysis.
 
-`0.4.27` also made `data_sources` load-bearing in the generated code rather than
-documentation-only. It is the SAP-level counterpart of `cdm` — which databases an
-item runs against — and it reached the document and stopped there, so a plan
-restricting an analysis to two of five databases generated a script that ran it at
-all five. Restricted cohorts and estimates are now guarded with
-`omopgenerics::cdmName(cdm)`, and `cohort_source_coverage_problems()` reports an
-estimate that runs where its cohort is not built. No JSON key changed: the field
-was always there, it was simply ignored.
+`0.4.27` also made `data_sources` load-bearing in the generated code
+rather than documentation-only. It is the SAP-level counterpart of `cdm`
+— which databases an item runs against — and it reached the document and
+stopped there, so a plan restricting an analysis to two of five
+databases generated a script that ran it at all five. Restricted cohorts
+and estimates are now guarded with `omopgenerics::cdmName(cdm)`, and
+`cohort_source_coverage_problems()` reports an estimate that runs where
+its cohort is not built. No JSON key changed: the field was always
+there, it was simply ignored.
 
-`0.4.28` added the `bind_cohorts` operation: several cohort definitions gathered
-into **one table**, so one estimator call covers all of them.
+`0.4.28` added the `bind_cohorts` operation: several cohort definitions
+gathered into **one table**, so one estimator call covers all of them.
 
-```json
+``` json
 { "op": "bind_cohorts",
   "cohorts": ["Diabetes drugs", "Cardiovascular drugs"] }
 ```
 
-`estimatePrevalence()`'s `outcomeTable` takes one table — passing a vector fails
-with *"You can only read one table of a cdm_reference"* — but a table may hold
-many cohorts, and the estimator runs across all of them in a single call,
-reporting each separately in the result's `group_level`. That is already why
-C1-001's six cancers are one analysis rather than six: `conceptCohort()` puts one
-cohort per codelist in one table. What it could not do was combine definitions
-built by *different pipelines*. `omopgenerics::bind()` joins their tables,
-renumbering the cohort ids in argument order, so one call covers them all.
+`estimatePrevalence()`’s `outcomeTable` takes one table — passing a
+vector fails with *“You can only read one table of a cdm_reference”* —
+but a table may hold many cohorts, and the estimator runs across all of
+them in a single call, reporting each separately in the result’s
+`group_level`. That is already why C1-001’s six cancers are one analysis
+rather than six: `conceptCohort()` puts one cohort per codelist in one
+table. What it could not do was combine definitions built by *different
+pipelines*. `omopgenerics::bind()` joins their tables, renumbering the
+cohort ids in argument order, so one call covers them all.
 
-**Only cohorts with disjoint names can merge.** `bind()` aborts on a duplicated
-`cohort_name` — and even if it did not, the estimator labels its results by
-`cohort_name`, so two definitions under one name would be indistinguishable in
-the output. `conceptCohort()` names one cohort per codelist, *after* the
-codelist, which is why definitions that differ only in exit — C1-001's 5-year,
-2-year and complete prevalence trio, built from the same six codelists — do not
-merge, and stay separate analyses in that SAP.
+**Only cohorts with disjoint names can merge.** `bind()` aborts on a
+duplicated `cohort_name` — and even if it did not, the estimator labels
+its results by `cohort_name`, so two definitions under one name would be
+indistinguishable in the output. `conceptCohort()` names one cohort per
+codelist, *after* the codelist, which is why definitions that differ
+only in exit — C1-001’s 5-year, 2-year and complete prevalence trio,
+built from the same six codelists — do not merge, and stay separate
+analyses in that SAP.
 
-This is the first operation whose call returns a **CDM reference** rather than a
-cohort table, so `register_cohort_op()` gained `assigns`: `"cdm"` emits `cdm <-
-bind(...)`, and `"table"` (the default, every CohortConstructor verb) emits
-`cdm$x <- ...`. Getting that wrong does not fail loudly — it leaves the table
-unattached and every estimate on it dies at the data partner — so it is declared
-per operation rather than inferred. A step *after* a bind pipes from the attached
-table as a second statement, since there is no pipeline to sit in.
+This is the first operation whose call returns a **CDM reference**
+rather than a cohort table, so `register_cohort_op()` gained `assigns`:
+`"cdm"` emits `cdm <- bind(...)`, and `"table"` (the default, every
+CohortConstructor verb) emits `cdm$x <- ...`. Getting that wrong does
+not fail loudly — it leaves the table unattached and every estimate on
+it dies at the data partner — so it is declared per operation rather
+than inferred. A step *after* a bind pipes from the attached table as a
+second statement, since there is no pipeline to sit in.
 
-`bound_cohort_problems()` reports the four things the operation's own
-`validate()` cannot see, because each is a property of the whole cohort list
-rather than of one operation. Three end the same way — `cdm$<table>` read before
-anything creates it: binding a cohort nothing builds, one the SAP defines
-*after* the bind (the script emits cohorts in listed order), or a generated
-denominator cohort set. The fourth is the name collision above, which the
-generated `bind()` would otherwise be the first to report, at the data partner.
+`bound_cohort_problems()` reports the four things the operation’s own
+`validate()` cannot see, because each is a property of the whole cohort
+list rather than of one operation. Three end the same way —
+`cdm$<table>` read before anything creates it: binding a cohort nothing
+builds, one the SAP defines *after* the bind (the script emits cohorts
+in listed order), or a generated denominator cohort set. The fourth is
+the name collision above, which the generated `bind()` would otherwise
+be the first to report, at the data partner.
 
 **Merge only what shares a role.** A merged call carries one `role`, so
-definitions that differ in role have to stay separate analyses even when their
-names are disjoint: the primary/sensitivity distinction is the whole point of
-stating a role.
+definitions that differ in role have to stay separate analyses even when
+their names are disjoint: the primary/sensitivity distinction is the
+whole point of stating a role.
 
 Saving writes the current schema version (`0.4.28`) back out.
 
 ### Validation
 
-A template may declare a `validate(params, cohorts)` that returns a character
-vector of problems — for instance, that an incidence analysis's denominator is
-not actually a denominator cohort, or that it stratifies by sex on a male-only
-cohort. Problems are listed on **Review**. They do **not** block saving: a
-SAP is drafted over many sittings and an incomplete one still has to be
-checkpointed, so saving with outstanding problems warns rather than refuses.
+A template may declare a `validate(params, cohorts)` that returns a
+character vector of problems — for instance, that an incidence
+analysis’s denominator is not actually a denominator cohort, or that it
+stratifies by sex on a male-only cohort. Problems are listed on
+**Review**. They do **not** block saving: a SAP is drafted over many
+sittings and an incomplete one still has to be checkpointed, so saving
+with outstanding problems warns rather than refuses.
 
-### Adding an analysis type's form
+### Adding an analysis type’s form
 
-Each type's inputs live in their own file, `R/analysis_type_<name>.R`, which
-calls `register_analysis_template()` with four mirrored pieces: `ui` builds the
-inputs, `collect` reads them back into JSON, `pickers` names the ids that pick a
-cohort or a CDM source, and `flatten` undoes whatever nesting `collect` did so a
-saved file can repopulate the form. Copy an existing one and edit it — that is
-the whole wiring, no other file needs touching.
+Each type’s inputs live in their own file, `R/analysis_type_<name>.R`,
+which calls `register_analysis_template()` with four mirrored pieces:
+`ui` builds the inputs, `collect` reads them back into JSON, `pickers`
+names the ids that pick a cohort or a CDM source, and `flatten` undoes
+whatever nesting `collect` did so a saved file can repopulate the form.
+Copy an existing one and edit it — that is the whole wiring, no other
+file needs touching.
 
-A type listed in `ANALYSIS_TYPES` with no template of its own falls back to
-`"Other"`, the generic form, so the app keeps working while the rest are filled
-in. `R/analysis_registry.R` holds the registry, the type resolver, and the input
-blocks templates share (time at risk, stratifications); its header comment sets
-out the rules, including why the template files have to sit flat in `R/`.
+A type listed in `ANALYSIS_TYPES` with no template of its own falls back
+to `"Other"`, the generic form, so the app keeps working while the rest
+are filled in. `R/analysis_registry.R` holds the registry, the type
+resolver, and the input blocks templates share (time at risk,
+stratifications); its header comment sets out the rules, including why
+the template files have to sit flat in `R/`.
 
 ## Layout
 
-```
-extras/app.R               Extra Shiny app: UI, server, and JSON assembly
-DESCRIPTION               R package metadata
-NAMESPACE                 R package namespace
-R/utils.R                 JSON helpers, slugify, save/read
-R/dynamic_items.R         add/remove machinery and pickers for repeating sections
-R/analysis_registry.R     analysis type registry, resolver, shared input blocks
-R/analysis_type_*.R       one input template per analysis type
-R/mod_study.R             Study metadata
-R/mod_cdm_sources.R       Section: CDM Sources
-R/mod_cdm_changes.R       Section: CDM Changes
-R/mod_cohorts.R           Section: Cohorts
-R/mod_analyses.R          Section: Analyses
-R/mod_review.R            Review, save, download
-tests/testthat/           testthat suite: JSON contract, templates, validators
-tests/testthat.R          runner (Rscript tests/testthat.R)
-output/                   Saved SAPs
-```
+    R/app.R                    Extra Shiny app and `shinySap()` launcher
+    DESCRIPTION               R package metadata
+    NAMESPACE                 R package namespace
+    R/utils.R                 JSON helpers, slugify, save/read
+    R/dynamic_items.R         add/remove machinery and pickers for repeating sections
+    R/analysis_registry.R     analysis type registry, resolver, shared input blocks
+    R/analysis_type_*.R       one input template per analysis type
+    R/mod_study.R             Study metadata
+    R/mod_cdm_sources.R       Section: CDM Sources
+    R/mod_cdm_changes.R       Section: CDM Changes
+    R/mod_cohorts.R           Section: Cohorts
+    R/mod_analyses.R          Section: Analyses
+    R/mod_review.R            Review, save, download
+    tests/testthat/           testthat suite: JSON contract, templates, validators
+    tests/testthat.R          runner (Rscript tests/testthat.R)
+    output/                   Saved SAPs
 
-Each repeating item is a real Shiny module inserted with `insertUI`, not a
-re-rendered block, so adding or removing one never resets its siblings.
+Each repeating item is a real Shiny module inserted with `insertUI`, not
+a re-rendered block, so adding or removing one never resets its
+siblings.
 
 ## Tests
 
 The suite needs `testthat`, which should be installed along with
 everything else. From the repo root:
 
-```sh
+``` sh
 Rscript tests/testthat.R
 ```
 
-One file is **skipped by default**. `test-generated-runs.R` executes the analyses
-file the export writes — against real `IncidencePrevalence`, `omopgenerics` and
-`duckdb` — instead of grepping it. Parsing is not running, and the gap between
-them is where the expensive mistakes live: a guarded estimate that leaves its
-variable undefined parses perfectly and then takes `bind()` down at the data
-partner. This app does not depend on those packages (it generates text and never
-calls them), so the file skips wherever they are
-absent. To actually run it, install them into the project library:
+One file is **skipped by default**. `test-generated-runs.R` executes the
+analyses file the export writes — against real `IncidencePrevalence`,
+`omopgenerics` and `duckdb` — instead of grepping it. Parsing is not
+running, and the gap between them is where the expensive mistakes live:
+a guarded estimate that leaves its variable undefined parses perfectly
+and then takes `bind()` down at the data partner. This app does not
+depend on those packages (it generates text and never calls them), so
+the file skips wherever they are absent. To actually run it, install
+them into the project library:
 
-```r
+``` r
 install.packages(c("IncidencePrevalence", "omopgenerics", "duckdb"))
 ```
 
-That is a deliberate choice, not an oversight — it puts a heavy dependency tree
-into a Shiny app that has no run-time use for it, in exchange for proving the
-generated code executes. Worth it on a developer machine or in CI; unnecessary
-for someone who only wants to write a SAP.
+That is a deliberate choice, not an oversight — it puts a heavy
+dependency tree into a Shiny app that has no run-time use for it, in
+exchange for proving the generated code executes. Worth it on a
+developer machine or in CI; unnecessary for someone who only wants to
+write a SAP.

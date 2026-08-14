@@ -28,7 +28,7 @@
 ANALYSIS_TYPES <- c("Incidence", "Prevalence", "Other")
 
 # The labels a template serialises through `serialised_type` must resolve back to
-# its registry key. Without this, selectInput() drops a `selected` it cannot find
+# its registry key. Without this, shiny::selectInput() drops a `selected` it cannot find
 # in `choices`, the browser falls back to the first option, and the analysis
 # silently changes type on load.
 ANALYSIS_TYPE_ALIASES <- c(
@@ -174,7 +174,7 @@ analysis_registry_env <- environment()
 #             and the denominator summary are driven from it
 #   subcohorts multi-selects of cohort IDs, keyed to one of the template's
 #             cohort pickers: field id -> list(from, label). The template's
-#             ui() renders uiOutput(ns("<field>_ui")); the analyses module
+#             ui() renders shiny::uiOutput(ns("<field>_ui")); the analyses module
 #             fills it only when the picked cohort spans a set.
 #   serialised_type  optional function(input) -> the analysis_type written to
 #             the file when it is finer than the registry key (e.g. the
@@ -317,18 +317,18 @@ analysis_role_problems <- function(analyses) {
 # A visible mini-heading above a group of related fields. The groupings used to
 # exist only as code comments -- invisible in the rendered card.
 section_heading <- function(text) {
-  div(class = "text-muted small fw-semibold text-uppercase mt-3 mb-2", text)
+  shiny::div(class = "text-muted small fw-semibold text-uppercase mt-3 mb-2", text)
 }
 
-tar_ui <- function(ns, pf) tagList(
-  tags$label(class = "form-label fw-semibold", "Time at risk"),
-  layout_columns(
+tar_ui <- function(ns, pf) shiny::tagList(
+  shiny::tags$label(class = "form-label fw-semibold", "Time at risk"),
+  bslib::layout_columns(
     col_widths = c(3, 3, 3, 3),
-    numericInput(ns("tar_start_offset"), "Start (days)", value = pf("tar_start_offset", 0), width = "100%"),
-    selectInput(ns("tar_start_anchor"), "Anchored on", ANCHORS,
+    shiny::numericInput(ns("tar_start_offset"), "Start (days)", value = pf("tar_start_offset", 0), width = "100%"),
+    shiny::selectInput(ns("tar_start_anchor"), "Anchored on", ANCHORS,
                 selected = pf("tar_start_anchor", ANCHORS[1]), width = "100%"),
-    numericInput(ns("tar_end_offset"), "End (days)", value = pf("tar_end_offset", 0), width = "100%"),
-    selectInput(ns("tar_end_anchor"), "Anchored on", ANCHORS,
+    shiny::numericInput(ns("tar_end_offset"), "End (days)", value = pf("tar_end_offset", 0), width = "100%"),
+    shiny::selectInput(ns("tar_end_anchor"), "Anchored on", ANCHORS,
                 selected = pf("tar_end_anchor", ANCHORS[2]), width = "100%")
   )
 )
@@ -352,12 +352,12 @@ tar_flatten <- function(p) {
   p
 }
 
-strat_ui <- function(ns, pf) layout_columns(
+strat_ui <- function(ns, pf) bslib::layout_columns(
   col_widths = c(6, 6),
-  textAreaInput(ns("stratifications"), "Stratifications (one per line)",
+  shiny::textAreaInput(ns("stratifications"), "Stratifications (one per line)",
                 join_lines(pf("stratifications", character(0))), rows = 4, width = "100%",
                 placeholder = "Sex\n10-year age bands"),
-  textAreaInput(ns("sensitivity_analyses"), "Sensitivity analyses (one per line)",
+  shiny::textAreaInput(ns("sensitivity_analyses"), "Sensitivity analyses (one per line)",
                 join_lines(pf("sensitivity_analyses", character(0))), rows = 4, width = "100%",
                 placeholder = "30-day washout")
 )
@@ -379,8 +379,8 @@ strat_collect <- function(input) list(
 # a picker: a template must declare it under pickers$strata, and
 # analysis_item_server() keeps it in step with the denominator. Those columns are
 # fixed (STRATA_VARIABLES) -- a cohort does not declare them.
-strata_ui <- function(ns, pf) tagList(
-  selectizeInput(
+strata_ui <- function(ns, pf) shiny::tagList(
+  shiny::selectizeInput(
     ns("strata"), "Strata", choices = character(0),
     selected = strata_tokens(pf("strata", list())), multiple = TRUE, width = "100%",
     options = list(create = TRUE,
@@ -390,9 +390,9 @@ strata_ui <- function(ns, pf) tagList(
   # estimate -- so the choice is offered only when strata exist. The checkbox
   # keeps its value while hidden, so strata removed and re-added get the
   # user's earlier choice back.
-  conditionalPanel(
+  shiny::conditionalPanel(
     condition = sprintf("(input['%s'] || []).length > 0", ns("strata")),
-    checkboxInput(ns("include_overall_strata"), "Also report an overall (unstratified) result",
+    shiny::checkboxInput(ns("include_overall_strata"), "Also report an overall (unstratified) result",
                   value = isTRUE(pf("include_overall_strata", TRUE)), width = "100%")
   )
 )
@@ -432,7 +432,7 @@ cohort_strata_variables <- function(cohort) {
 # item server fills it (see analysis_item_server), so a template gets the block
 # just by dropping this placeholder into its ui().
 denominator_summary_ui <- function(ns, pf) {
-  uiOutput(ns("denominator_summary"))
+  shiny::uiOutput(ns("denominator_summary"))
 }
 
 # cohort is the cohorts$by_name() entry for whatever the denominator picker
@@ -444,25 +444,25 @@ denominator_summary <- function(cohort, picked = NULL) {
   if (is.null(cohort)) {
     picked <- trimws(as.character(picked %||% "")[1])
     if (is.na(picked) || !nzchar(picked)) {
-      return(p(class = "text-muted small mb-3",
+      return(shiny::p(class = "text-muted small mb-3",
                "Pick a denominator cohort to see what it fixes and the cohort set
                 this analysis runs over."))
     }
-    return(div(
+    return(shiny::div(
       class = "alert alert-warning py-2 small mb-3",
       sprintf("'%s' is not defined on the Cohorts tab, so nothing can be inherited from it.",
               picked)
     ))
   }
   if (!is_denominator_kind(cohort$kind)) {
-    return(div(
+    return(shiny::div(
       class = "alert alert-warning py-2 small mb-3",
       sprintf(paste("'%s' is not a denominator cohort, so it fixes no study period, age groups,",
                     "sex or time at risk. Set its kind on the Cohorts tab."),
               cohort$name %||% "This cohort")
     ))
   }
-  denominator_panel(cohort, "Inherited from this cohort — set it on the Cohorts tab:")
+  denominator_panel(cohort, "Inherited from this cohort -- set it on the Cohorts tab:")
 }
 
 # The outcome and censoring slots, checked against the kind of the cohort each
@@ -480,7 +480,7 @@ denominator_summary <- function(cohort, picked = NULL) {
 # wrong (a generated denominator in either slot) stays in validate(), where it
 # blocks.
 cohort_role_notes_ui <- function(ns, pf) {
-  uiOutput(ns("cohort_role_notes"))
+  shiny::uiOutput(ns("cohort_role_notes"))
 }
 
 cohort_role_notes <- function(outcome, censor = NULL) {
@@ -488,14 +488,14 @@ cohort_role_notes <- function(outcome, censor = NULL) {
     if (is.null(cohort)) return(NULL)
     if (!identical(canonical_cohort_kind(cohort$kind), is_kind)) return(NULL)
     sprintf(paste("'%s' is the %s here, but its kind is %s. That is fine if the",
-                  "same cohort plays both parts — otherwise check the pickers."),
+                  "same cohort plays both parts -- otherwise check the pickers."),
             cohort$name %||% "This cohort", slot, labelled)
   }
   notes <- c(crossed(outcome, "censor",  "outcome",   "Censoring"),
              crossed(censor,  "outcome", "censoring cohort", "Outcome"))
   if (!length(notes)) return(NULL)
-  div(class = "alert alert-warning py-2 small mb-3",
-      lapply(notes, function(n) div(n)))
+  shiny::div(class = "alert alert-warning py-2 small mb-3",
+      lapply(notes, function(n) shiny::div(n)))
 }
 
 # The panel itself: the facts grid plus the generated cohort set, one styled
@@ -505,21 +505,21 @@ cohort_role_notes <- function(outcome, censor = NULL) {
 # denominator_cohort_set_ui().
 denominator_panel <- function(cohort, intro, lead = NULL) {
   fact <- function(label, value) {
-    div(class = "col", tags$span(class = "text-muted", label), tags$br(), tags$strong(value))
+    shiny::div(class = "col", shiny::tags$span(class = "text-muted", label), shiny::tags$br(), shiny::tags$strong(value))
   }
   none <- function(x) {
     x <- as.character(unlist(x %||% character(0)))
-    if (!length(x) || !any(nzchar(x))) "—" else paste(x, collapse = ", ")
+    if (!length(x) || !any(nzchar(x))) "--" else paste(x, collapse = ", ")
   }
   # Never unlist() a bound pair -- a JSON null upper bound would collapse.
   bounds <- function(pairs, open = "Inf") {
-    if (!length(pairs)) return("—")
+    if (!length(pairs)) return("--")
     paste(format_bound_list(pairs, open = open), collapse = " | ")
   }
-  div(
+  shiny::div(
     class = "border rounded bg-body-tertiary p-3 mb-3 small",
-    div(class = "text-muted mb-2", intro),
-    div(
+    shiny::div(class = "text-muted mb-2", intro),
+    shiny::div(
       class = "row row-cols-auto gap-3",
       # cohortDateRange is one key holding two dates, either of which may be null.
       # date_bound() indexes it; unlist() would collapse a null and shift the pair.
@@ -527,7 +527,7 @@ denominator_panel <- function(cohort, intro, lead = NULL) {
         dr    <- cohort[["cohortDateRange"]]
         start <- date_bound(dr, 1)
         end   <- date_bound(dr, 2)
-        if (is.null(start) && is.null(end)) "—"
+        if (is.null(start) && is.null(end)) "--"
         else paste(none(start), "to", none(end))
       }),
       fact("Age groups", bounds(cohort$ageGroup, open = AGE_MAX)),
@@ -548,7 +548,7 @@ denominator_panel <- function(cohort, intro, lead = NULL) {
 # actually generate, and how fast it multiplies.
 #
 # EVERY cohort is listed. There used to be a cap, with the remainder reported as
-# "… and N more not listed here", because an uncapped list ran the card off the
+# "... and N more not listed here", because an uncapped list ran the card off the
 # page. The scroll container below removed that constraint, and a truncated list
 # was the weaker answer anyway: the whole reason for spelling the set out is to
 # show what the arguments generate, and a reader who cannot see the last entry
@@ -567,9 +567,9 @@ denominator_cohort_set_ui <- function(cohort, lead = NULL) {
   } else {
     lead(n)
   }
-  div(
+  shiny::div(
     class = "mt-3",
-    div(class = "text-muted mb-1", msg),
+    shiny::div(class = "text-muted mb-1", msg),
     # The list is BOUNDED AND SCROLLED, not laid out in full. The cap alone was
     # not enough: a correct denominator multiplies fast -- 15 age groups x 3
     # sexes x 3 prior-observation values is 135 cohorts -- so even the capped 100
@@ -577,16 +577,16 @@ denominator_cohort_set_ui <- function(cohort, lead = NULL) {
     # whole list reachable while the card stays the size of a card. Its own
     # border and background say the region scrolls; `overflow: auto` also catches
     # a long line rather than pushing the column sideways.
-    div(
+    shiny::div(
       style = "max-height: 18rem; overflow: auto;",
       class = "border rounded bg-body px-2 py-1",
       # ps-5, not ps-3. A list marker sits in the OL's left padding, so a padding
       # narrower than the marker pushes it outside the content box -- which the
       # scroll container above then clips. Now that the list is uncapped the
       # marker can reach four digits, which ps-5 still clears in this font size.
-      tags$ol(
+      shiny::tags$ol(
         class = "mb-0 ps-5 font-monospace",
-        lapply(set, function(x) tags$li(format_denominator_cohort(x)))
+        lapply(set, function(x) shiny::tags$li(format_denominator_cohort(x)))
       )
     )
   )

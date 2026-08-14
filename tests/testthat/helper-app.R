@@ -10,23 +10,7 @@ library(jsonlite)
 library(shiny)
 library(bslib)
 
-app_root <- normalizePath(testthat::test_path("..", ".."))
-source(file.path(app_root, "R", "utils.R"))
-source(file.path(app_root, "R", "dynamic_items.R"))
-source(file.path(app_root, "R", "analysis_registry.R"))
-source(file.path(app_root, "R", "cohort_kinds.R"))   # the analysis validators read it
-source(file.path(app_root, "R", "sap_code.R"))       # code generation reads both registries
-source(file.path(app_root, "R", "cohort_operations.R")) # needs cohort_table_name from sap_code.R
-source(file.path(app_root, "R", "sap_study_export.R"))  # renders the study directory
-source(file.path(app_root, "R", "mod_cdm_changes.R")) # cdm_changes_server, and CDM_CHANGE_TYPES
-source(file.path(app_root, "R", "mod_study.R"))       # study_problems is a validator
-source(file.path(app_root, "R", "mod_cohorts.R"))     # test-renames drives cohorts_server
-source(file.path(app_root, "R", "mod_analyses.R"))    # the no-type-chosen tests drive analyses_server
-source(file.path(app_root, "R", "mod_codelists.R"))   # test-codelists drives codelists_server
-for (f in sort(list.files(file.path(app_root, "R"),
-                          pattern = "^analysis_type_.*\\.R$", full.names = TRUE))) {
-  source(f)
-}
+app_root <- normalizePath(system.file(package = "shinySAP"))
 
 picker_ids <- function(tmpl) unlist(tmpl$pickers, use.names = FALSE) %||% character(0)
 

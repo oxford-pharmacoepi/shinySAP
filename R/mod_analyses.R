@@ -6,25 +6,25 @@
 # silently win, since R/ is sourced alphabetically.
 
 analysis_item_ui <- function(id, prefill = NULL) {
-  ns <- NS(id)
+  ns <- shiny::NS(id)
   pf <- prefiller(prefill)
   item_card(
     id, "Analysis",
-    layout_columns(
+    bslib::layout_columns(
       col_widths = c(5, 4, 3),
-      textInput(ns("name"), "Analysis name", pf("name"), width = "100%"),
+      shiny::textInput(ns("name"), "Analysis name", pf("name"), width = "100%"),
       # A new card starts with NO type: the type decides everything else on the
       # card, so it is the author's first decision, not a default -- the same
       # rule as the cohort kind.
-      selectInput(ns("analysis_type"), "Analysis type",
-                  c("Choose a type…" = "", ANALYSIS_TYPES),
+      shiny::selectInput(ns("analysis_type"), "Analysis type",
+                  c("Choose a type..." = "", ANALYSIS_TYPES),
                   selected = canonical_analysis_type(pf("analysis_type")),
                   width = "100%"),
       # Primary or sensitivity: what the study concludes from, versus what tests
       # how much that conclusion depends on a choice. Unset by default -- see
       # ANALYSIS_ROLES -- and reported by analysis_role_problems() once any
       # analysis has a role but none is primary.
-      selectInput(ns("role"), "Role",
+      shiny::selectInput(ns("role"), "Role",
                   c("Not stated" = "", ANALYSIS_ROLES),
                   selected = canonical_analysis_role(pf("role")),
                   width = "100%")
@@ -34,17 +34,17 @@ analysis_item_ui <- function(id, prefill = NULL) {
     # one. Ids, not text, so rewording an objective in the study card does not
     # silently repoint every analysis -- objective_coverage_problems() reports
     # the break instead.
-    div(
+    shiny::div(
       class = "objectives-picker",
       # The saved ids are the INITIAL CHOICES, not just the selection. A
       # selectize cannot hold a `selected` that is absent from `choices`: it
       # discards it and reports an empty value, and collect() then writes that
       # empty value straight back -- so merely LOADING a SAP and letting it
-      # autosave stripped every analysis's objectives. The observe() below
+      # autosave stripped every analysis's objectives. The shiny::observe() below
       # replaces these bare ids with the objectives' text as soon as the Study
       # tab reports them, carrying the selection across; seeding them here means
       # the value is never lost in the window before that happens.
-      selectizeInput(ns("objectives"), "Objectives this analysis answers",
+      shiny::selectizeInput(ns("objectives"), "Objectives this analysis answers",
                      choices = as.character(unlist(pf("objectives", character(0)))),
                      selected = as.character(unlist(pf("objectives", character(0)))),
                      multiple = TRUE, width = "100%",
@@ -53,31 +53,31 @@ analysis_item_ui <- function(id, prefill = NULL) {
     entity_picker(ns("data_sources"), "CDM sources this analysis runs on",
                   pf("data_sources", character(0)), multiple = TRUE,
                   placeholder = "Select or type one or more CDM sources"),
-    tags$hr(class = "my-3"),
-    uiOutput(ns("type_fields"))
+    shiny::tags$hr(class = "my-3"),
+    shiny::uiOutput(ns("type_fields"))
   )
 }
 
 analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
-                                 objective_choices = reactive(character(0)),
-                                 cohort_names = reactive(character(0)),
-                                 source_names = reactive(character(0)),
-                                 cohort_index = reactive(list()),
-                                 cohort_renames = reactive(NULL)) {
-  moduleServer(id, function(input, output, session) {
-    observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
+                                 objective_choices = shiny::reactive(character(0)),
+                                 cohort_names = shiny::reactive(character(0)),
+                                 source_names = shiny::reactive(character(0)),
+                                 cohort_index = shiny::reactive(list()),
+                                 cohort_renames = shiny::reactive(NULL)) {
+  shiny::moduleServer(id, function(input, output, session) {
+    shiny::observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
 
-    # session$ns, not NS(id): dynamic_items() hands the server the bare item id
+    # session$ns, not shiny::NS(id): dynamic_items() hands the server the bare item id
     # and the fully-qualified one to the UI. They only line up because
-    # moduleServer() runs under the parent's reactive domain.
+    # shiny::moduleServer() runs under the parent's reactive domain.
     ns      <- session$ns
     base_pf <- prefiller(prefill)
 
     # What a collapsed card says it is: the analysis's name and type.
-    item_card_label(output, reactive({
+    item_card_label(output, shiny::reactive({
       nm   <- trimws(input$name %||% "")
       type <- type_r()
-      paste0(if (nzchar(nm)) nm else "Untitled", " — ",
+      paste0(if (nzchar(nm)) nm else "Untitled", " -- ",
              if (nzchar(type)) type else "no type chosen")
     }))
 
@@ -89,7 +89,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # served from here: sync_pickers() owns those, and its update always lands
     # after the render, so a second opinion here could only disagree with it.
     live_pf <- function(key, default = NULL) {
-      v <- isolate(input[[key]])
+      v <- shiny::isolate(input[[key]])
       if (is.null(v)) return(base_pf(key, default))
       if (length(v) == 1 && is.na(v)) return(NULL)
       v
@@ -97,7 +97,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
 
     # "" until the author picks -- canonical_analysis_type() maps NULL/NA/""
     # there, so the ui's blank start and this reactive cannot disagree.
-    type_r <- reactive(
+    type_r <- shiny::reactive(
       canonical_analysis_type(input$analysis_type %||% base_pf("analysis_type"))
     )
 
@@ -105,15 +105,15 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # rebuild the block on every keystroke, and one on the name reactives would
     # rebuild it whenever a cohort is edited in another tab; both steal focus
     # mid-edit.
-    output$type_fields <- renderUI({
+    output$type_fields <- shiny::renderUI({
       type <- type_r()
       if (!nzchar(type)) {
-        return(p(class = "text-muted small mb-0",
+        return(shiny::p(class = "text-muted small mb-0",
                  "Choose an analysis type above to see the fields it takes."))
       }
       tmpl <- analysis_template(type)
-      tagList(
-        if (!is.null(tmpl$hint)) p(class = "text-muted small mb-3", tmpl$hint),
+      shiny::tagList(
+        if (!is.null(tmpl$hint)) shiny::p(class = "text-muted small mb-3", tmpl$hint),
         tmpl$ui(ns, live_pf)
       )
     })
@@ -121,7 +121,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # and a hidden output does not render -- so without this, a SAP loaded from
     # the Review tab would leave every type block unbuilt, its inputs reading
     # NULL, and every parameters object would serialise empty.
-    outputOptions(output, "type_fields", suspendWhenHidden = FALSE)
+    shiny::outputOptions(output, "type_fields", suspendWhenHidden = FALSE)
 
     # A function, not a vector, so the observer re-runs on a type change and
     # picks up the freshly rendered pickers.
@@ -130,7 +130,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # and not-yet-defined cohorts keep working and the template validators stay
     # the thing that enforces the rule.
     sync_pickers(session, function() analysis_template(type_r())$pickers$cohorts %||% character(0),
-                 reactive(grouped_cohort_choices(cohort_index())), base_pf)
+                 shiny::reactive(grouped_cohort_choices(cohort_index())), base_pf)
     sync_pickers(session, function() analysis_template(type_r())$pickers$sources %||% character(0),
                  source_names, base_pf)
     sync_pickers(session, "data_sources", source_names, base_pf)
@@ -139,9 +139,9 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # match on the value shown, whereas this shows an objective's TEXT and stores
     # its id. Choices are therefore a named vector, rebuilt whenever the Study tab
     # changes, with the selection carried across explicitly.
-    observe({
+    shiny::observe({
       choices <- objective_choices()
-      current <- isolate(input$objectives)
+      current <- shiny::isolate(input$objectives)
       if (is.null(current)) current <- as.character(unlist(base_pf("objectives", character(0))))
       current <- current[!is.na(current) & nzchar(current)]
       # An id no objective has any more is KEPT in the choices, or shiny would
@@ -152,14 +152,14 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
         choices <- c(choices, stats::setNames(orphans,
                                               sprintf("%s (no longer an objective)", orphans)))
       }
-      updateSelectizeInput(session, "objectives", choices = choices, selected = current)
+      shiny::updateSelectizeInput(session, "objectives", choices = choices, selected = current)
     })
 
     # A cohort rename (see cohorts_server) lands on this card's cohort pickers
     # while they still hold the old name. Only the CURRENT template's pickers
     # exist in the DOM; a value stranded on a template switched away from keeps
     # the old name, and the validators catch it if that template comes back.
-    observeEvent(cohort_renames(), {
+    shiny::observeEvent(cohort_renames(), {
       ev <- cohort_renames()
       apply_rename_to_pickers(session, input,
                               analysis_template(type_r())$pickers$cohorts %||% character(0),
@@ -178,7 +178,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
       prev <- mget(field, envir = subcohort_parent, ifnotfound = list(NA))[[1]]
       assign(field, parent, envir = subcohort_parent)
       if (identical(prev, parent)) {
-        current <- isolate(input[[field]])
+        current <- shiny::isolate(input[[field]])
         if (!is.null(current)) return(intersect(as.character(current), values))
       }
       # A saved selection only applies to the denominator it was saved with;
@@ -188,23 +188,23 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
         return(intersect(saved, values))
       values
     }
-    observe({
+    shiny::observe({
       specs <- analysis_template(type_r())$subcohorts
       for (field in names(specs)) local({
         f <- field
         spec <- specs[[f]]
-        output[[paste0(f, "_ui")]] <- renderUI({
+        output[[paste0(f, "_ui")]] <- shiny::renderUI({
           choices <- subcohort_choices(input[[spec$from]], cohort_index())
           if (length(choices) < 2)
-            return(div(style = "display: none;",
-                       selectizeInput(ns(f), spec$label, choices = character(0),
+            return(shiny::div(style = "display: none;",
+                       shiny::selectizeInput(ns(f), spec$label, choices = character(0),
                                       multiple = TRUE)))
-          selectizeInput(ns(f), spec$label, choices = choices,
+          shiny::selectizeInput(ns(f), spec$label, choices = choices,
                          selected = subcohort_selected(f, spec$from, input[[spec$from]],
                                                        as.character(choices)),
                          multiple = TRUE, width = "100%")
         })
-        outputOptions(output, paste0(f, "_ui"), suspendWhenHidden = FALSE)
+        shiny::outputOptions(output, paste0(f, "_ui"), suspendWhenHidden = FALSE)
       })
     })
 
@@ -219,7 +219,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # chosen denominator cohort actually carries. So it re-syncs when the
     # denominator changes, not when the cohort list does.
     sync_pickers(session, function() analysis_template(type_r())$pickers$strata %||% character(0),
-                 reactive(cohort_strata_variables(
+                 shiny::reactive(cohort_strata_variables(
                    cohort_by_name(cohort_index(), denominator_pick()))),
                  base_pf)
 
@@ -227,7 +227,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # it has to react to the picker and a static ui() cannot. Served
     # unconditionally: a template that does not use the block simply never renders
     # the placeholder, and this output goes unused.
-    output$denominator_summary <- renderUI({
+    output$denominator_summary <- shiny::renderUI({
       # The raw pick rides along so an EMPTY pick prompts instead of warning.
       denominator_summary(cohort_by_name(cohort_index(), denominator_pick()),
                           picked = denominator_pick())
@@ -238,7 +238,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # business -- it only speaks when a cohort that IS defined carries the other
     # slot's kind. Prevalence renders no censoring picker, so that input is NULL
     # there and the censor half simply never fires.
-    output$cohort_role_notes <- renderUI({
+    output$cohort_role_notes <- shiny::renderUI({
       cohort_role_notes(cohort_by_name(cohort_index(), input$outcomeTable),
                         cohort_by_name(cohort_index(), input$censorTable))
     })
@@ -246,9 +246,9 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # For one round-trip after a type switch the new block's inputs have not
     # reported yet, so parameters briefly reads as nulls. Harmless while the only
     # consumers are the Review tab (suspended while the user is on Analyses) and
-    # the Save button (a later click) -- but an autosave observe({ sap(); ... })
+    # the Save button (a later click) -- but an autosave shiny::observe({ sap(); ... })
     # would capture the gap.
-    data_r <- reactive({
+    data_r <- shiny::reactive({
       type <- type_r()
       common <- list(
         name          = blank_to_na(input$name),
@@ -277,7 +277,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
     # the gap after a type switch it would be looking at half-reported inputs, so
     # a thrown error here must not take the whole app down with it -- report it
     # as a problem like any other.
-    problems_r <- reactive({
+    problems_r <- shiny::reactive({
       d <- data_r()
       type <- canonical_analysis_type(d$analysis_type)
       # No type: no template to validate against, and the fallback would find
@@ -291,7 +291,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
       )
     })
 
-    reactive(list(data = data_r(), problems = problems_r()))
+    shiny::reactive(list(data = data_r(), problems = problems_r()))
   })
 }
 
@@ -317,42 +317,42 @@ analysis_to_prefill <- function(a) {
 }
 
 analyses_ui <- function(id) {
-  ns <- NS(id)
-  tagList(
-    div(
+  ns <- shiny::NS(id)
+  shiny::tagList(
+    shiny::div(
       class = "d-flex justify-content-between align-items-center mb-3",
-      div(
-        h3("Analyses", class = "mb-1"),
-        p(class = "text-muted mb-0", "What is estimated, on which cohorts and sources, and how.")
+      shiny::div(
+        shiny::h3("Analyses", class = "mb-1"),
+        shiny::p(class = "text-muted mb-0", "What is estimated, on which cohorts and sources, and how.")
       ),
-      div(
+      shiny::div(
         class = "d-flex gap-2",
         collapse_all_button(paste0("#", ns("items"))),
-        actionButton(ns("add"), "Add analysis", class = "btn btn-primary", icon = icon("plus"))
+        shiny::actionButton(ns("add"), "Add analysis", class = "btn btn-primary", icon = shiny::icon("plus"))
       )
     ),
-    conditionalPanel(
+    shiny::conditionalPanel(
       condition = sprintf("output['%s'] == 0", ns("n")),
       empty_state("No analyses proposed yet.")
     ),
-    div(id = ns("items"))
+    shiny::div(id = ns("items"))
   )
 }
 
-analyses_server <- function(id, cohort_names = reactive(character(0)),
-                            source_names = reactive(character(0)),
-                            cohort_index = reactive(list()),
-                            cohort_renames = reactive(NULL),
-                            objective_choices = reactive(character(0))) {
-  moduleServer(id, function(input, output, session) {
+analyses_server <- function(id, cohort_names = shiny::reactive(character(0)),
+                            source_names = shiny::reactive(character(0)),
+                            cohort_index = shiny::reactive(list()),
+                            cohort_renames = shiny::reactive(NULL),
+                            objective_choices = shiny::reactive(character(0))) {
+  shiny::moduleServer(id, function(input, output, session) {
     # These change on every keystroke in the section that owns them; settle first
     # so the pickers are not rebuilt, and the summary not redrawn, mid-word.
     # Renames are NOT debounced: the follow-up must land before the settled
     # name list rebuilds the pickers around the stale value.
-    settled_objectives <- debounce(objective_choices, 600)
-    settled_cohorts <- debounce(cohort_names, 600)
-    settled_sources <- debounce(source_names, 600)
-    settled_index   <- debounce(cohort_index, 600)
+    settled_objectives <- shiny::debounce(objective_choices, 600)
+    settled_cohorts <- shiny::debounce(cohort_names, 600)
+    settled_sources <- shiny::debounce(source_names, 600)
+    settled_index   <- shiny::debounce(cohort_index, 600)
 
     item_server <- function(iid, prefill, on_remove) {
       analysis_item_server(iid, prefill, on_remove, settled_objectives,
@@ -363,10 +363,10 @@ analyses_server <- function(id, cohort_names = reactive(character(0)),
                            to_prefill = function(x) analysis_to_prefill(x$data),
                            noun = "Analysis")
 
-    observeEvent(input$add, items$add(reveal = TRUE))
+    shiny::observeEvent(input$add, items$add(reveal = TRUE))
 
-    output$n <- renderText(items$count())
-    outputOptions(output, "n", suspendWhenHidden = FALSE)
+    output$n <- shiny::renderText(items$count())
+    shiny::outputOptions(output, "n", suspendWhenHidden = FALSE)
 
     load <- function(analyses) {
       items$clear()
@@ -376,10 +376,10 @@ analyses_server <- function(id, cohort_names = reactive(character(0)),
     }
 
     # Each item now reports {data, problems}; the SAP only wants the data.
-    data_r <- reactive(lapply(items$data(), function(x) x$data))
+    data_r <- shiny::reactive(lapply(items$data(), function(x) x$data))
 
     # Problems, per analysis, for the Review tab to show and to refuse a save on.
-    problems_r <- reactive({
+    problems_r <- shiny::reactive({
       found <- lapply(items$data(), function(x) {
         msgs <- x$problems
         if (!length(msgs)) return(NULL)

@@ -327,39 +327,39 @@ date_bound <- function(range, i) {
 
 # The requirements every denominator cohort set is generated with, target or not.
 # Both generators take these under exactly these names.
-denominator_requirements_ui <- function(ns, pf) tagList(
+denominator_requirements_ui <- function(ns, pf) shiny::tagList(
   # cohortDateRange takes Dates, so these are pickers rather than free text.
   # date_input()'s placeholder shows the FORMAT; blank is a meaningful value
   # here, so what blank *means* stays in the help text under each field.
-  layout_columns(
+  bslib::layout_columns(
     col_widths = c(6, 6),
-    div(
+    shiny::div(
       date_input(ns("cohortDateRangeStart"), "Cohort date range: earliest start",
                  pf("cohortDateRangeStart")),
-      div(class = "form-text", "Blank = the earliest observation period in the database.")
+      shiny::div(class = "form-text", "Blank = the earliest observation period in the database.")
     ),
-    div(
+    shiny::div(
       date_input(ns("cohortDateRangeEnd"), "Cohort date range: latest end",
                  pf("cohortDateRangeEnd")),
-      div(class = "form-text", "Blank = the latest observation period in the database.")
+      shiny::div(class = "form-text", "Blank = the latest observation period in the database.")
     )
   ),
   # The three requirement factors together, in one row: they are the axes the
   # cohort set is crossed over. requirementInteractions is NOT one of them -- it
   # is the rule for how they combine -- so it sits below all three at full
   # width, rather than beside one of them as if it belonged to it.
-  layout_columns(
+  bslib::layout_columns(
     col_widths = c(6, 6),
     # ageGroup = list(c(0, 17), c(18, 30)): numeric pairs, one cohort each.
-    textAreaInput(ns("ageGroup"), "Age groups (one per line, as lower, upper)",
+    shiny::textAreaInput(ns("ageGroup"), "Age groups (one per line, as lower, upper)",
                   join_lines(format_bound_list(pf("ageGroup", list()), open = AGE_MAX)),
                   rows = 4, width = "100%", placeholder = "0, 17\n18, 64\n65, 150"),
     # Nothing is preselected: a prefilled "Both" or "0" would be a decision the
     # author never made. The generator's own defaults still apply downstream --
     # the preview says so -- but the SAP records only what was actually chosen,
     # and the sex validator objects until the author picks.
-    div(
-      selectizeInput(ns("sex"), "Sex", COHORT_SEXES, multiple = TRUE, width = "100%",
+    shiny::div(
+      shiny::selectizeInput(ns("sex"), "Sex", COHORT_SEXES, multiple = TRUE, width = "100%",
                      selected = pf("sex"),
                      options = list(placeholder = "One or more of Both / Male / Female")),
       # The saved values MUST be among the choices: shiny silently drops a
@@ -367,7 +367,7 @@ denominator_requirements_ui <- function(ns, pf) tagList(
       # (load, kind switch, duplicate) emptied the field and the next autosave
       # wrote [] -- the values were never saved back. Same defense as
       # entity_picker().
-      selectizeInput(ns("daysPriorObservation"), "Days of prior observation required",
+      shiny::selectizeInput(ns("daysPriorObservation"), "Days of prior observation required",
                      choices = as.character(unlist(pf("daysPriorObservation"))),
                      multiple = TRUE, width = "100%",
                      selected = as.character(unlist(pf("daysPriorObservation"))),
@@ -375,15 +375,15 @@ denominator_requirements_ui <- function(ns, pf) tagList(
                                     placeholder = "Type one or more numbers of days, e.g. 0 or 365"))
     )
   ),
-  checkboxInput(ns("requirementInteractions"),
+  shiny::checkboxInput(ns("requirementInteractions"),
                 "Generate a cohort for every combination of age group, sex and prior observation",
                 value = isTRUE(pf("requirementInteractions", FALSE)), width = "100%"),
   # The unticked behaviour is the surprising half, and it silently changes what
   # the ORDER of the values above means -- so it is said here, not only in the
   # package docs.
-  div(class = "form-text mb-2",
+  shiny::div(class = "form-text mb-2",
       paste("Unticked, the first value of each field above is the baseline, and each further",
-            "value varies alone against it — so the order of the values matters."))
+            "value varies alone against it -- so the order of the values matters."))
   # No strata input: the columns a denominator carries are not the author's to
   # choose. generateDenominatorCohortSet() produces age_group and sex, and nothing
   # else -- see STRATA_VARIABLES, which is now the only place that is said.
@@ -498,22 +498,22 @@ format_denominator_cohort <- function(x) {
 # www/codelist_refs.js gives it autocomplete on "[" and tints every reference
 # like a selectize chip -- blue when the codelist exists, amber when nothing
 # defines it (the same distinction Review reports).
-codelist_aware <- function(x) tagAppendAttributes(x, class = "codelist-aware")
+codelist_aware <- function(x) shiny::tagAppendAttributes(x, class = "codelist-aware")
 
-cohort_definition_ui <- function(ns, pf) tagList(
-  layout_columns(
+cohort_definition_ui <- function(ns, pf) shiny::tagList(
+  bslib::layout_columns(
     col_widths = c(6, 6),
     codelist_aware(
-      textAreaInput(ns("entry_events"), "Entry events (one per line)",
+      shiny::textAreaInput(ns("entry_events"), "Entry events (one per line)",
                     join_lines(pf("entry_events", character(0))), rows = 4, width = "100%",
                     placeholder = "Influenza vaccination [cs_influenza_vaccine]")),
     codelist_aware(
-      textAreaInput(ns("exit_criteria"), "Exit criteria (one per line)",
+      shiny::textAreaInput(ns("exit_criteria"), "Exit criteria (one per line)",
                     join_lines(pf("exit_criteria", character(0))), rows = 4, width = "100%",
                     placeholder = "End of continuous observation"))
   ),
   codelist_aware(
-    textAreaInput(ns("inclusion_criteria"), "Inclusion / exclusion criteria (one per line)",
+    shiny::textAreaInput(ns("inclusion_criteria"), "Inclusion / exclusion criteria (one per line)",
                   join_lines(pf("inclusion_criteria", character(0))), rows = 3, width = "100%",
                   placeholder = "Index on the first occurrence per influenza season\nAged 18 or over at index")),
   cohort_operations_block(ns, pf)
@@ -532,21 +532,21 @@ cohort_definition_ui <- function(ns, pf) tagList(
 # fallback for text a half-finished edit left behind.
 cohort_operations_block <- function(ns, pf) {
   ops <- pf("operations", list())
-  tagList(
-    div(
+  shiny::tagList(
+    shiny::div(
       style = "display: none;",
-      textAreaInput(ns("operations_json"), NULL,
+      shiny::textAreaInput(ns("operations_json"), NULL,
                     as.character(sap_json(ops %||% list())))
     ),
     if (length(ops)) {
       lines <- cohort_operations_prose(list(operations = ops))
-      div(
+      shiny::div(
         class = "border rounded p-2 mb-2 bg-body-tertiary",
-        div(class = "small text-muted mb-1",
-            sprintf("Generated cohort logic — %d step%s, in order:",
+        shiny::div(class = "small text-muted mb-1",
+            sprintf("Generated cohort logic -- %d step%s, in order:",
                     length(ops), if (length(ops) == 1) "" else "s")),
-        tags$ol(class = "small mb-1 ps-3", lapply(lines, tags$li)),
-        div(class = "form-text",
+        shiny::tags$ol(class = "small mb-1 ps-3", lapply(lines, shiny::tags$li)),
+        shiny::div(class = "form-text",
             paste("These steps generate this cohort's R code. They are edited in the",
                   "SAP file for now; the fields above stay as the description a",
                   "reader sees."))
@@ -641,9 +641,9 @@ register_cohort_kind(
                "built from the whole database, not defined by entry criteria."),
   # The uiOutput is the live preview of the set these requirements generate --
   # display-only (COHORT_DISPLAY_ONLY_IDS), filled by cohort_item_server().
-  ui = function(ns, pf) tagList(
+  ui = function(ns, pf) shiny::tagList(
     denominator_requirements_ui(ns, pf),
-    uiOutput(ns("cohort_set_preview"))
+    shiny::uiOutput(ns("cohort_set_preview"))
   ),
   collect = function(input) denominator_requirements_collect(input),
   flatten = denominator_requirements_flatten,
@@ -654,7 +654,7 @@ register_cohort_kind(
   "target_denominator",
   hint = paste("Generated with generateTargetDenominatorCohortSet(): the same requirements,",
                "restricted to the time a person spends in a target cohort."),
-  ui = function(ns, pf) tagList(
+  ui = function(ns, pf) shiny::tagList(
     entity_picker(ns("targetCohortTable"), "Target cohort to build the denominator from",
                   pf("targetCohortTable"),
                   placeholder = "Another cohort defined on this tab (targetCohortTable)"),
@@ -665,7 +665,7 @@ register_cohort_kind(
     # Starts EMPTY, like every other decision on the card: the validator asks
     # for at least one interval, and the preview shows what the generator's
     # default (0, Inf) would produce meanwhile.
-    textAreaInput(ns("timeAtRisk"),
+    shiny::textAreaInput(ns("timeAtRisk"),
                   "Time at risk (one interval per line, days from target cohort entry)",
                   join_lines(format_bound_list(pf("timeAtRisk", list()))),
                   rows = 3, width = "100%", placeholder = "0, Inf\n0, 30\n31, 60"),
@@ -673,17 +673,17 @@ register_cohort_kind(
     # Unticked until the author says otherwise -- the generator's own default
     # is TRUE, so the recorded FALSE is an explicit choice, same trade-off as
     # requirementInteractions.
-    checkboxInput(ns("requirementsAtEntry"),
+    shiny::checkboxInput(ns("requirementsAtEntry"),
                   "Requirements must be met on the target cohort start date",
                   value = isTRUE(pf("requirementsAtEntry", FALSE)), width = "100%"),
     # The unticked mode is the semantically rich one, and it carries the
     # vignette's trap -- so it is said here, not only in the package docs.
-    div(class = "form-text mb-2",
+    shiny::div(class = "form-text mb-2",
         paste("Unticked, people start contributing once they meet the requirements,",
               "even part-way through their time in the target cohort. Time at risk",
               "stays anchored on target entry either way: someone eligible only from",
-              "day 31 contributes nothing to a 0–30 window.")),
-    uiOutput(ns("cohort_set_preview"))
+              "day 31 contributes nothing to a 0-30 window.")),
+    shiny::uiOutput(ns("cohort_set_preview"))
   ),
   # Keys, and their order, are generateTargetDenominatorCohortSet()'s own. `cdm` is
   # a live database handle, not a plan field; `name` is the cohort's own name, in
@@ -741,7 +741,7 @@ register_cohort_kind(
 # hint: IncidencePrevalence never creates it, only points at it.
 register_cohort_kind(
   "target",
-  hint = paste("A pre-existing cohort of the population of interest — people and the",
+  hint = paste("A pre-existing cohort of the population of interest -- people and the",
                "episodes during which they belong to it. Instantiated outside",
                "IncidencePrevalence; a target denominator is generated FROM it,",
                "restricting person-time to those episodes."),

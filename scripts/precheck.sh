@@ -18,7 +18,7 @@
 #   lint job  stock library + lintr  ->  readme lint
 #
 # --fix only touches things with exactly one right answer -- today the README's
-# schema version, mechanically derived from extras/app.R. Lints and failing tests are
+# schema version, mechanically derived from R/app.R. Lints and failing tests are
 # never auto-fixed: a linter that rewrites your code is one you stop reading.
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -63,21 +63,21 @@ ok()   { printf '   \033[32mOK\033[0m   %s\n' "$1"; }
 bad()  { printf '   \033[31mFAIL\033[0m %s\n' "$1"; failed+=("$1"); }
 wants() { [[ " ${STEPS[*]} " == *" $1 "* ]]; }
 
-# The README's example JSON must carry the schema version extras/app.R defines.
+# The README's example JSON must carry the schema version R/app.R defines.
 #
 # A step of the CI "lint" job but NOT a lint, which is worth knowing: it is the
 # one that fails whenever a schema bump lands without the README following it,
 # and a red X on a job called "lint" reads as a style problem when it is not.
 if wants readme; then
   step "README documents the current schema version"
-  version=$(sed -nE 's/^SAP_SCHEMA_VERSION <- "([0-9.]+)"/\1/p' extras/app.R)
+  version=$(sed -nE 's/^SAP_SCHEMA_VERSION <- "([0-9.]+)"/\1/p' R/app.R)
   if [ -z "$version" ]; then
     bad "SAP_SCHEMA_VERSION not found in app.R"
-  elif grep -qF "\"sap_schema_version\": \"$version\"" README.md; then
+  elif grep -qF "\"sap_schema_version\": \"$version\"" README.Rmd; then
     ok "README carries $version"
   elif [ "$FIX" = "1" ]; then
-    perl -0pi -e "s/\"sap_schema_version\": \"[0-9.]+\"/\"sap_schema_version\": \"$version\"/" README.md
-    if grep -qF "\"sap_schema_version\": \"$version\"" README.md; then
+    perl -0pi -e "s/\"sap_schema_version\": \"[0-9.]+\"/\"sap_schema_version\": \"$version\"/" README.Rmd
+    if grep -qF "\"sap_schema_version\": \"$version\"" README.Rmd; then
       ok "README updated to $version"
     else
       bad "could not update README to $version"
@@ -106,11 +106,11 @@ if wants lint; then
 fi
 
 # The suite only sources part of R/, so this is what catches a syntax error in a
-# module the tests never load, or in extras/app.R itself.
+# module the tests never load, or in R/app.R itself.
 if wants parse; then
   step "Parse all R sources"
-  out=$(Rscript -e 'invisible(lapply(c("extras/app.R", list.files("R", full.names = TRUE)), parse))' 2>&1)
-  if [ $? -eq 0 ]; then ok "extras/app.R and R/ parse"; else printf '%s\n' "$out" | tail -10; bad "a source file does not parse"; fi
+  out=$(Rscript -e 'invisible(lapply(list.files("R", full.names = TRUE), parse))' 2>&1)
+  if [ $? -eq 0 ]; then ok "R/ parses"; else printf '%s\n' "$out" | tail -10; bad "a source file does not parse"; fi
 fi
 
 if wants tests; then
@@ -126,7 +126,7 @@ fi
 if wants smoke; then
   step "Smoke test — the app starts and serves HTTP 200"
   log=$(mktemp)
-  Rscript -e 'shiny::runApp("extras", port = 8123)' > "$log" 2>&1 &
+  Rscript -e 'shiny::runApp(system.file("shiny-sap", package = "shinySAP"), port = 8123)' > "$log" 2>&1 &
   app_pid=$!
   served=1
   for _ in $(seq 1 30); do

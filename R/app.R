@@ -1,16 +1,17 @@
 # shinySAP -- structured capture of a Statistical Analysis Plan as JSON.
 #
-# Run with:  shiny::runApp("Documents/shinySAP/extras")
-#
-# Files in R/ are sourced automatically by Shiny.
-
+#' Launch the shinySAP Shiny application
+#'
+#' @return A Shiny application object.
+#' @export
+shinySap <- function() {
 if (!nzchar(Sys.getenv("RSTUDIO_PANDOC")))
   Sys.setenv(RSTUDIO_PANDOC = "/Applications/RStudio.app/Contents/Resources/app/quarto/bin/tools/aarch64")
 
-library(shiny)
-library(bslib)
-library(jsonlite)
-library(shinySAP)
+shiny::addResourcePath(
+  "shinySAP",
+  system.file("shiny-sap", "www", package = "shinySAP")
+)
 
 # 0.2.0 added cdm_sources and renamed analyses -> proposed_analyses.
 # 0.3.0 moved the type-specific analysis fields under `parameters`.
@@ -222,12 +223,12 @@ SAP_SCHEMA_VERSION <- "0.4.30"
 # Overridable so tests or a deployment can write somewhere else.
 OUTPUT_DIR <- getOption("shinySAP.output_dir", "output")
 
-ui <- page_navbar(
+ui <- bslib::page_navbar(
   title = "shinySAP",
   id = "nav",
-  theme = bs_theme(version = 5, preset = "shiny"),
+  theme = bslib::bs_theme(version = 5, preset = "shiny"),
   window_title = "shinySAP",
-  header = tags$head(tags$style(HTML("
+  header = shiny::tags$head(shiny::tags$style(shiny::HTML("
     /* The objectives picker carries whole sentences, so its options and its
        selected chips wrap rather than overflowing on one line. Scoped: every
        other selectize on the page holds short names and is better left alone. */
@@ -244,10 +245,10 @@ ui <- page_navbar(
     .item-card-toggle[aria-expanded='false'] .item-card-chevron { transform: rotate(-90deg); }
     .item-card-toggle:focus { box-shadow: none; }
 
-    /* Load SAP in the navbar: strip fileInput() down to its button -- no
+    /* Load SAP in the navbar: strip bslib::fileInput() down to its button -- no
        filename box, no progress bar -- and dress it as a nav link in the
        theme's primary blue. It shares one right-pinned nav_item with the
-       autosave status (nav_spacer() does the pinning; a second auto margin
+       autosave status (bslib::nav_spacer() does the pinning; a second auto margin
        here would split the free space and strand the status mid-navbar). */
     /* width: shiny-input-container defaults to 300px; shrink to the button. */
     .navbar-load { margin-bottom: 0; width: auto !important; }
@@ -319,31 +320,31 @@ ui <- page_navbar(
     .clref-item:hover, .clref-item.active {
       background: var(--bs-primary-bg-subtle, #cfe2ff);
     }
-  ")), tags$script(src = "codelist_refs.js")),
-  nav_panel("Study", div(class = "container-fluid py-3", study_ui("study"))),
-  nav_panel("CDM Sources", div(class = "container-fluid py-3", cdm_sources_ui("sources"))),
-  nav_panel("CDM Changes", div(class = "container-fluid py-3", cdm_changes_ui("cdm"))),
-  nav_panel("Codelists", div(class = "container-fluid py-3", codelists_ui("codelists"))),
-  nav_panel("Cohorts", div(class = "container-fluid py-3", cohorts_ui("cohorts"))),
-  nav_panel("Analyses", div(class = "container-fluid py-3", analyses_ui("analyses"))),
-  nav_panel("Review", div(class = "container-fluid py-3", review_ui("review"))),
-  nav_spacer(),
+  ")), shiny::tags$script(src = "shinySAP/codelist_refs.js")),
+  bslib::nav_panel("Study", shiny::div(class = "container-fluid py-3", study_ui("study"))),
+  bslib::nav_panel("CDM Sources", shiny::div(class = "container-fluid py-3", cdm_sources_ui("sources"))),
+  bslib::nav_panel("CDM Changes", shiny::div(class = "container-fluid py-3", cdm_changes_ui("cdm"))),
+  bslib::nav_panel("Codelists", shiny::div(class = "container-fluid py-3", codelists_ui("codelists"))),
+  bslib::nav_panel("Cohorts", shiny::div(class = "container-fluid py-3", cohorts_ui("cohorts"))),
+  bslib::nav_panel("Analyses", shiny::div(class = "container-fluid py-3", analyses_ui("analyses"))),
+  bslib::nav_panel("Review", shiny::div(class = "container-fluid py-3", review_ui("review"))),
+  bslib::nav_spacer(),
   # One group at the right edge: Save beside Load, both acting on the whole
   # SAP rather than one section. Save is a LINK, not just a status: it reads
   # "Save" until the working file exists, then "Saved HH:MM", and clicking it
   # either way writes THE working file -- one file per SAP, rewritten in
   # place, never a new copy.
-  nav_item(
-    div(
+  bslib::nav_item(
+    shiny::div(
       class = "d-flex align-items-center gap-3",
-      div(class = "navbar-text py-0",
-          uiOutput("save_status", inline = TRUE)),
+      shiny::div(class = "navbar-text py-0",
+          shiny::uiOutput("save_status", inline = TRUE)),
       # A quiet vertical rule: Save and Load are two whole-SAP actions side by
       # side, not one control -- the divider says where one ends.
-      div(class = "vr my-2"),
-      tagAppendAttributes(
-        fileInput("load", NULL, accept = ".json",
-                  buttonLabel = tagList(icon("upload"), "Load SAP"),
+      shiny::div(class = "vr my-2"),
+      htmltools::tagAppendAttributes(
+        shiny::fileInput("load", NULL, accept = ".json",
+                  buttonLabel = shiny::tagList(shiny::icon("upload"), "Load SAP"),
                   placeholder = ""),
         class = "navbar-load"
       )
@@ -370,7 +371,7 @@ server <- function(input, output, session) {
   # differ only in the disease named a third of the way in -- so a label cut at
   # 80 characters makes every option identical. The picker wraps instead; see
   # .objectives-picker in the header CSS.
-  objective_choices <- reactive({
+  objective_choices <- shiny::reactive({
     objs <- study$data()$objectives %||% list()
     if (!length(objs)) return(character(0))
     stats::setNames(
@@ -389,7 +390,7 @@ server <- function(input, output, session) {
                               objective_choices = objective_choices)
 
   # The single source of truth for what gets serialised.
-  sap <- reactive(list(
+  sap <- shiny::reactive(list(
     sap_schema_version = SAP_SCHEMA_VERSION,
     generated_at       = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
     study              = study$data(),
@@ -412,13 +413,13 @@ server <- function(input, output, session) {
     codelists$load(loaded$codelists %||% list())
     cohorts$load(loaded$cohorts %||% list())
     analyses$load(loaded$proposed_analyses %||% list())
-    nav_select("nav", selected = "Study", session = session)
+    bslib::nav_select("nav", selected = "Study", session = session)
   }
 
-  observeEvent(input$load, {
+  shiny::observeEvent(input$load, {
     loaded <- tryCatch(read_sap(input$load$datapath), error = function(e) e)
     if (inherits(loaded, "error")) {
-      showNotification(paste("Could not read that file:", conditionMessage(loaded)), type = "error")
+      shiny::showNotification(paste("Could not read that file:", conditionMessage(loaded)), type = "error")
       return()
     }
     failed <- tryCatch({
@@ -426,7 +427,7 @@ server <- function(input, output, session) {
       NULL
     }, error = function(e) e)
     if (!is.null(failed)) {
-      showNotification(paste("Could not load that SAP:", conditionMessage(failed)), type = "error")
+      shiny::showNotification(paste("Could not load that SAP:", conditionMessage(failed)), type = "error")
       return()
     }
     # The loaded file IS the working file from here on: every save and autosave
@@ -438,7 +439,7 @@ server <- function(input, output, session) {
       working_file(file.path(save_dir(), nm))
       sticky_name(TRUE)   # the user picked this name; it never auto-renames
     }
-    showNotification("SAP loaded.", type = "message")
+    shiny::showNotification("SAP loaded.", type = "message")
   })
 
   # -- The working file -------------------------------------------------------
@@ -450,12 +451,12 @@ server <- function(input, output, session) {
   # and two quiet seconds also ride out the one round-trip after a kind/type
   # switch in which a rebuilt block's inputs have not reported back (see data_r
   # in mod_analyses.R).
-  working_file <- reactiveVal(NULL)
-  save_dir     <- reactiveVal(OUTPUT_DIR)
-  saved_at     <- reactiveVal(NULL)
+  working_file <- shiny::reactiveVal(NULL)
+  save_dir     <- shiny::reactiveVal(OUTPUT_DIR)
+  saved_at     <- shiny::reactiveVal(NULL)
   # TRUE only for a LOADED file: that name the user chose, so it stays. An
   # app-derived name follows the study identity instead (see next_path).
-  sticky_name  <- reactiveVal(FALSE)
+  sticky_name  <- shiny::reactiveVal(FALSE)
 
   # Where the next write lands. An app-derived name FOLLOWS the study identity
   # -- and sap_file_base() puts the study code before the title -- so typing
@@ -486,8 +487,8 @@ server <- function(input, output, session) {
     invisible(path)
   }
 
-  sap_settled <- debounce(sap, 2000)
-  observeEvent(sap_settled(), {
+  sap_settled <- shiny::debounce(sap, 2000)
+  shiny::observeEvent(sap_settled(), {
     s <- sap_settled()
     if (sap_is_empty(s)) return()   # the app as it starts: nothing to keep yet
     persist(s)
@@ -498,16 +499,16 @@ server <- function(input, output, session) {
   # the click observer below survives every relabel. The full path rides in
   # the tooltip; the navbar only has room for the when. .navbar-save (see the
   # header CSS) dresses it exactly like Load, in green.
-  output$save_status <- renderUI({
+  output$save_status <- shiny::renderUI({
     at <- saved_at()
-    actionLink(
+    shiny::actionLink(
       "save_now",
       class = "navbar-save",
       title = if (is.null(at)) "Save the SAP to a file; every later save rewrites it"
               else sprintf("Every save and autosave rewrites %s. Click to save now.",
                            working_file()),
-      if (is.null(at)) tagList(icon("floppy-disk"), "Save")
-      else tagList(icon("check"), sprintf("Saved %s", format(at, "%H:%M")))
+      if (is.null(at)) shiny::tagList(shiny::icon("floppy-disk"), "Save")
+      else shiny::tagList(shiny::icon("check"), sprintf("Saved %s", format(at, "%H:%M")))
     )
   })
 
@@ -520,7 +521,7 @@ server <- function(input, output, session) {
   # twice and quietly estimate everything against the second.
   # uninstantiated_cohort_problems(): an estimator pointing at a table nothing in
   # the script creates -- which validates clean here and dies at the data partner.
-  problems <- reactive(c(study_problems(study$data()),
+  problems <- shiny::reactive(c(study_problems(study$data()),
                          objective_coverage_problems(study$data(), analyses$data()),
                          analysis_role_problems(analyses$data()),
                          cohorts$problems(), analyses$problems(),
@@ -542,10 +543,10 @@ server <- function(input, output, session) {
   # the title guard and the problems warning). Only the FIRST save has a
   # question to ask -- where -- and a browser app cannot open the OS's own
   # save dialog for a server-side write, so the folder is a text field.
-  observeEvent(input$save_now, {
+  shiny::observeEvent(input$save_now, {
     s <- sap()
     if (is.na(s$study$title %||% NA)) {
-      showNotification("Give the study a title before saving.", type = "warning")
+      shiny::showNotification("Give the study a title before saving.", type = "warning")
       return()
     }
     if (!is.null(working_file())) {
@@ -553,18 +554,18 @@ server <- function(input, output, session) {
       if (!is.null(path)) adopt(path)
       return()
     }
-    showModal(modalDialog(
+    shiny::showModal(shiny::modalDialog(
       title = "Save SAP",
-      textInput("save_dir", "Folder to save into", value = save_dir(), width = "100%"),
-      div(class = "form-text",
+      shiny::textInput("save_dir", "Folder to save into", value = save_dir(), width = "100%"),
+      shiny::div(class = "form-text",
           sprintf("Creates %s in this folder (made if missing); every later save and
                    autosave rewrites that same file. A relative path is inside the app
                    folder; ~ is your home folder.",
                   basename(working_sap_path(s$study, ".")))),
-      footer = tagList(
-        modalButton("Cancel"),
-        actionButton("save_confirm", "Save", class = "btn btn-success",
-                     icon = icon("floppy-disk"))
+      footer = shiny::tagList(
+        shiny::modalButton("Cancel"),
+        shiny::actionButton("save_confirm", "Save", class = "btn btn-success",
+                     icon = shiny::icon("floppy-disk"))
       ),
       easyClose = TRUE
     ))
@@ -572,25 +573,26 @@ server <- function(input, output, session) {
 
   # An unwritable folder keeps the dialog open with an error, so the typed
   # path is not lost.
-  observeEvent(input$save_confirm, {
+  shiny::observeEvent(input$save_confirm, {
     dir <- path.expand(trimws(input$save_dir %||% ""))
     if (!nzchar(dir)) {
-      showNotification("Name a folder to save into.", type = "warning")
+      shiny::showNotification("Name a folder to save into.", type = "warning")
       return()
     }
     s <- sap()
     path <- tryCatch(save_working(s, working_sap_path(s$study, dir), length(problems())),
                      error = function(e) {
-                       showNotification(paste("Could not save there:", conditionMessage(e)),
+                       shiny::showNotification(paste("Could not save there:", conditionMessage(e)),
                                         type = "error")
                        NULL
                      })
     if (is.null(path)) return()
     adopt(path)
-    removeModal()
+    shiny::removeModal()
   })
 
   review_server("review", sap = sap, problems = problems)
 }
 
-shinyApp(ui, server)
+shiny::shinyApp(ui, server)
+}

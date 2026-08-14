@@ -5,7 +5,7 @@
 #
 #   container   id of the <div> the items are appended to (unnamespaced)
 #   item_ui     function(id, prefill) -> UI whose root div has id paste0(id, "-box")
-#   item_server function(id, prefill, on_remove) -> reactive() giving the item's data
+#   item_server function(id, prefill, on_remove) -> shiny::reactive() giving the item's data
 #   to_prefill  function(handler result) -> the prefill add() rebuilds a card
 #               from; the same transform the section's load() applies to a saved
 #               item. Feeds Duplicate and the post-remove Undo.
@@ -15,12 +15,12 @@ dynamic_items <- function(prefix, container, item_ui, item_server,
                           session = shiny::getDefaultReactiveDomain()) {
   # Pin the owning module's session. add()/remove() are also called from other
   # modules (loading a saved SAP is driven from the Review tab), and both
-  # moduleServer() and insertUI() would otherwise namespace against the
+  # shiny::moduleServer() and shiny::insertUI() would otherwise namespace against the
   # *caller's* domain -- inserting UI under this module's id while binding the
   # item's inputs under the caller's, so every input$* would read NULL.
   parent <- session
   ns <- parent$ns
-  ids <- reactiveVal(character(0))
+  ids <- shiny::reactiveVal(character(0))
   handlers <- new.env(parent = emptyenv())
   observers <- new.env(parent = emptyenv())
   state <- new.env(parent = emptyenv())
@@ -32,7 +32,7 @@ dynamic_items <- function(prefix, container, item_ui, item_server,
   # NULL when the item cannot report (mid-teardown, a template error): both
   # callers then simply do nothing rather than add a broken card.
   item_prefill <- function(iid) {
-    tryCatch(to_prefill(isolate(handlers[[iid]]())), error = function(e) NULL)
+    tryCatch(to_prefill(shiny::isolate(handlers[[iid]]())), error = function(e) NULL)
   }
 
   # `undoable` is TRUE only for the card's own Remove button. clear() must not
@@ -41,33 +41,33 @@ dynamic_items <- function(prefix, container, item_ui, item_server,
     if (undoable) {
       state$undo <- item_prefill(iid)
       if (!is.null(state$undo)) {
-        showNotification(
+        shiny::showNotification(
           sprintf("%s removed.", noun),
-          action = actionLink(ns(undo_input), "Undo"),
+          action = shiny::actionLink(ns(undo_input), "Undo"),
           duration = 10, id = undo_note, session = parent
         )
       }
     }
-    withReactiveDomain(parent, {
-      removeUI(selector = paste0("#", ns(iid), "-box"), immediate = TRUE, session = parent)
+    shiny::withReactiveDomain(parent, {
+      shiny::removeUI(selector = paste0("#", ns(iid), "-box"), immediate = TRUE, session = parent)
     })
     if (!is.null(observers[[iid]])) {
       observers[[iid]]$destroy()
       rm(list = iid, envir = observers)
     }
     if (!is.null(handlers[[iid]])) rm(list = iid, envir = handlers)
-    ids(setdiff(isolate(ids()), iid))
+    ids(setdiff(shiny::isolate(ids()), iid))
   }
 
   # A single-slot undo: the notification lasts 10 seconds and a second removal
   # replaces the slot, so only the LAST removal can come back. The restored card
   # is appended at the end -- position is not part of what is saved.
-  withReactiveDomain(parent, {
-    observeEvent(parent$input[[undo_input]], {
+  shiny::withReactiveDomain(parent, {
+    shiny::observeEvent(parent$input[[undo_input]], {
       if (is.null(state$undo)) return()
       add_item(state$undo, reveal = TRUE)
       state$undo <- NULL
-      removeNotification(undo_note, session = parent)
+      shiny::removeNotification(undo_note, session = parent)
     }, ignoreInit = TRUE)
   })
 
@@ -77,8 +77,8 @@ dynamic_items <- function(prefix, container, item_ui, item_server,
   add_item <- function(prefill = NULL, reveal = FALSE) {
     state$counter <- state$counter + 1
     iid <- sprintf("%s_%d", prefix, state$counter)
-    withReactiveDomain(parent, {
-      insertUI(
+    shiny::withReactiveDomain(parent, {
+      shiny::insertUI(
         selector = paste0("#", ns(container)),
         where = "beforeEnd",
         ui = item_ui(ns(iid), prefill),
@@ -89,7 +89,7 @@ dynamic_items <- function(prefix, container, item_ui, item_server,
       # Duplicate lives here, not in the item servers: the card knows nothing
       # about the list it sits in, and the observer must die with the card or it
       # would fire on the input value Shiny keeps after the node is gone.
-      observers[[iid]] <- observeEvent(parent$input[[paste0(iid, "-duplicate")]], {
+      observers[[iid]] <- shiny::observeEvent(parent$input[[paste0(iid, "-duplicate")]], {
         copy <- item_prefill(iid)
         if (is.null(copy)) return()
         nm <- copy$name
@@ -101,22 +101,22 @@ dynamic_items <- function(prefix, container, item_ui, item_server,
         add_item(copy, reveal = TRUE)
       }, ignoreInit = TRUE)
       if (reveal) {
-        insertUI(selector = paste0("#", ns(container)), where = "beforeEnd",
+        shiny::insertUI(selector = paste0("#", ns(container)), where = "beforeEnd",
                  ui = reveal_item_script(paste0(ns(iid), "-box")),
                  immediate = TRUE, session = parent)
       }
     })
-    ids(c(isolate(ids()), iid))
+    ids(c(shiny::isolate(ids()), iid))
     invisible(iid)
   }
 
-  clear <- function() for (iid in isolate(ids())) remove_item(iid)
+  clear <- function() for (iid in shiny::isolate(ids())) remove_item(iid)
 
   list(
     add = add_item,
     clear = clear,
-    count = reactive(length(ids())),
-    data = reactive(lapply(ids(), function(iid) handlers[[iid]]()))
+    count = shiny::reactive(length(ids())),
+    data = shiny::reactive(lapply(ids(), function(iid) handlers[[iid]]()))
   )
 }
 
@@ -124,7 +124,7 @@ dynamic_items <- function(prefix, container, item_ui, item_server,
 # view and put the cursor in its first field. Without this, "Add" appends below
 # the fold of a long section and visibly does nothing -- and since cards start
 # collapsed, without the expand step it would appear as a bare header with
-# nothing to type into. insertUI() executes scripts on insertion; the timeout
+# nothing to type into. shiny::insertUI() executes scripts on insertion; the timeout
 # lets the card finish rendering first.
 #
 # Only PLAIN text fields (.form-control) are focused. Selectize renders its own
@@ -132,7 +132,7 @@ dynamic_items <- function(prefix, container, item_ui, item_server,
 # dropdown -- on a card whose first field is a select (a CDM change's type),
 # adding a card would pop a menu nobody asked for.
 reveal_item_script <- function(box_id) {
-  tags$script(HTML(sprintf(
+  shiny::tags$script(shiny::HTML(sprintf(
     paste0("setTimeout(function(){",
            "var b=document.getElementById('%s');if(!b)return;",
            "var c=b.querySelector(':scope > .collapse');",
@@ -166,13 +166,13 @@ reveal_item_script <- function(box_id) {
 # until selected -- so a collapsed card keeps building and reporting its inputs and
 # still saves. Adding a new one without that flag would silently save it empty.
 item_card <- function(id, title, ...) {
-  ns   <- NS(id)
+  ns   <- shiny::NS(id)
   body <- ns("body")
-  div(
+  shiny::div(
     id = ns("box"), class = "card mb-3",
-    div(
+    shiny::div(
       class = "card-header d-flex justify-content-between align-items-center py-2",
-      tags$button(
+      shiny::tags$button(
         class = paste("btn btn-sm btn-link text-body text-decoration-none p-0",
                       "d-flex align-items-center gap-2 item-card-toggle collapsed"),
         type = "button",
@@ -180,20 +180,20 @@ item_card <- function(id, title, ...) {
         `data-bs-target` = paste0("#", body),
         `aria-expanded` = "false",
         `aria-controls` = body,
-        icon("chevron-down", class = "item-card-chevron small"),
-        tags$strong(title),
+        shiny::icon("chevron-down", class = "item-card-chevron small"),
+        shiny::tags$strong(title),
         # The item's own name, so a collapsed card is still identifiable.
-        tags$span(class = "text-muted fw-normal",
-                  textOutput(ns("card_label"), inline = TRUE))
+        shiny::tags$span(class = "text-muted fw-normal",
+                  shiny::textOutput(ns("card_label"), inline = TRUE))
       ),
-      div(
+      shiny::div(
         class = "d-flex gap-2 flex-shrink-0",
         # Wired in dynamic_items(): re-adds this card's data as a new card.
-        actionButton(ns("duplicate"), "Duplicate", class = "btn btn-sm btn-outline-secondary"),
-        actionButton(ns("remove"), "Remove", class = "btn btn-sm btn-outline-danger")
+        shiny::actionButton(ns("duplicate"), "Duplicate", class = "btn btn-sm btn-outline-secondary"),
+        shiny::actionButton(ns("remove"), "Remove", class = "btn btn-sm btn-outline-danger")
       )
     ),
-    div(id = body, class = "collapse", div(class = "card-body", ...))
+    shiny::div(id = body, class = "collapse", shiny::div(class = "card-body", ...))
   )
 }
 
@@ -203,14 +203,14 @@ item_card <- function(id, title, ...) {
 # pane is hidden until it is first selected, and a suspended output would leave
 # every card in a freshly loaded SAP labelled blank until you clicked into the tab.
 item_card_label <- function(output, label) {
-  output$card_label <- renderText(label())
-  outputOptions(output, "card_label", suspendWhenHidden = FALSE)
+  output$card_label <- shiny::renderText(label())
+  shiny::outputOptions(output, "card_label", suspendWhenHidden = FALSE)
 }
 
 # Collapse / expand every card in a section at once. The real navigation win when a
 # SAP has a dozen cohorts: `selector` is the container the cards were inserted into.
 collapse_all_button <- function(container_selector) {
-  tags$button(
+  shiny::tags$button(
     class = "btn btn-sm btn-outline-secondary", type = "button",
     onclick = sprintf(
       paste0("var b=document.querySelectorAll('%s > .card > .collapse');",
@@ -225,7 +225,7 @@ collapse_all_button <- function(container_selector) {
 }
 
 empty_state <- function(text) {
-  div(class = "text-muted fst-italic border rounded p-4 text-center", text)
+  shiny::div(class = "text-muted fst-italic border rounded p-4 text-center", text)
 }
 
 # A picker over entities defined elsewhere in the SAP (a cohort, a CDM source).
@@ -233,7 +233,7 @@ empty_state <- function(text) {
 entity_picker <- function(inputId, label, selected = "", choices = character(0), # nolint: object_name_linter.
                           multiple = FALSE, placeholder = "Select or type") {
   selected <- as.character(unlist(selected))
-  selectizeInput(
+  shiny::selectizeInput(
     inputId, label,
     choices = unique(c("", choices, selected)),
     selected = selected, multiple = multiple, width = "100%",
@@ -250,10 +250,10 @@ entity_picker <- function(inputId, label, selected = "", choices = character(0),
 apply_rename_to_pickers <- function(session, input, fields, old, new,
                                     available = character(0)) {
   for (field in fields) {
-    cur <- as.character(unlist(isolate(input[[field]]) %||% character(0)))
+    cur <- as.character(unlist(shiny::isolate(input[[field]]) %||% character(0)))
     if (!length(cur) || !any(cur == old)) next
     cur[cur == old] <- new
-    updateSelectizeInput(session, field,
+    shiny::updateSelectizeInput(session, field,
                          choices = unique(c("", available, cur)), selected = cur)
   }
 }
@@ -288,17 +288,17 @@ picker_choices <- function(available, current) {
 
 sync_pickers <- function(session, fields, choices, pf) {
   reported <- new.env(parent = emptyenv())
-  observe({
+  shiny::observe({
     available <- choices()
     for (field in if (is.function(fields)) fields() else fields) {
-      current <- isolate(session$input[[field]])
+      current <- shiny::isolate(session$input[[field]])
       if (!is.null(current)) {
         assign(field, TRUE, envir = reported)
       } else if (!isTRUE(mget(field, envir = reported, ifnotfound = FALSE)[[1]])) {
         current <- as.character(unlist(pf(field)))
       }
       if (is.null(current)) current <- character(0)
-      updateSelectizeInput(
+      shiny::updateSelectizeInput(
         session, field,
         choices = picker_choices(available, current),
         selected = current

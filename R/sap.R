@@ -7,5 +7,5 @@
 #' @export
 #'
 newSap <- function(x) {
-  .Data(x, class = "omop_sap")
+  structure(x, class = "omop_sap")
 }
