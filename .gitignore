@@ -11,3 +11,4 @@ codelist/
 # Generated study directories: shinySAP renders these from a SAP
 # (R/sap_study_export.R), so they are build output, not source.
 sampleStudy/
+docs
