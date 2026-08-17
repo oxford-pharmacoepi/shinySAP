@@ -25,7 +25,7 @@ constructSap <- function(x, call = parent.frame()) {
 
 validateSap <- function(x, call = parent.frame()) {
   # sap version
-  #
+  # uniqueness of keys
 }
 
 changeSapVersion <- function(sap, newVersion) {
@@ -43,8 +43,32 @@ createSap <- function(studyName,
 
 }
 
-newDatabaseModification <- function(x) {
+newDatabaseModification <- function(dataSourceId,
+                                    changeType,
+                                    parameters = list()) {
 
+}
+
+appendElement <- function(sap, element) {
+  sap <- validateSapArgument(sap)
+
+  # append element
+  if (inherits(element, "data_source_description")) {
+    sap$data_sources <- append(sap$data_sources, element)
+  } else if (inherits(element, "data_source_modification")) {
+    sap$data_source_modifications <- append(sap$data_source_modifications, element)
+  } else if (inherits(element, "cohort_definition")) {
+    sap$cohort_definitions <- append(sap$cohort_definitions, element)
+  } else if (inherits(element, "codelist_definition")) {
+    sap$codelist_definitions <- append(sap$codelist_definitions, element)
+  } else if (inherits(element, "analysis_definition")) {
+    sap$analyses_definitions <- append(sap$analyses_definitions, element)
+  }
+
+  # validation
+  sap <- validateSap(sap)
+
+  return(sap)
 }
 
 newCohortDefinition <- function(x) {
