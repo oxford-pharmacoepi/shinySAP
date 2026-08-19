@@ -28,25 +28,88 @@ validateSap <- function(x, call = parent.frame()) {
   # uniqueness of keys
 }
 
-changeSapVersion <- function(sap, newVersion) {
+getTypeId <- function(x, version = currentVersion) {
+  sapTypes[[version]] |>
+    dplyr::filter(.data$object == .env$x) |>
+    dplyr::pull("type_id")
+}
+
+newStudy <- function(studyKey = "0",
+                     title = "My study",
+                     authors = character(),
+                     version = "v1.0.0",
+                     description = "") {
+  # input check
+  omopgenerics::assertCharacter(studyKey, length = 1)
+  omopgenerics::assertCharacter(title, length = 1)
+  omopgenerics::assertCharacter(authors)
+  omopgenerics::assertCharacter(version, length = 1)
+  omopgenerics::assertCharacter(description)
+
+  list(
+    study_key = studyKey,
+    title = title,
+    authors = authors,
+    version = version,
+    description = description
+  ) |>
+    structure(class = "sap_study")
+}
+
+newDatabaseModification <- function(key,
+                                    type,
+                                    dataSource,
+                                    parameters = list()) {
+  # input check
+  omopgenerics::assertCharacter(key, length = 1)
+  omopgenerics::assertChoice(type, getTypeId("data_source_modification"))
+  omopgenerics::assertCharacter(dataSource)
+  parameters <- validateParameters(parameters, "data_source_modification", type)
+
+  list(
+    key = key,
+    data_source = dataSource,
+    type = type,
+    parameters = parameters
+  ) |>
+    structure(class = "sap_database_modification")
+}
+
+newCodelists <- function() {
 
 }
 
-sapVersions <- "v0.1.0"
+newCohort <- function() {
 
-createSap <- function(studyName,
+}
+
+newAnalysis <- function() {
+
+}
+
+createSap <- function(study,
                       databases = list(),
-                      databases_modifications = list(),
+                      databaseModifications = list(),
                       codelists = list(),
                       cohorts = list(),
                       analyses = list()) {
+  # initial check
+  omopgenerics::assertClass(study, "sap_study")
+  omopgenerics::assertList(databases, class = "data_source_description")
+  omopgenerics::assertList(databaseModifications, class = "sap_database_modification")
+  omopgenerics::assertList(codelists, class = "sap_codelist")
+  omopgenerics::assertList(cohorts, class = "sap_cohort")
+  omopgenerics::assertList(analyses, class = "sap_analysis")
 
-}
-
-newDatabaseModification <- function(dataSourceId,
-                                    changeType,
-                                    parameters = list()) {
-
+  list(
+    study = study,
+    databases = databases,
+    databaseModifications = databaseModifications,
+    codelists = codelists,
+    cohorts = cohorts,
+    analyses = analyses
+  ) |>
+    newSap()
 }
 
 appendElement <- function(sap, element) {
