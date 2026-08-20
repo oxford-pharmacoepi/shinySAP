@@ -135,11 +135,11 @@ checkSap <- function(x) {
   checkValue <- function(value, field, path) {
     valueType <- field$value_type[[1]]
 
-    if (valueType %in% c("character", "key", "type_id", "datetime")) {
+    if (valueType %in% c("character", "id", "type_id", "datetime")) {
       if (!is.character(value) || length(value) != 1L) {
         addProblem(path, "invalid_value_type", "A single character value is required.")
       }
-    } else if (valueType %in% c("character_vector", "key_vector")) {
+    } else if (valueType %in% c("character_vector", "id_vector")) {
       if (!is.character(value)) {
         addProblem(path, "invalid_value_type", "A character vector is required.")
       }
@@ -185,42 +185,42 @@ checkSap <- function(x) {
     invisible(NULL)
   }
 
-  checkKeys <- function(values, collectionName) {
+  checkIds <- function(values, collectionName) {
     if (!length(values)) return(character())
-    keys <- purrr::map_chr(values, function(value) {
+    ids <- purrr::map_chr(values, function(value) {
       if (!is.list(value)) return("")
-      as.character(value$key %||% "")
+      as.character(value$id %||% "")
     })
-    missing <- which(!nzchar(keys))
+    missing <- which(!nzchar(ids))
     if (length(missing)) {
       purrr::walk(missing, function(index) {
         addProblem(
-          sprintf("%s[%d].key", collectionName, index),
-          "missing_key", "Every item must have a non-empty key."
+          sprintf("%s[%d].id", collectionName, index),
+          "missing_id", "Every item must have a non-empty id."
         )
       })
     }
-    duplicatedKeys <- unique(keys[duplicated(keys) & nzchar(keys)])
-    purrr::walk(duplicatedKeys, function(key) {
+    duplicatedIds <- unique(ids[duplicated(ids) & nzchar(ids)])
+    purrr::walk(duplicatedIds, function(id) {
       addProblem(
-        collectionName, "duplicate_key",
-        sprintf("The key '%s' is used more than once.", key)
+        collectionName, "duplicate_id",
+        sprintf("The id '%s' is used more than once.", id)
       )
     })
-    unique(keys[nzchar(keys)])
+    unique(ids[nzchar(ids)])
   }
 
-  checkReferences <- function(values, collectionName, fieldName, availableKeys) {
+  checkReferences <- function(values, collectionName, fieldName, availableIds) {
     purrr::walk(seq_along(values), function(index) {
       if (!is.list(values[[index]])) return(invisible(NULL))
       references <- as.character(values[[index]][[fieldName]] %||% character())
       references <- references[nzchar(references)]
-      missingReferences <- setdiff(references, availableKeys)
+      missingReferences <- setdiff(references, availableIds)
       purrr::walk(missingReferences, function(reference) {
         addProblem(
           sprintf("%s[%d].%s", collectionName, index, fieldName),
           "missing_reference",
-          sprintf("The key '%s' is not defined.", reference)
+          sprintf("The id '%s' is not defined.", reference)
         )
       })
     })
@@ -236,7 +236,7 @@ checkSap <- function(x) {
     cohorts = "cohort",
     analyses = "analysis"
   )
-  collectionKeys <- purrr::map(
+  collectionIds <- purrr::map(
     names(collectionDefinitions),
     function(collectionName) {
     values <- x[[collectionName]]
@@ -244,41 +244,41 @@ checkSap <- function(x) {
       addProblem(collectionName, "invalid_collection", "The value must be a list.")
       return(character())
     }
-    keys <- checkKeys(values, collectionName)
+    ids <- checkIds(values, collectionName)
     object <- collectionDefinitions[[collectionName]]
     purrr::walk(seq_along(values), function(index) {
       value <- values[[index]]
       typeId <- if (is.list(value) && length(value$type) == 1L) value$type else NULL
       checkObject(value, object, sprintf("%s[%d]", collectionName, index), typeId)
     })
-    keys
+    ids
   }
   )
-  names(collectionKeys) <- names(collectionDefinitions)
+  names(collectionIds) <- names(collectionDefinitions)
 
   checkReferences(
     x$data_source_modifications %||% list(),
-    "data_source_modifications", "data_source_key",
-    collectionKeys$data_sources
+    "data_source_modifications", "data_source_id",
+    collectionIds$data_sources
   )
   checkReferences(
-    x$cohorts %||% list(), "cohorts", "data_source_key",
-    collectionKeys$data_sources
+    x$cohorts %||% list(), "cohorts", "data_source_id",
+    collectionIds$data_sources
   )
   checkReferences(
-    x$analyses %||% list(), "analyses", "data_source_key",
-    collectionKeys$data_sources
+    x$analyses %||% list(), "analyses", "data_source_id",
+    collectionIds$data_sources
   )
 
   purrr::walk(seq_along(x$cohorts %||% list()), function(index) {
     cohort <- x$cohorts[[index]]
     if (!is.list(cohort)) return(invisible(NULL))
     if (identical(cohort$type, "concept_cohort")) {
-      key <- cohort$parameters$codelist_key %||% ""
-      if (nzchar(as.character(key)) && !key %in% collectionKeys$codelists) {
+      id <- cohort$parameters$codelist_id %||% ""
+      if (nzchar(as.character(id)) && !id %in% collectionIds$codelists) {
         addProblem(
-          sprintf("cohorts[%d].parameters.codelist_key", index),
-          "missing_reference", sprintf("The key '%s' is not defined.", key)
+          sprintf("cohorts[%d].parameters.codelist_id", index),
+          "missing_reference", sprintf("The id '%s' is not defined.", id)
         )
       }
     }
@@ -287,12 +287,12 @@ checkSap <- function(x) {
   purrr::walk(seq_along(x$analyses %||% list()), function(index) {
     analysis <- x$analyses[[index]]
     if (!is.list(analysis)) return(invisible(NULL))
-    purrr::walk(c("denominator_cohort_key", "outcome_cohort_key"), function(parameterName) {
-      key <- analysis$parameters[[parameterName]] %||% ""
-      if (nzchar(as.character(key)) && !key %in% collectionKeys$cohorts) {
+    purrr::walk(c("denominator_cohort_id", "outcome_cohort_id"), function(parameterName) {
+      id <- analysis$parameters[[parameterName]] %||% ""
+      if (nzchar(as.character(id)) && !id %in% collectionIds$cohorts) {
         addProblem(
           sprintf("analyses[%d].parameters.%s", index, parameterName),
-          "missing_reference", sprintf("The key '%s' is not defined.", key)
+          "missing_reference", sprintf("The id '%s' is not defined.", id)
         )
       }
     })
@@ -323,14 +323,14 @@ validateSap <- function(x) {
 #' Create the study metadata component of a SAP
 #'
 #' @export
-newSapStudy <- function(studyKey,
+newSapStudy <- function(studyId,
                         title,
                         authors = character(),
                         version = "v1.0.0",
                         description = NULL) {
   omopgenerics::assertCharacter(
-    studyKey, length = 1, na = FALSE, null = FALSE, empty = FALSE,
-    minNumCharacter = 1, nm = "studyKey"
+    studyId, length = 1, na = FALSE, null = FALSE, empty = FALSE,
+    minNumCharacter = 1, nm = "studyId"
   )
   omopgenerics::assertCharacter(
     title, length = 1, na = FALSE, null = FALSE, empty = FALSE,
@@ -350,7 +350,7 @@ newSapStudy <- function(studyKey,
 
   structure(
     list(
-      study_key = studyKey,
+      study_id = studyId,
       title = title,
       authors = authors,
       version = version,
@@ -363,17 +363,21 @@ newSapStudy <- function(studyKey,
 #' Create a SAP data-source component
 #'
 #' @export
-newSapDataSource <- function(key, description) {
+newSapDataSource <- function(id, name, description) {
   omopgenerics::assertCharacter(
-    key, length = 1, na = FALSE, null = FALSE, empty = FALSE,
-    minNumCharacter = 1, nm = "key"
+    id, length = 1, na = FALSE, null = FALSE, empty = FALSE,
+    minNumCharacter = 1, nm = "id"
+  )
+  omopgenerics::assertCharacter(
+    name, length = 1, na = FALSE, null = FALSE, empty = FALSE,
+    minNumCharacter = 1, nm = "name"
   )
   omopgenerics::assertClass(
     description, class = "data_source_description", null = FALSE,
     all = TRUE, nm = "description"
   )
   structure(
-    list(key = key, description = description),
+    list(id = id, name = name, description = description),
     class = c("sap_data_source", "list")
   )
 }
@@ -381,27 +385,33 @@ newSapDataSource <- function(key, description) {
 #' Create a data-source modification component
 #'
 #' @export
-newSapDataSourceModification <- function(key,
+newSapDataSourceModification <- function(id,
+                                         name,
                                          type,
-                                         dataSourceKey,
+                                         dataSourceId,
                                          parameters = list()) {
   omopgenerics::assertCharacter(
-    key, length = 1, na = FALSE, null = FALSE, empty = FALSE,
-    minNumCharacter = 1, nm = "key"
+    id, length = 1, na = FALSE, null = FALSE, empty = FALSE,
+    minNumCharacter = 1, nm = "id"
+  )
+  omopgenerics::assertCharacter(
+    name, length = 1, na = FALSE, null = FALSE, empty = FALSE,
+    minNumCharacter = 1, nm = "name"
   )
   omopgenerics::assertChoice(
     type, schemaTypes("data_source_modification"), length = 1,
     na = FALSE, null = FALSE, empty = FALSE, nm = "type"
   )
-  omopgenerics::assertCharacter(dataSourceKey, na = FALSE, nm = "dataSourceKey")
+  omopgenerics::assertCharacter(dataSourceId, na = FALSE, nm = "dataSourceId")
   parameters <- validateParameters(
     parameters, "data_source_modification", type
   )
   structure(
     list(
-      key = key,
+      id = id,
+      name = name,
       type = type,
-      data_source_key = dataSourceKey,
+      data_source_id = dataSourceId,
       parameters = parameters
     ),
     class = c("sap_data_source_modification", "list")
@@ -411,10 +421,14 @@ newSapDataSourceModification <- function(key,
 #' Create a SAP codelist component from an external codelist object
 #'
 #' @export
-newSapCodelist <- function(key, type, content) {
+newSapCodelist <- function(id, name, type, content) {
   omopgenerics::assertCharacter(
-    key, length = 1, na = FALSE, null = FALSE, empty = FALSE,
-    minNumCharacter = 1, nm = "key"
+    id, length = 1, na = FALSE, null = FALSE, empty = FALSE,
+    minNumCharacter = 1, nm = "id"
+  )
+  omopgenerics::assertCharacter(
+    name, length = 1, na = FALSE, null = FALSE, empty = FALSE,
+    minNumCharacter = 1, nm = "name"
   )
   omopgenerics::assertChoice(
     type, schemaTypes("codelist"), length = 1,
@@ -430,7 +444,7 @@ newSapCodelist <- function(key, type, content) {
     content, class = expectedClass, all = TRUE, nm = "content"
   )
   structure(
-    list(key = key, type = type, content = content),
+    list(id = id, name = name, type = type, content = content),
     class = c("sap_codelist", "list")
   )
 }
@@ -438,15 +452,20 @@ newSapCodelist <- function(key, type, content) {
 #' Create a SAP cohort component
 #'
 #' @export
-newSapCohort <- function(key,
-                         dataSourceKey,
+newSapCohort <- function(id,
+                         name,
+                         dataSourceId,
                          type,
                          parameters = list()) {
   omopgenerics::assertCharacter(
-    key, length = 1, na = FALSE, null = FALSE, empty = FALSE,
-    minNumCharacter = 1, nm = "key"
+    id, length = 1, na = FALSE, null = FALSE, empty = FALSE,
+    minNumCharacter = 1, nm = "id"
   )
-  omopgenerics::assertCharacter(dataSourceKey, na = FALSE, nm = "dataSourceKey")
+  omopgenerics::assertCharacter(
+    name, length = 1, na = FALSE, null = FALSE, empty = FALSE,
+    minNumCharacter = 1, nm = "name"
+  )
+  omopgenerics::assertCharacter(dataSourceId, na = FALSE, nm = "dataSourceId")
   omopgenerics::assertChoice(
     type, schemaTypes("cohort"), length = 1,
     na = FALSE, null = FALSE, empty = FALSE, nm = "type"
@@ -454,8 +473,9 @@ newSapCohort <- function(key,
   parameters <- validateParameters(parameters, "cohort", type)
   structure(
     list(
-      key = key,
-      data_source_key = dataSourceKey,
+      id = id,
+      name = name,
+      data_source_id = dataSourceId,
       type = type,
       parameters = parameters
     ),
@@ -466,15 +486,20 @@ newSapCohort <- function(key,
 #' Create a SAP analysis component
 #'
 #' @export
-newSapAnalysis <- function(key,
-                           dataSourceKey,
+newSapAnalysis <- function(id,
+                           name,
+                           dataSourceId,
                            type,
                            parameters = list()) {
   omopgenerics::assertCharacter(
-    key, length = 1, na = FALSE, null = FALSE, empty = FALSE,
-    minNumCharacter = 1, nm = "key"
+    id, length = 1, na = FALSE, null = FALSE, empty = FALSE,
+    minNumCharacter = 1, nm = "id"
   )
-  omopgenerics::assertCharacter(dataSourceKey, na = FALSE, nm = "dataSourceKey")
+  omopgenerics::assertCharacter(
+    name, length = 1, na = FALSE, null = FALSE, empty = FALSE,
+    minNumCharacter = 1, nm = "name"
+  )
+  omopgenerics::assertCharacter(dataSourceId, na = FALSE, nm = "dataSourceId")
   omopgenerics::assertChoice(
     type, schemaTypes("analysis"), length = 1,
     na = FALSE, null = FALSE, empty = FALSE, nm = "type"
@@ -482,8 +507,9 @@ newSapAnalysis <- function(key,
   parameters <- validateParameters(parameters, "analysis", type)
   structure(
     list(
-      key = key,
-      data_source_key = dataSourceKey,
+      id = id,
+      name = name,
+      data_source_id = dataSourceId,
       type = type,
       parameters = parameters
     ),
@@ -529,12 +555,12 @@ addSapComponent <- function(sap, component, collectionName, className) {
   omopgenerics::assertClass(
     component, class = className, all = TRUE, nm = "component"
   )
-  existingKeys <- purrr::map_chr(
+  existingIds <- purrr::map_chr(
     sap[[collectionName]] %||% list(),
-    function(value) as.character(value$key %||% "")
+    function(value) as.character(value$id %||% "")
   )
-  if (component$key %in% existingKeys) {
-    cli::cli_abort(c(x = sprintf("The key '%s' already exists.", component$key)))
+  if (component$id %in% existingIds) {
+    cli::cli_abort(c(x = sprintf("The id '%s' already exists.", component$id)))
   }
   sap[[collectionName]] <- c(sap[[collectionName]] %||% list(), list(component))
   newSap(sap)
@@ -601,7 +627,7 @@ validateParameters <- function(parameters, object, typeId) {
 }
 
 validateParameterValue <- function(value, valueType, parameterName) {
-  if (valueType == "key") {
+  if (valueType == "id") {
     omopgenerics::assertCharacter(
       value, length = 1, na = FALSE, null = FALSE, empty = FALSE,
       minNumCharacter = 1, nm = parameterName

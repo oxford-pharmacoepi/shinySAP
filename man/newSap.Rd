@@ -2,16 +2,18 @@
 % Please edit documentation in R/sap.R
 \name{newSap}
 \alias{newSap}
-\title{Create an OMOP Standardised Analysis Plan}
+\title{Create a structured Statistical Analysis Plan}
 \usage{
-newSap(x)
+newSap(x, validate = TRUE)
 }
 \arguments{
-\item{x}{An R list to create a \code{sap} object.}
+\item{x}{A named R list containing the SAP fields.}
+
+\item{validate}{Whether to validate the complete SAP before returning it.}
 }
 \value{
-A sap object.
+An object of class \code{sap}.
 }
 \description{
-Create an OMOP Standardised Analysis Plan
+Create a structured Statistical Analysis Plan
 }
