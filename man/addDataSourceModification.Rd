@@ -6,6 +6,14 @@
 \usage{
 addDataSourceModification(sap, dataSourceModification)
 }
+\arguments{
+\item{sap}{A \code{sap} object.}
+
+\item{dataSourceModification}{A \code{sap_data_source_modification} object.}
+}
+\value{
+The updated \code{sap} object.
+}
 \description{
 Add a data-source modification to a SAP
 }

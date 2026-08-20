@@ -6,6 +6,20 @@
 \usage{
 newSapDataSourceModification(id, name, type, dataSourceId, parameters = list())
 }
+\arguments{
+\item{id}{Immutable modification identifier.}
+
+\item{name}{Display name of the modification.}
+
+\item{type}{Data-source modification type.}
+
+\item{dataSourceId}{Identifier of the affected data source(s).}
+
+\item{parameters}{Type-specific modification parameters.}
+}
+\value{
+An object of class \code{sap_data_source_modification}.
+}
 \description{
 Create a data-source modification component
 }

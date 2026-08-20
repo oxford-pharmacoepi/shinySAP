@@ -12,6 +12,20 @@ newSapStudy(
   description = NULL
 )
 }
+\arguments{
+\item{studyId}{Immutable study identifier.}
+
+\item{title}{Study title.}
+
+\item{authors}{Character vector of study authors.}
+
+\item{version}{Study version label.}
+
+\item{description}{Optional study description.}
+}
+\value{
+An object of class \code{sap_study}.
+}
 \description{
 Create the study metadata component of a SAP
 }

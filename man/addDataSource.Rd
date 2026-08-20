@@ -6,6 +6,14 @@
 \usage{
 addDataSource(sap, dataSource)
 }
+\arguments{
+\item{sap}{A \code{sap} object.}
+
+\item{dataSource}{A \code{sap_data_source} object.}
+}
+\value{
+The updated \code{sap} object.
+}
 \description{
 Add a data source to a SAP
 }

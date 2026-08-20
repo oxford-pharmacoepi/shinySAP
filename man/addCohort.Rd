@@ -6,6 +6,14 @@
 \usage{
 addCohort(sap, cohort)
 }
+\arguments{
+\item{sap}{A \code{sap} object.}
+
+\item{cohort}{A \code{sap_cohort} object.}
+}
+\value{
+The updated \code{sap} object.
+}
 \description{
 Add a cohort to a SAP
 }

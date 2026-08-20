@@ -6,6 +6,16 @@
 \usage{
 newSapDataSource(id, name, description)
 }
+\arguments{
+\item{id}{Immutable data-source identifier.}
+
+\item{name}{Display name of the data source.}
+
+\item{description}{A \code{data_source_description} object.}
+}
+\value{
+An object of class \code{sap_data_source}.
+}
 \description{
 Create a SAP data-source component
 }

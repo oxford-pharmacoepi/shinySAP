@@ -322,6 +322,13 @@ validateSap <- function(x) {
 
 #' Create the study metadata component of a SAP
 #'
+#' @param studyId Immutable study identifier.
+#' @param title Study title.
+#' @param authors Character vector of study authors.
+#' @param version Study version label.
+#' @param description Optional study description.
+#'
+#' @return An object of class `sap_study`.
 #' @export
 newSapStudy <- function(studyId,
                         title,
@@ -362,6 +369,11 @@ newSapStudy <- function(studyId,
 
 #' Create a SAP data-source component
 #'
+#' @param id Immutable data-source identifier.
+#' @param name Display name of the data source.
+#' @param description A `data_source_description` object.
+#'
+#' @return An object of class `sap_data_source`.
 #' @export
 newSapDataSource <- function(id, name, description) {
   omopgenerics::assertCharacter(
@@ -384,6 +396,13 @@ newSapDataSource <- function(id, name, description) {
 
 #' Create a data-source modification component
 #'
+#' @param id Immutable modification identifier.
+#' @param name Display name of the modification.
+#' @param type Data-source modification type.
+#' @param dataSourceId Identifier of the affected data source(s).
+#' @param parameters Type-specific modification parameters.
+#'
+#' @return An object of class `sap_data_source_modification`.
 #' @export
 newSapDataSourceModification <- function(id,
                                          name,
@@ -420,6 +439,12 @@ newSapDataSourceModification <- function(id,
 
 #' Create a SAP codelist component from an external codelist object
 #'
+#' @param id Immutable codelist identifier.
+#' @param name Display name of the codelist.
+#' @param type Codelist object type.
+#' @param content External codelist object matching `type`.
+#'
+#' @return An object of class `sap_codelist`.
 #' @export
 newSapCodelist <- function(id, name, type, content) {
   omopgenerics::assertCharacter(
@@ -451,6 +476,13 @@ newSapCodelist <- function(id, name, type, content) {
 
 #' Create a SAP cohort component
 #'
+#' @param id Immutable cohort identifier.
+#' @param name Display name of the cohort.
+#' @param dataSourceId Identifier of the data source(s) used by the cohort.
+#' @param type Cohort type.
+#' @param parameters Type-specific cohort parameters.
+#'
+#' @return An object of class `sap_cohort`.
 #' @export
 newSapCohort <- function(id,
                          name,
@@ -485,6 +517,13 @@ newSapCohort <- function(id,
 
 #' Create a SAP analysis component
 #'
+#' @param id Immutable analysis identifier.
+#' @param name Display name of the analysis.
+#' @param dataSourceId Identifier of the data source(s) used by the analysis.
+#' @param type Analysis type.
+#' @param parameters Type-specific analysis parameters.
+#'
+#' @return An object of class `sap_analysis`.
 #' @export
 newSapAnalysis <- function(id,
                            name,
@@ -519,6 +558,14 @@ newSapAnalysis <- function(id,
 
 #' Create a complete SAP from its components
 #'
+#' @param study A `sap_study` object.
+#' @param dataSources List of `sap_data_source` objects.
+#' @param dataSourceModifications List of `sap_data_source_modification` objects.
+#' @param codelists List of `sap_codelist` objects.
+#' @param cohorts List of `sap_cohort` objects.
+#' @param analyses List of `sap_analysis` objects.
+#'
+#' @return An object of class `sap`.
 #' @export
 createSap <- function(study,
                       dataSources = list(),
@@ -567,12 +614,22 @@ addSapComponent <- function(sap, component, collectionName, className) {
 }
 
 #' Add a data source to a SAP
+#'
+#' @param sap A `sap` object.
+#' @param dataSource A `sap_data_source` object.
+#'
+#' @return The updated `sap` object.
 #' @export
 addDataSource <- function(sap, dataSource) {
   addSapComponent(sap, dataSource, "data_sources", "sap_data_source")
 }
 
 #' Add a data-source modification to a SAP
+#'
+#' @param sap A `sap` object.
+#' @param dataSourceModification A `sap_data_source_modification` object.
+#'
+#' @return The updated `sap` object.
 #' @export
 addDataSourceModification <- function(sap, dataSourceModification) {
   addSapComponent(
@@ -582,18 +639,33 @@ addDataSourceModification <- function(sap, dataSourceModification) {
 }
 
 #' Add a codelist to a SAP
+#'
+#' @param sap A `sap` object.
+#' @param codelist A `sap_codelist` object.
+#'
+#' @return The updated `sap` object.
 #' @export
 addCodelist <- function(sap, codelist) {
   addSapComponent(sap, codelist, "codelists", "sap_codelist")
 }
 
 #' Add a cohort to a SAP
+#'
+#' @param sap A `sap` object.
+#' @param cohort A `sap_cohort` object.
+#'
+#' @return The updated `sap` object.
 #' @export
 addCohort <- function(sap, cohort) {
   addSapComponent(sap, cohort, "cohorts", "sap_cohort")
 }
 
 #' Add an analysis to a SAP
+#'
+#' @param sap A `sap` object.
+#' @param analysis A `sap_analysis` object.
+#'
+#' @return The updated `sap` object.
 #' @export
 addAnalysis <- function(sap, analysis) {
   addSapComponent(sap, analysis, "analyses", "sap_analysis")

@@ -6,6 +6,20 @@
 \usage{
 newSapAnalysis(id, name, dataSourceId, type, parameters = list())
 }
+\arguments{
+\item{id}{Immutable analysis identifier.}
+
+\item{name}{Display name of the analysis.}
+
+\item{dataSourceId}{Identifier of the data source(s) used by the analysis.}
+
+\item{type}{Analysis type.}
+
+\item{parameters}{Type-specific analysis parameters.}
+}
+\value{
+An object of class \code{sap_analysis}.
+}
 \description{
 Create a SAP analysis component
 }

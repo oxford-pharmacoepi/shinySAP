@@ -6,6 +6,18 @@
 \usage{
 newSapCodelist(id, name, type, content)
 }
+\arguments{
+\item{id}{Immutable codelist identifier.}
+
+\item{name}{Display name of the codelist.}
+
+\item{type}{Codelist object type.}
+
+\item{content}{External codelist object matching \code{type}.}
+}
+\value{
+An object of class \code{sap_codelist}.
+}
 \description{
 Create a SAP codelist component from an external codelist object
 }

@@ -6,6 +6,20 @@
 \usage{
 newSapCohort(id, name, dataSourceId, type, parameters = list())
 }
+\arguments{
+\item{id}{Immutable cohort identifier.}
+
+\item{name}{Display name of the cohort.}
+
+\item{dataSourceId}{Identifier of the data source(s) used by the cohort.}
+
+\item{type}{Cohort type.}
+
+\item{parameters}{Type-specific cohort parameters.}
+}
+\value{
+An object of class \code{sap_cohort}.
+}
 \description{
 Create a SAP cohort component
 }

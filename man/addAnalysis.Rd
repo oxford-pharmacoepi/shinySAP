@@ -6,6 +6,14 @@
 \usage{
 addAnalysis(sap, analysis)
 }
+\arguments{
+\item{sap}{A \code{sap} object.}
+
+\item{analysis}{A \code{sap_analysis} object.}
+}
+\value{
+The updated \code{sap} object.
+}
 \description{
 Add an analysis to a SAP
 }

@@ -13,6 +13,22 @@ createSap(
   analyses = list()
 )
 }
+\arguments{
+\item{study}{A \code{sap_study} object.}
+
+\item{dataSources}{List of \code{sap_data_source} objects.}
+
+\item{dataSourceModifications}{List of \code{sap_data_source_modification} objects.}
+
+\item{codelists}{List of \code{sap_codelist} objects.}
+
+\item{cohorts}{List of \code{sap_cohort} objects.}
+
+\item{analyses}{List of \code{sap_analysis} objects.}
+}
+\value{
+An object of class \code{sap}.
+}
 \description{
 Create a complete SAP from its components
 }

@@ -6,6 +6,14 @@
 \usage{
 addCodelist(sap, codelist)
 }
+\arguments{
+\item{sap}{A \code{sap} object.}
+
+\item{codelist}{A \code{sap_codelist} object.}
+}
+\value{
+The updated \code{sap} object.
+}
 \description{
 Add a codelist to a SAP
 }
