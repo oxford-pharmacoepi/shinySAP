@@ -1,0 +1,8 @@
+object,type_id,label
+data_source_modification,trim_observation_period,Trim observation period
+codelist,codelist,Codelist
+codelist,codelist_with_details,Codelist with details
+codelist,concept_set_expression,Concept set expression
+cohort,concept_cohort,Concept cohort
+analysis,incidence,Incidence
+analysis,other,Other
