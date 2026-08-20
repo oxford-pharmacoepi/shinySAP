@@ -1,19 +1,23 @@
-# Create an OMOP Standardised Analysis Plan
+# Create a structured Statistical Analysis Plan
 
-Create an OMOP Standardised Analysis Plan
+Create a structured Statistical Analysis Plan
 
 ## Usage
 
 ``` r
-newSap(x)
+newSap(x, validate = TRUE)
 ```
 
 ## Arguments
 
 - x:
 
-  An R list to create a `sap` object.
+  A named R list containing the SAP fields.
+
+- validate:
+
+  Whether to validate the complete SAP before returning it.
 
 ## Value
 
-A sap object.
+An object of class `sap`.
