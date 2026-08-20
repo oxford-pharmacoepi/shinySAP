@@ -16,13 +16,15 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Imports:
     bslib,
+    cli,
     htmltools,
     jsonlite,
+    omopgenerics,
+    purrr,
     shiny
 Suggests:
     IncidencePrevalence,
     knitr,
-    omopgenerics,
     officedown,
     rmarkdown,
     testthat (>= 3.0.0),
