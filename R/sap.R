@@ -34,59 +34,6 @@ getTypeId <- function(x, version = currentVersion) {
     dplyr::pull("type_id")
 }
 
-newStudy <- function(studyKey = "0",
-                     title = "My study",
-                     authors = character(),
-                     version = "v1.0.0",
-                     description = "") {
-  # input check
-  omopgenerics::assertCharacter(studyKey, length = 1)
-  omopgenerics::assertCharacter(title, length = 1)
-  omopgenerics::assertCharacter(authors)
-  omopgenerics::assertCharacter(version, length = 1)
-  omopgenerics::assertCharacter(description)
-
-  list(
-    study_key = studyKey,
-    title = title,
-    authors = authors,
-    version = version,
-    description = description
-  ) |>
-    structure(class = "sap_study")
-}
-
-newDatabaseModification <- function(key,
-                                    type,
-                                    dataSource,
-                                    parameters = list()) {
-  # input check
-  omopgenerics::assertCharacter(key, length = 1)
-  omopgenerics::assertChoice(type, getTypeId("data_source_modification"))
-  omopgenerics::assertCharacter(dataSource)
-  parameters <- validateParameters(parameters, "data_source_modification", type)
-
-  list(
-    key = key,
-    data_source = dataSource,
-    type = type,
-    parameters = parameters
-  ) |>
-    structure(class = "sap_database_modification")
-}
-
-newCodelists <- function() {
-
-}
-
-newCohort <- function() {
-
-}
-
-newAnalysis <- function() {
-
-}
-
 createSap <- function(study,
                       databases = list(),
                       databaseModifications = list(),
@@ -112,32 +59,100 @@ createSap <- function(study,
     newSap()
 }
 
-appendElement <- function(sap, element) {
-  sap <- validateSapArgument(sap)
+newSapStudy <- function(studyKey = "0",
+                        title = "My study",
+                        authors = character(),
+                        version = "v1.0.0",
+                        description = "") {
+  # input check
+  omopgenerics::assertCharacter(studyKey, length = 1)
+  omopgenerics::assertCharacter(title, length = 1)
+  omopgenerics::assertCharacter(authors)
+  omopgenerics::assertCharacter(version, length = 1)
+  omopgenerics::assertCharacter(description)
 
-  # append element
-  if (inherits(element, "data_source_description")) {
-    sap$data_sources <- append(sap$data_sources, element)
-  } else if (inherits(element, "data_source_modification")) {
-    sap$data_source_modifications <- append(sap$data_source_modifications, element)
-  } else if (inherits(element, "cohort_definition")) {
-    sap$cohort_definitions <- append(sap$cohort_definitions, element)
-  } else if (inherits(element, "codelist_definition")) {
-    sap$codelist_definitions <- append(sap$codelist_definitions, element)
-  } else if (inherits(element, "analysis_definition")) {
-    sap$analyses_definitions <- append(sap$analyses_definitions, element)
+  list(
+    study_key = studyKey,
+    title = title,
+    authors = authors,
+    version = version,
+    description = description
+  ) |>
+    structure(class = "sap_study")
+}
+
+newSapDatabaseModification <- function(key,
+                                       type,
+                                       dataSource,
+                                       parameters = list()) {
+  # input check
+  omopgenerics::assertCharacter(key, length = 1)
+  omopgenerics::assertChoice(type, getTypeId("data_source_modification"))
+  omopgenerics::assertCharacter(dataSource)
+  parameters <- validateParameters(parameters, "data_source_modification", type)
+
+  list(
+    key = key,
+    data_source = dataSource,
+    type = type,
+    parameters = parameters
+  ) |>
+    structure(class = "sap_database_modification")
+}
+
+newSapCodelists <- function(key,
+                            type,
+                            content = list()) {
+  # input check
+  omopgenerics::assertCharacter(key, length = 1)
+  omopgenerics::assertChoice(type, getTypeId("codelist"))
+
+  if (type == "codelist") {
+    content <- omopgenerics::newCodelist(content)
+  } else if (type == "codelist_with_details") {
+    content <- omopgenerics::newCodelistWithDetails(content)
+  } else if (type == "concept_set_expression") {
+    content <- omopgenerics::newConceptSetExpression(content)
   }
 
-  # validation
-  sap <- validateSap(sap)
+  if (length(conent) != 1) {
+    cli::cli_abort(c(x = "Please provide only one object."))
+  }
 
-  return(sap)
+  list(
+    key = key,
+    type = type,
+    content = content
+  ) |>
+    structure(class = "sap_codelist")
 }
 
-newCohortDefinition <- function(x) {
+newSapCohort <- function() {
 
 }
 
-newAnalysis <- function(x) {
+newSapAnalysis <- function() {
 
 }
+
+# appendElement <- function(sap, element) {
+#   sap <- validateSapArgument(sap)
+#
+#   # append element
+#   if (inherits(element, "data_source_description")) {
+#     sap$data_sources <- append(sap$data_sources, element)
+#   } else if (inherits(element, "data_source_modification")) {
+#     sap$data_source_modifications <- append(sap$data_source_modifications, element)
+#   } else if (inherits(element, "cohort_definition")) {
+#     sap$cohort_definitions <- append(sap$cohort_definitions, element)
+#   } else if (inherits(element, "codelist_definition")) {
+#     sap$codelist_definitions <- append(sap$codelist_definitions, element)
+#   } else if (inherits(element, "analysis_definition")) {
+#     sap$analyses_definitions <- append(sap$analyses_definitions, element)
+#   }
+#
+#   # validation
+#   sap <- validateSap(sap)
+#
+#   return(sap)
+# }
