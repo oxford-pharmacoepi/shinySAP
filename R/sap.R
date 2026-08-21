@@ -45,9 +45,10 @@ constructSap <- function(x,
 #' @return A list of problems. An empty list means that no problems were found.
 #' @export
 checkSap <- function(x) {
-  problems <- list()
+  collected <- new.env(parent = emptyenv())
+  collected$problems <- list()
   addProblem <- function(path, code, message) {
-    problems[[length(problems) + 1L]] <<- list(
+    collected$problems[[length(collected$problems) + 1L]] <- list(
       path = path, code = code, message = message
     )
   }
@@ -63,7 +64,7 @@ checkSap <- function(x) {
       "sap_schema_version", "unknown_schema_version",
       sprintf("Unknown SAP schema version '%s'.", version)
     )
-    return(problems)
+    return(collected$problems)
   }
 
   checkObject <- function(value, object, path, typeId = NULL) {
@@ -298,7 +299,7 @@ checkSap <- function(x) {
     })
   })
 
-  problems
+  collected$problems
 }
 
 #' Validate a SAP, throwing an error when problems are found

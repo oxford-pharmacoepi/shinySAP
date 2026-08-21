@@ -1,6 +1,6 @@
 linters: linters_with_defaults(
     line_length_linter = line_length_linter(120),
-    object_name_linter = object_name_linter(styles = c("snake_case", "SNAKE_CASE", "symbols")),
+    object_name_linter = object_name_linter(styles = c("snake_case", "SNAKE_CASE", "camelCase", "symbols")),
     object_length_linter = object_length_linter(40L),
     # Stated explicitly, not inherited: lintr's default for this changed, so an
     # older local lintr passed what CI's newer one rejected. "<-" only, which is

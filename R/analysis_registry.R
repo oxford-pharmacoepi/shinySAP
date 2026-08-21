@@ -505,7 +505,12 @@ cohort_role_notes <- function(outcome, censor = NULL) {
 # denominator_cohort_set_ui().
 denominator_panel <- function(cohort, intro, lead = NULL) {
   fact <- function(label, value) {
-    shiny::div(class = "col", shiny::tags$span(class = "text-muted", label), shiny::tags$br(), shiny::tags$strong(value))
+    shiny::div(
+      class = "col",
+      shiny::tags$span(class = "text-muted", label),
+      shiny::tags$br(),
+      shiny::tags$strong(value)
+      )
   }
   none <- function(x) {
     x <- as.character(unlist(x %||% character(0)))
