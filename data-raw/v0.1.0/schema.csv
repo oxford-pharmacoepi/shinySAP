@@ -33,6 +33,9 @@ cohort,NA,parameters,object,object,object,TRUE,{},5
 cohort,concept_cohort,parameters.codelist_id,field,id,string,TRUE,NA,1
 cohort,concept_cohort,parameters.exit,field,character,string,TRUE,NA,2
 cohort,concept_cohort,parameters.overlap,field,character,string,TRUE,NA,3
+cohort,denominator,parameters.age_group,field,age_group,array,FALSE,[],1
+cohort,denominator,parameters.sex,field,character,string,FALSE,null,2
+cohort,denominator,parameters.days_prior_observation,field,integer,number,FALSE,0,3
 analysis,NA,id,field,id,string,TRUE,NA,1
 analysis,NA,name,field,character,string,TRUE,NA,2
 analysis,NA,data_source_id,field,id_vector,array,FALSE,[],3

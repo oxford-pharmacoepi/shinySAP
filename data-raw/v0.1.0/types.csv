@@ -4,5 +4,9 @@ codelist,codelist,Codelist
 codelist,codelist_with_details,Codelist with details
 codelist,concept_set_expression,Concept set expression
 cohort,concept_cohort,Concept cohort
+cohort,target,Target
+cohort,denominator,Denominator
+cohort,target_denominator, Target denominator
 analysis,incidence,Incidence
+analysis,prevalence,Prevalence
 analysis,other,Other
