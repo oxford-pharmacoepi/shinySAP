@@ -16,7 +16,7 @@ picker_ids <- function(tmpl) unlist(tmpl$pickers, use.names = FALSE) %||% charac
 
 round_trip <- function(tmpl, input) {
   params <- tmpl$collect(input)
-  rt     <- fromJSON(as.character(sap_json(params)), simplifyVector = FALSE)
+  rt     <- jsonlite::fromJSON(as.character(sap_json(params)), simplifyVector = FALSE)
   list(json = rt, flat = tmpl$flatten(rt), pf = prefiller(tmpl$flatten(rt)))
 }
 
