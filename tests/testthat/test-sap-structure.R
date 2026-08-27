@@ -88,3 +88,59 @@ test_that("whole-SAP checks catch duplicate ids and missing references", {
   )
   expect_error(validateSap(duplicate), "duplicate_id")
 })
+
+test_that("interval and time point values are checked against their vocabularies", {
+  incidence <- function(parameters) {
+    createSap(
+      newSapStudy("study_001", "My study"),
+      dataSources = list(newSapDataSource(
+        "ds_001", "CPRD GOLD", structure(list(), class = "data_source_description")
+      )),
+      cohorts = list(newSapCohort(
+        "coh_001", "Denominator", "ds_001", "denominator",
+        list(requirement_interactions = TRUE)
+      )),
+      analyses = list(newSapAnalysis(
+        "an_001", "Incidence analysis", "ds_001", "incidence",
+        c(list(denominator_cohort_id = "coh_001"), parameters)
+      ))
+    )
+  }
+  codes <- function(sap) purrr::map_chr(checkSap(sap), "code")
+
+  expect_length(checkSap(incidence(list(interval = "years"))), 0)
+  expect_length(checkSap(incidence(list(interval = "overall"))), 0)
+
+  bad <- incidence(list(interval = "years"))
+  bad$analyses[[1]]$parameters$interval <- "fortnights"
+  expect_true("invalid_value" %in% codes(bad))
+
+  bad$analyses[[1]]$parameters$interval <- c("years", "months")
+  expect_true("invalid_value_type" %in% codes(bad))
+
+  expect_error(incidence(list(interval = "decades")), "choice between")
+})
+
+test_that("only incidence may be estimated over the overall interval", {
+  expect_silent(validateParameterValue("overall", "time_interval", "interval", "incidence"))
+  expect_error(
+    validateParameterValue("overall", "time_interval", "interval", "point_prevalence"),
+    "choice between"
+  )
+  expect_silent(validateParameterValue("years", "time_interval", "interval", "point_prevalence"))
+})
+
+test_that("a time point is one of start, middle or end", {
+  purrr::walk(c("start", "middle", "end"), function(value) {
+    expect_silent(validateParameterValue(value, "time_point", "time_point"))
+  })
+  expect_error(validateParameterValue("midpoint", "time_point", "time_point"), "choice between")
+})
+
+test_that("an estimation level is one of person or record", {
+  purrr::walk(c("person", "record"), function(value) {
+    expect_silent(validateParameterValue(value, "level", "level"))
+  })
+  expect_error(validateParameterValue("episode", "level", "level"), "choice between")
+  expect_error(validateParameterValue(c("person", "record"), "level", "level"), "choice between")
+})

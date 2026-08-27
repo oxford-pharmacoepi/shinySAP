@@ -39,6 +39,18 @@ constructSap <- function(x,
   structure(x, class = c("sap", "list"))
 }
 
+TIME_INTERVALS <- c("weeks", "months", "quarters", "years", "overall")
+TIME_POINTS <- c("start", "middle", "end")
+LEVELS <- c("person", "record")
+
+timeIntervalChoices <- function(typeId) {
+  if (identical(as.character(typeId), "incidence")) {
+    TIME_INTERVALS
+  } else {
+    setdiff(TIME_INTERVALS, "overall")
+  }
+}
+
 #' Check a SAP and return structured problems
 #'
 #' @param x A SAP object or named list.
@@ -159,6 +171,22 @@ checkSap <- function(x) {
       if (!is.logical(value) || length(value) != 1L || is.na(value)) {
         addProblem(path, "invalid_value_type", "A single logical value is required.")
       }
+    } else if (valueType == "time_point") {
+      checkChoice(value, TIME_POINTS, path)
+    } else if (valueType == "time_interval") {
+      checkChoice(value, timeIntervalChoices(field$type_id[[1]]), path)
+    } else if (valueType == "level") {
+      checkChoice(value, LEVELS, path)
+    }
+  }
+
+  checkChoice <- function(value, choices, path) {
+    if (!is.character(value) || length(value) != 1L) {
+      addProblem(path, "invalid_value_type", "A single character value is required.")
+    } else if (!value %in% choices) {
+      addProblem(path, "invalid_value", sprintf(
+        "The value must be one of %s.", paste(choices, collapse = ", ")
+      ))
     }
   }
 
@@ -697,13 +725,16 @@ validateParameters <- function(parameters, object, typeId) {
       cli::cli_abort(c(x = paste0("Missing required parameter: ", parameterName)))
     }
     if (!isMissingSapValue(parameterValue)) {
-      validateParameterValue(parameterValue, field$value_type[[1]], parameterName)
+      validateParameterValue(
+        parameterValue, field$value_type[[1]], parameterName, field$type_id[[1]]
+      )
     }
   })
   parameters
 }
 
-validateParameterValue <- function(value, valueType, parameterName) {
+validateParameterValue <- function(value, valueType, parameterName,
+                                   typeId = NA_character_) {
   if (valueType == "id") {
     omopgenerics::assertCharacter(
       value, length = 1, na = FALSE, null = FALSE, empty = FALSE,
@@ -716,6 +747,18 @@ validateParameterValue <- function(value, valueType, parameterName) {
     )
   } else if (valueType == "date_range") {
     omopgenerics::assertDate(value, length = 2, na = TRUE, nm = parameterName)
+  } else if (valueType == "time_point") {
+    omopgenerics::assertChoice(
+      value, choices = TIME_POINTS, length = 1, nm = parameterName
+    )
+  } else if (valueType == "time_interval") {
+    omopgenerics::assertChoice(
+      value, choices = timeIntervalChoices(typeId), length = 1, nm = parameterName
+    )
+  } else if (valueType == "level") {
+    omopgenerics::assertChoice(
+      value, choices = LEVELS, length = 1, nm = parameterName
+    )
   }
 }
 
