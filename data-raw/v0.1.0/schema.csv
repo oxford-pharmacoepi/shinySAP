@@ -43,3 +43,13 @@ analysis,NA,type,field,type_id,string,TRUE,NA,4
 analysis,NA,parameters,object,object,object,TRUE,{},5
 analysis,incidence,parameters.denominator_cohort_id,field,id,string,TRUE,NA,1
 analysis,incidence,parameters.outcome_cohort_id,field,id,string,FALSE,null,2
+analysis,incidence,parameters.censor_cohort,field,id,string,FALSE,null,3
+analysis,incidence,parameters.denominator_cohort_ids_of_interest,field,id_vector,array,FALSE,null,4
+analysis,incidence,parameters.outcome_cohort_ids_of_interest,field,id_vector,array,FALSE,null,5
+analysis,incidence,parameters.interval,field,datetime,string,FALSE,null,6
+analysis,incidence,parameters.complete_database_intervals,field,logic,bool,FALSE,TRUE,7
+analysis,incidence,parameters.washout,field,integer,number,FALSE,null,8
+analysis,incidence,parameters.repeated_events,field,logic,bool,FALSE,FALSE,9
+analysis,incidence,parameters.strata,field,strata,array,FALSE,[],10
+analysis,incidence,parameters.include_overall_strata,field,logic,bool,FALSE,TRUE,11
+
