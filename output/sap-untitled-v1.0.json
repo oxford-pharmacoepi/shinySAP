@@ -1,0 +1,35 @@
+{
+  "sap_schema_version": "0.4.30",
+  "generated_at": "2026-08-27T16:00:50+0100",
+  "study": {
+    "title": null,
+    "study_code": null,
+    "authors": [],
+    "version": "1.0",
+    "min_cell_count": null,
+    "date": "2026-08-27",
+    "background": null,
+    "aim": null,
+    "objectives": [],
+    "amendments": []
+  },
+  "cdm_sources": [],
+  "cdm_changes": [],
+  "codelists": [],
+  "cohorts": [
+    {
+      "name": null,
+      "kind": "target_denominator",
+      "data_sources": [],
+      "targetCohortTable": null,
+      "cohortDateRange": [null, null],
+      "timeAtRisk": [],
+      "ageGroup": [],
+      "sex": [],
+      "daysPriorObservation": [],
+      "requirementsAtEntry": false,
+      "requirementInteractions": false
+    }
+  ],
+  "proposed_analyses": []
+}

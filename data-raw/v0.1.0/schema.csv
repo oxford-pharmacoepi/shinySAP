@@ -36,6 +36,15 @@ cohort,concept_cohort,parameters.overlap,field,character,string,TRUE,NA,3
 cohort,denominator,parameters.age_group,field,age_group,array,FALSE,[],1
 cohort,denominator,parameters.sex,field,character,string,FALSE,null,2
 cohort,denominator,parameters.days_prior_observation,field,integer,number,FALSE,0,3
+cohort,denominator,parameters.requirement_interactions,field,logic,boolean,TRUE,TRUE,4
+cohort,target_denominator,parameters.target_cohort_id,field,id_vector,array,TRUE,[],1
+cohort,target_denominator,parameters.target_cohort_date_range,field,date_range,array,FALSE,[],2
+cohort,target_denominator,parameters.time_at_risk,field,time_at_risk,array,FALSE,[],3
+cohort,target_denominator,parameters.age_group,field,age_group,array,FALSE,[],4
+cohort,target_denominator,parameters.sex,field,character,string,FALSE,NA,5
+cohort,target_denominator,parameters.days_prior_observation,field,integer,number,FALSE,0,6
+cohort,target_denominator,parameters.requirements_at_entry,field,logic,boolean,TRUE,TRUE,7
+cohort,target_denominator,parameters.requirement_interactions,field,logic,boolean,TRUE,TRUE,8
 analysis,NA,id,field,id,string,TRUE,NA,1
 analysis,NA,name,field,character,string,TRUE,NA,2
 analysis,NA,data_source_id,field,id_vector,array,FALSE,[],3
