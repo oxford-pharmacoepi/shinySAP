@@ -55,7 +55,7 @@ checkSap <- function(x) {
 
   if (!is.list(x) || is.null(names(x))) {
     addProblem("", "not_a_list", "A SAP must be a named list.")
-    return(problems)
+    return(collected$problems)
   }
 
   version <- as.character(x$sap_schema_version %||% "")
@@ -154,6 +154,10 @@ checkSap <- function(x) {
           path, "invalid_external_object",
           "The value must be a data_source_description object."
         )
+      }
+    } else if (valueType == "logic") {
+      if (!is.logical(value) || length(value) != 1L || is.na(value)) {
+        addProblem(path, "invalid_value_type", "A single logical value is required.")
       }
     }
   }

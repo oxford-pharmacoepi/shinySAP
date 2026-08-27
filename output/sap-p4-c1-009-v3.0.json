@@ -1,0 +1,3281 @@
+{
+  "sap_schema_version": "0.4.22",
+  "generated_at": "2026-08-12T11:01:33+0100",
+  "study": {
+    "title": "DARWIN EU® - Characterisation of individuals with cystic fibrosis in Europe",
+    "study_code": "P4-C1-009",
+    "authors": ["Ellen Gerritsen", "Dina Vojinovic"],
+    "version": "3.0",
+    "min_cell_count": 5,
+    "date": "2026-08-12",
+    "background": "Cystic fibrosis (CF) is a progressive, autosomal recessive disorder caused by pathogenic variants in the cystic fibrosis transmembrane conductance regulator (CFTR) gene.[1] The CFTR protein regulates the transport of chloride and bicarbonate ions across epithelial membranes. Dysfunction in this protein results in the production of thick, sticky mucus that leads to obstruction and infection in various organs, particularly the lungs and pancreas.",
+    "aim": "What are the demographic and clinical characteristics of individuals with a cystic fibrosis (CF) diagnosis in Europe between 2015 and 2024?",
+    "objectives": [
+      {
+        "id": "obj_1",
+        "text": "To characterise all individuals with a CF diagnosis recorded during the study period in terms of demographics, prespecified comorbidities, Pseudomonas aeruginosa colonisation, CF screening, genotyping test, and CFTR modulator treatment use, overall and stratified by paediatric and adult populations."
+      },
+      {
+        "id": "obj_2",
+        "text": "To characterise timing and availability of key clinical measurements, including Forced Expiratory Volume (FEV), height, weight, Body Mass Index (BMI) measurements, sweat chloride levels, and genotyping tests in individuals who initiated any CFTR modulator treatment after CF diagnosis, overall and stratified by paediatric and adult populations."
+      },
+      {
+        "id": "obj_3",
+        "text": "To estimate the background incidence rates of pre-specified events of special interest: cataract, depression, and anxiety in the CF population, overall and stratified by paediatric and adult populations and by calendar year."
+      },
+      {
+        "id": "obj_4",
+        "text": "To measure the annual incidence of pulmonary exacerbation among all individuals with a CF diagnosis recorded during the study period, overall and stratified by paediatric and adult populations. The description of the proposed objectives to be achieved in the study is displayed in Table 1 ."
+      }
+    ],
+    "amendments": []
+  },
+  "cdm_sources": [
+    {
+      "name": "Clinical Data Warehouse of Bordeaux University Hospital (CDW Bordeaux)",
+      "source_key": "CDW Bordeaux",
+      "country": "France"
+    },
+    {
+      "name": "Clinical Practice Research Datalink GOLD (CPRD GOLD)",
+      "source_key": "CPRD GOLD",
+      "country": "United Kingdom"
+    },
+    {
+      "name": "Danish Data Health Registries (DK-DHR)",
+      "source_key": "DK-DHR",
+      "country": "Denmark"
+    },
+    {
+      "name": "IQVIA Disease Analyzer Germany (IQVIA DA Germany)",
+      "source_key": "IQVIA DA Germany",
+      "country": "Germany"
+    },
+    {
+      "name": "Croatian National Public Health Information System (NAJS)",
+      "source_key": "NAJS",
+      "country": "Croatia"
+    }
+  ],
+  "cdm_changes": [],
+  "codelists": [
+    {
+      "name": "cs_anxiety",
+      "category": "Condition / observation",
+      "description": "Preliminary code list for Anxiety, as enumerated in the protocol annex.",
+      "source_file": null,
+      "vocabulary_version": null,
+      "concept_set_expression": [
+        {
+          "concept_id": "441542",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        }
+      ],
+      "codes": [
+        {
+          "code": "441542",
+          "name": "48694002"
+        }
+      ]
+    },
+    {
+      "name": "cs_cataract",
+      "category": "Condition / observation",
+      "description": "Preliminary code list for Cataract, as enumerated in the protocol annex.",
+      "source_file": null,
+      "vocabulary_version": null,
+      "concept_set_expression": [
+        {
+          "concept_id": "4006784",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "760554",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "765357",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "765527",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "764824",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4199963",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761591",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "765242",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761590",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "372315",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761588",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761589",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "375256",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37208215",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37208216",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4105159",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4007451",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37108933",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "760555",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "764823",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3662352",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37209532",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3657141",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4317977",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36684804",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36684796",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37208008",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "764825",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36684803",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37208009",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36684736",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36684670",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4001501",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4070183",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "375545",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "376979",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4225656",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4221495",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "609308",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36713528",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "381566",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36713529",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4334867",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4334869",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4334868",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761598",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37311301",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3656946",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35625718",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761596",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761595",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "765241",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761582",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "765090",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36712947",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36712946",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36712945",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37311300",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3656862",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35625717",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761597",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761594",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "376973",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "372624",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4301387",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4219330",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "376400",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4334129",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37111463",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4008296",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36684802",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36684801",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "378534",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4103579",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44783428",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "432895",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4225524",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35625719",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4109548",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4334130",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "379811",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "45757567",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37208006",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37208004",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40487893",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4210432",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "376399",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "764826",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "765724",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40482507",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4319589",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4109424",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37108935",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4334870",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "377285",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4152554",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4130588",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "372905",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761600",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761599",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "765243",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "377274",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "373769",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4230391",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "439297",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4048060",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4197734",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "436976",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "765918",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761592",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761593",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "438749",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36685057",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36685058",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40479994",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36713345",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37208213",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37208214",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37111464",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4230930",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37108934",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35624213",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761583",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761586",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761585",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761587",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761584",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "381295",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37208007",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37208005",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "441006",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4007944",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4319588",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4154554",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "381279",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761603",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761602",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "761601",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4109544",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "374646",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4108983",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44783427",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        }
+      ],
+      "codes": [
+        {
+          "code": "4006784",
+          "name": "Wellesley Carman French syndrome"
+        },
+        {
+          "code": "760554",
+          "name": "Age-related cataract of left eye"
+        },
+        {
+          "code": "765357",
+          "name": "Age-related cataract of right eye"
+        },
+        {
+          "code": "765527",
+          "name": "Age-related nuclear cataract of left eye"
+        },
+        {
+          "code": "764824",
+          "name": "Spondyloepiphyseal dysplasia, craniosynostosis, cleft palate, cataract, and intellectual disability syndrome"
+        },
+        {
+          "code": "4199963",
+          "name": "Spinal muscular atrophy, Dandy-Walker malformation, cataract syndrome"
+        },
+        {
+          "code": "761591",
+          "name": "Anterior subcapsular cataract of bilateral eyes"
+        },
+        {
+          "code": "765242",
+          "name": "Anterior subcapsular cataract of left eye"
+        },
+        {
+          "code": "761590",
+          "name": "Anterior subcapsular cataract of right eye"
+        },
+        {
+          "code": "372315",
+          "name": "Porencephaly, microcephaly, bilateral congenital cataract syndrome"
+        },
+        {
+          "code": "761588",
+          "name": "Anterior subcapsular polar cataract of left eye"
+        },
+        {
+          "code": "761589",
+          "name": "Osteogenesis imperfecta, recessive perinatal lethal, with microcephaly AND cataracts"
+        },
+        {
+          "code": "375256",
+          "name": "Anterior subcapsular polar senile cataract"
+        },
+        {
+          "code": "37208215",
+          "name": "Anterior subcapsular polar senile cataract of left eye"
+        },
+        {
+          "code": "37208216",
+          "name": "Anterior subcapsular polar senile cataract of right eye"
+        },
+        {
+          "code": "4105159",
+          "name": "Microcornea, rod-cone dystrophy, cataract, posterior staphyloma syndrome"
+        },
+        {
+          "code": "4007451",
+          "name": "Martsolf syndrome"
+        },
+        {
+          "code": "37108933",
+          "name": "Bilateral after-cataract not obscuring vision"
+        },
+        {
+          "code": "760555",
+          "name": "Bilateral age-related cataract"
+        },
+        {
+          "code": "764823",
+          "name": "Localized cataract opacities due to and following traumatic injury"
+        },
+        {
+          "code": "3662352",
+          "name": "Bilateral anterior subcapsular polar cataract"
+        },
+        {
+          "code": "37209532",
+          "name": "Bilateral anterior subcapsular polar senile cataract of eyes"
+        },
+        {
+          "code": "3657141",
+          "name": "Bilateral cataract of eyes caused by drug"
+        },
+        {
+          "code": "4317977",
+          "name": "Intellectual disability, cataract, calcified pinna, myopathy syndrome"
+        },
+        {
+          "code": "36684804",
+          "name": "Intellectual disability with cataract and kyphosis syndrome"
+        },
+        {
+          "code": "36684796",
+          "name": "Bilateral eye brunescent cataract"
+        },
+        {
+          "code": "37208008",
+          "name": "Bilateral hypermature senile cataracts of eyes"
+        },
+        {
+          "code": "764825",
+          "name": "Hypergonadotropic hypogonadism with cataract syndrome"
+        },
+        {
+          "code": "36684803",
+          "name": "Bilateral posterior subcapsular polar senile cataract of eyes"
+        },
+        {
+          "code": "37208009",
+          "name": "Hydrocephalus with endocardial fibroelastosis and cataract syndrome"
+        },
+        {
+          "code": "36684736",
+          "name": "Brunescent cataract of left eye"
+        },
+        {
+          "code": "36684670",
+          "name": "Foveal hypoplasia with presenile cataract syndrome"
+        },
+        {
+          "code": "4001501",
+          "name": "Exacerbation of congenital cataract"
+        },
+        {
+          "code": "4070183",
+          "name": "Exacerbation of cataract"
+        },
+        {
+          "code": "375545",
+          "name": "Embryonal nuclear cataract"
+        },
+        {
+          "code": "376979",
+          "name": "Cataract due to diabetes mellitus"
+        },
+        {
+          "code": "4225656",
+          "name": "Cataract due to diabetes mellitus type 1"
+        },
+        {
+          "code": "4221495",
+          "name": "Cataract due to diabetes mellitus type 2"
+        },
+        {
+          "code": "609308",
+          "name": "Cataract due to drug induced diabetes mellitus"
+        },
+        {
+          "code": "36713528",
+          "name": "Cataract due to idiopathic hypoparathyroidism"
+        },
+        {
+          "code": "381566",
+          "name": "Cataract due to inflammatory disorder"
+        },
+        {
+          "code": "36713529",
+          "name": "Congenital posterior subcapsular polar cataract of right eye"
+        },
+        {
+          "code": "4334867",
+          "name": "Congenital posterior subcapsular polar cataract of left eye"
+        },
+        {
+          "code": "4334869",
+          "name": "Congenital posterior subcapsular polar cataract"
+        },
+        {
+          "code": "4334868",
+          "name": "Congenital posterior polar cataract"
+        },
+        {
+          "code": "761598",
+          "name": "Cataract of bilateral eyes due to inflammatory disorder"
+        },
+        {
+          "code": "37311301",
+          "name": "Congenital nuclear cataract of right eye"
+        },
+        {
+          "code": "3656946",
+          "name": "Cataract of left eye caused by corticosteroid"
+        },
+        {
+          "code": "35625718",
+          "name": "Congenital muscular dystrophy with infantile cataract and hypogonadism syndrome"
+        },
+        {
+          "code": "761596",
+          "name": "Cataract of left eye due to inflammatory disorder"
+        },
+        {
+          "code": "761595",
+          "name": "Cataract of left eye due to ocular disease"
+        },
+        {
+          "code": "765241",
+          "name": "Cataract of lens capsule of bilateral eyes"
+        },
+        {
+          "code": "761582",
+          "name": "Congenital cortical cataract of left eye"
+        },
+        {
+          "code": "765090",
+          "name": "Cataract of lens capsule of right eye"
+        },
+        {
+          "code": "36712947",
+          "name": "Cataract of posterior subcapsule of bilateral eyes"
+        },
+        {
+          "code": "36712946",
+          "name": "Congenital cataract, progressive muscular hypotonia, hearing loss, developmental delay syndrome"
+        },
+        {
+          "code": "36712945",
+          "name": "Congenital cataract, hypertrophic cardiomyopathy, mitochondrial myopathy syndrome"
+        },
+        {
+          "code": "37311300",
+          "name": "Congenital cataract, hearing loss, severe developmental delay syndrome"
+        },
+        {
+          "code": "3656862",
+          "name": "Congenital cataract with hypertrichosis and intellectual disability syndrome"
+        },
+        {
+          "code": "35625717",
+          "name": "Congenital cataract with deafness and hypogonadism syndrome"
+        },
+        {
+          "code": "761597",
+          "name": "Congenital cataract with ataxia and deafness syndrome"
+        },
+        {
+          "code": "761594",
+          "name": "Cataract of right eye due to ocular disease"
+        },
+        {
+          "code": "376973",
+          "name": "Cataract secondary to ocular disease"
+        },
+        {
+          "code": "372624",
+          "name": "Congenital cataract ichthyosis syndrome"
+        },
+        {
+          "code": "4301387",
+          "name": "Cataracta brunescens"
+        },
+        {
+          "code": "4219330",
+          "name": "Combined form of nonsenile cataract"
+        },
+        {
+          "code": "376400",
+          "name": "Combined form of senile cataract"
+        },
+        {
+          "code": "4334129",
+          "name": "Congenital anterior subcapsular polar cataract of right eye"
+        },
+        {
+          "code": "37111463",
+          "name": "Congenital anterior subcapsular polar cataract of left eye"
+        },
+        {
+          "code": "4008296",
+          "name": "Congenital anterior subcapsular polar cataract"
+        },
+        {
+          "code": "36684802",
+          "name": "Cortical age-related cataract of left eye"
+        },
+        {
+          "code": "36684801",
+          "name": "Cochleosaccular degeneration and cataract syndrome"
+        },
+        {
+          "code": "378534",
+          "name": "Cataract, congenital heart disease, neural tube defect syndrome"
+        },
+        {
+          "code": "4103579",
+          "name": "Cataract of right eye due to and following trauma"
+        },
+        {
+          "code": "44783428",
+          "name": "Cataract of left eye due to and following trauma"
+        },
+        {
+          "code": "432895",
+          "name": "Cataract glaucoma syndrome"
+        },
+        {
+          "code": "4225524",
+          "name": "Cataract associated with radiation"
+        },
+        {
+          "code": "35625719",
+          "name": "Cataract associated with infrared radiation"
+        },
+        {
+          "code": "4109548",
+          "name": "Cataract and microcornea syndrome"
+        },
+        {
+          "code": "4334130",
+          "name": "Elschnig's pearls"
+        },
+        {
+          "code": "379811",
+          "name": "Cardiomyopathy with cataract and hip spine disease syndrome"
+        },
+        {
+          "code": "45757567",
+          "name": "Bilateral congenital zonular cataract"
+        },
+        {
+          "code": "37208006",
+          "name": "Bilateral congenital posterior subcapsular polar cataracts of eyes"
+        },
+        {
+          "code": "37208004",
+          "name": "Bilateral congenital nuclear cataracts of eyes"
+        },
+        {
+          "code": "40487893",
+          "name": "Bilateral congenital cortical cataract of eyes"
+        },
+        {
+          "code": "4210432",
+          "name": "Bilateral congenital combined form cataract of eyes"
+        },
+        {
+          "code": "376399",
+          "name": "Bilateral congenital cataract of eyes"
+        },
+        {
+          "code": "764826",
+          "name": "Bilateral congenital anterior subcapsular polar cataracts"
+        },
+        {
+          "code": "765724",
+          "name": "Bilateral cataract of eyes due to and following trauma"
+        },
+        {
+          "code": "40482507",
+          "name": "Autosomal dominant optic atrophy and cataract"
+        },
+        {
+          "code": "4319589",
+          "name": "Anterior capsule opacification following extraction of cataract"
+        },
+        {
+          "code": "4109424",
+          "name": "After-cataract with vision obscured following extraction of cataract"
+        },
+        {
+          "code": "37108935",
+          "name": "Left after-cataract not obscuring vision"
+        },
+        {
+          "code": "4334870",
+          "name": "Malnutrition-dehydration cataract"
+        },
+        {
+          "code": "377285",
+          "name": "After-cataract of bilateral eyes"
+        },
+        {
+          "code": "4152554",
+          "name": "Mixed type cataract"
+        },
+        {
+          "code": "4130588",
+          "name": "Morgagnian cataract"
+        },
+        {
+          "code": "372905",
+          "name": "Myotonic cataract"
+        },
+        {
+          "code": "761600",
+          "name": "Non age-related cataract of bilateral eyes"
+        },
+        {
+          "code": "761599",
+          "name": "Non age-related cataract of left eye"
+        },
+        {
+          "code": "765243",
+          "name": "Non age-related cataract of right eye"
+        },
+        {
+          "code": "377274",
+          "name": "Nonsenile cataract"
+        },
+        {
+          "code": "373769",
+          "name": "Nuclear cataract"
+        },
+        {
+          "code": "4230391",
+          "name": "Nuclear sclerotic cataract"
+        },
+        {
+          "code": "439297",
+          "name": "Nuclear senile cataract"
+        },
+        {
+          "code": "4048060",
+          "name": "Partial cataract"
+        },
+        {
+          "code": "4197734",
+          "name": "Posterior subcapsular cataract"
+        },
+        {
+          "code": "436976",
+          "name": "Posterior subcapsular polar cataract"
+        },
+        {
+          "code": "765918",
+          "name": "Posterior subcapsular polar cataract of bilateral eyes"
+        },
+        {
+          "code": "761592",
+          "name": "Posterior subcapsular polar cataract of left eye"
+        },
+        {
+          "code": "761593",
+          "name": "Posterior subcapsular polar cataract of right eye"
+        },
+        {
+          "code": "438749",
+          "name": "Posterior subcapsular polar senile cataract"
+        },
+        {
+          "code": "36685057",
+          "name": "Posterior subcapsular polar senile cataract of left eye"
+        },
+        {
+          "code": "36685058",
+          "name": "Posterior subcapsular polar senile cataract of right eye"
+        },
+        {
+          "code": "40479994",
+          "name": "Presenile cataract"
+        },
+        {
+          "code": "36713345",
+          "name": "Presenile cataract of bilateral eyes"
+        },
+        {
+          "code": "37208213",
+          "name": "Presenile cataract of left eye"
+        },
+        {
+          "code": "37208214",
+          "name": "Presenile cataract of right eye"
+        },
+        {
+          "code": "37111464",
+          "name": "Punctate age-related cataract"
+        },
+        {
+          "code": "4230930",
+          "name": "Punctate cataract"
+        },
+        {
+          "code": "37108934",
+          "name": "Right after-cataract not obscuring vision"
+        },
+        {
+          "code": "35624213",
+          "name": "Secondary cataract"
+        },
+        {
+          "code": "761583",
+          "name": "Secondary cataract of bilateral eyes with vision obscured"
+        },
+        {
+          "code": "761586",
+          "name": "Secondary cataract of left eye"
+        },
+        {
+          "code": "761585",
+          "name": "Secondary cataract of left eye with vision obscured"
+        },
+        {
+          "code": "761587",
+          "name": "Secondary cataract of right eye"
+        },
+        {
+          "code": "761584",
+          "name": "Secondary cataract of right eye with vision obscured"
+        },
+        {
+          "code": "381295",
+          "name": "Senile cataract"
+        },
+        {
+          "code": "37208007",
+          "name": "Senile combined form cataract of left eye"
+        },
+        {
+          "code": "37208005",
+          "name": "Senile combined form cataract of right eye"
+        },
+        {
+          "code": "441006",
+          "name": "Soemmerring's ring"
+        },
+        {
+          "code": "4007944",
+          "name": "Stationary cataract"
+        },
+        {
+          "code": "4319588",
+          "name": "Subcapsular cataract"
+        },
+        {
+          "code": "4154554",
+          "name": "Suture tip cataract"
+        },
+        {
+          "code": "381279",
+          "name": "Tetanic cataract"
+        },
+        {
+          "code": "761603",
+          "name": "Total cataract of lens of bilateral eyes"
+        },
+        {
+          "code": "761602",
+          "name": "Total cataract of lens of left eye"
+        },
+        {
+          "code": "761601",
+          "name": "Total cataract of lens of right eye"
+        },
+        {
+          "code": "4109544",
+          "name": "Total, mature senile cataract"
+        },
+        {
+          "code": "374646",
+          "name": "Toxic cataract"
+        },
+        {
+          "code": "4108983",
+          "name": "Toxic cataract not due to drugs"
+        },
+        {
+          "code": "44783427",
+          "name": "Zonular nonsenile cataract"
+        }
+      ]
+    },
+    {
+      "name": "cs_depression",
+      "category": "Condition / observation",
+      "description": "Preliminary code list for Depression, as enumerated in the protocol annex.",
+      "source_file": null,
+      "vocabulary_version": null,
+      "concept_set_expression": [
+        {
+          "concept_id": "44805550",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44813499",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44782943",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "440383",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        }
+      ],
+      "codes": [
+        {
+          "code": "44805550",
+          "name": "Single major depressive episode, in remission"
+        },
+        {
+          "code": "44813499",
+          "name": "Recurrent major depressive episodes, in remission"
+        },
+        {
+          "code": "44782943",
+          "name": "Depressive disorder in remission"
+        },
+        {
+          "code": "440383",
+          "name": "Depressive disorder"
+        }
+      ]
+    },
+    {
+      "name": "cs_pulmonary_exacerbation",
+      "category": "Condition / observation",
+      "description": "Preliminary code list for Pulmonary exacerbation, as enumerated in the protocol annex.",
+      "source_file": null,
+      "vocabulary_version": null,
+      "concept_set_expression": [
+        {
+          "concept_id": "4193169",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4181583",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35624318",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "45768834",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4193174",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4207184",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "44788779",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "4112341",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "3183290",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "46221507",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "46274210",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "45892599",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "45774861",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "45892419",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "45776147",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "45775686",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "43009082",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "43009044",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "43008993",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "43009045",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "43009083",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "43008994",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "43009087",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "43009022",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "43009067",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "43009009",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40798709",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40798700",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40798704",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40798981",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40799027",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40799118",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40799120",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40799121",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "40166675",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37498010",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "37496518",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "36878831",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35884386",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35198192",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35198093",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35197989",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35197975",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35198137",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35200469",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35198107",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35197938",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35200953",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35198003",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35197897",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35198144",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35200881",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35198165",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "35198145",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19123877",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19088223",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19101402",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19086759",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19086790",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19095043",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19123240",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19092353",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19126622",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19129642",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19088795",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19125201",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19096054",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19136024",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19136044",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19136210",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19136423",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19136426",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19136429",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19136481",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19136493",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19100438",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19137362",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19102105",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19018516",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19015123",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19018742",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19070174",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19070680",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19028241",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19072255",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19028286",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19072857",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19028288",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19051271",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19001904",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19051345",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19052683",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19047240",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19047265",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19023508",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19050750",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19054936",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19064329",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19010400",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19069006",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19008870",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19003644",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19072054",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19007701",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19072122",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19009138",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19017585",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19015464",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19023254",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19024197",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19027679",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19010564",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19047071",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19036545",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19063874",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19000817",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19000818",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19000820",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19040624",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19002077",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19078399",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19041153",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "19006043",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1790868",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1768849",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1769535",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1771162",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1796458",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1748975",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1796435",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1773402",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1774470",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1774932",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1775741",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1749008",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1776684",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1749083",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1777254",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1777806",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1778162",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1786621",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1786842",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1797513",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1750500",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1759842",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1800835",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1786617",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1790024",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1789276",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1778262",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1784749",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1790692",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        },
+        {
+          "concept_id": "1789515",
+          "excluded": false,
+          "descendants": false,
+          "mapped": false
+        }
+      ],
+      "codes": [
+        {
+          "code": "4193169",
+          "name": "Viral respiratory infection"
+        },
+        {
+          "code": "4181583",
+          "name": "Upper respiratory infection"
+        },
+        {
+          "code": "35624318",
+          "name": "Susceptibility to respiratory infection associated with CD8alpha chain mutation"
+        },
+        {
+          "code": "45768834",
+          "name": "Institution-acquired respiratory infection"
+        },
+        {
+          "code": "4193174",
+          "name": "Fungal respiratory infection"
+        },
+        {
+          "code": "4207184",
+          "name": "Bacterial respiratory infection"
+        },
+        {
+          "code": "44788779",
+          "name": "Asthma trigger - respiratory infection"
+        },
+        {
+          "code": "4112341",
+          "name": "Acute respiratory infections"
+        },
+        {
+          "code": "3183290",
+          "name": "Pulmonary exacerbation cystic fibrosis"
+        },
+        {
+          "code": "46221507",
+          "name": "avibactam"
+        },
+        {
+          "code": "46274210",
+          "name": "ceftaroline fosamil"
+        },
+        {
+          "code": "45892599",
+          "name": "ceftolozane"
+        },
+        {
+          "code": "45774861",
+          "name": "dalbavancin"
+        },
+        {
+          "code": "45892419",
+          "name": "gentamicin"
+        },
+        {
+          "code": "45776147",
+          "name": "oritavancin"
+        },
+        {
+          "code": "45775686",
+          "name": "tedizolid"
+        },
+        {
+          "code": "43009082",
+          "name": "cefbuperazone sodium"
+        },
+        {
+          "code": "43009044",
+          "name": "cefcapene pivoxil hydrochloride hydrate"
+        },
+        {
+          "code": "43008993",
+          "name": "cefminox sodium"
+        },
+        {
+          "code": "43009045",
+          "name": "cefpiramide sodium"
+        },
+        {
+          "code": "43009083",
+          "name": "OMOP4700509"
+        },
+        {
+          "code": "43008994",
+          "name": "ceftezole sodium"
+        },
+        {
+          "code": "43009087",
+          "name": "flomoxef sodium"
+        },
+        {
+          "code": "43009022",
+          "name": "isepamicin sulfate"
+        },
+        {
+          "code": "43009067",
+          "name": "ribostamycin sulfate"
+        },
+        {
+          "code": "43009009",
+          "name": "sultamicillin"
+        },
+        {
+          "code": "40798709",
+          "name": "OMOP2721059"
+        },
+        {
+          "code": "40798700",
+          "name": "OMOP2721060"
+        },
+        {
+          "code": "40798704",
+          "name": "OMOP2721061"
+        },
+        {
+          "code": "40798981",
+          "name": "OMOP2721332"
+        },
+        {
+          "code": "40799027",
+          "name": "Piromidic Acid"
+        },
+        {
+          "code": "40799118",
+          "name": "Sulfametoxydiazine"
+        },
+        {
+          "code": "40799120",
+          "name": "OMOP2721470"
+        },
+        {
+          "code": "40799121",
+          "name": "Sulfaphenazole"
+        },
+        {
+          "code": "40166675",
+          "name": "telavancin"
+        },
+        {
+          "code": "37498010",
+          "name": "cefiderocol"
+        },
+        {
+          "code": "37496518",
+          "name": "lefamulin"
+        },
+        {
+          "code": "36878831",
+          "name": "nadifloxacin"
+        },
+        {
+          "code": "35884386",
+          "name": "OMOP5031290"
+        },
+        {
+          "code": "35198192",
+          "name": "aspoxicillin hydrate"
+        },
+        {
+          "code": "35198093",
+          "name": "OMOP4819458"
+        },
+        {
+          "code": "35197989",
+          "name": "carumonam sodium"
+        },
+        {
+          "code": "35197975",
+          "name": "cefozopran hydrochloride"
+        },
+        {
+          "code": "35198137",
+          "name": "cefteram pivoxil"
+        },
+        {
+          "code": "35200469",
+          "name": "eravacycline"
+        },
+        {
+          "code": "35198107",
+          "name": "faropenem sodium hydrate"
+        },
+        {
+          "code": "35197938",
+          "name": "garenoxacin mesilate hydrate"
+        },
+        {
+          "code": "35200953",
+          "name": "omadacycline"
+        },
+        {
+          "code": "35198003",
+          "name": "pazufloxacin mesilate"
+        },
+        {
+          "code": "35197897",
+          "name": "prulifloxacin"
+        },
+        {
+          "code": "35198144",
+          "name": "OMOP4819509"
+        },
+        {
+          "code": "35200881",
+          "name": "sarecycline"
+        },
+        {
+          "code": "35198165",
+          "name": "sitafloxacin hydrate"
+        },
+        {
+          "code": "35198145",
+          "name": "tebipenem pivoxil"
+        },
+        {
+          "code": "19123877",
+          "name": "amdinocillin"
+        },
+        {
+          "code": "19088223",
+          "name": "amdinocillin pivoxil"
+        },
+        {
+          "code": "19101402",
+          "name": "arbekacin"
+        },
+        {
+          "code": "19086759",
+          "name": "cephalothin"
+        },
+        {
+          "code": "19086790",
+          "name": "cephapirin"
+        },
+        {
+          "code": "19095043",
+          "name": "chlortetracycline"
+        },
+        {
+          "code": "19123240",
+          "name": "josamycin"
+        },
+        {
+          "code": "19092353",
+          "name": "lymecycline"
+        },
+        {
+          "code": "19126622",
+          "name": "moxalactam"
+        },
+        {
+          "code": "19129642",
+          "name": "oxolinic acid"
+        },
+        {
+          "code": "19088795",
+          "name": "phenethicillin"
+        },
+        {
+          "code": "19125201",
+          "name": "pristinamycin"
+        },
+        {
+          "code": "19096054",
+          "name": "propicillin"
+        },
+        {
+          "code": "19136024",
+          "name": "rolitetracycline"
+        },
+        {
+          "code": "19136044",
+          "name": "sisomicin"
+        },
+        {
+          "code": "19136210",
+          "name": "streptozocin"
+        },
+        {
+          "code": "19136423",
+          "name": "sulfalene"
+        },
+        {
+          "code": "19136426",
+          "name": "sulfamerazine"
+        },
+        {
+          "code": "19136429",
+          "name": "sulfamethazine"
+        },
+        {
+          "code": "19136481",
+          "name": "sulfamoxole"
+        },
+        {
+          "code": "19136493",
+          "name": "sulfapyridine"
+        },
+        {
+          "code": "19100438",
+          "name": "temocillin"
+        },
+        {
+          "code": "19137362",
+          "name": "thiamphenicol"
+        },
+        {
+          "code": "19102105",
+          "name": "xibornol"
+        },
+        {
+          "code": "19018516",
+          "name": "azidocillin"
+        },
+        {
+          "code": "19015123",
+          "name": "azlocillin"
+        },
+        {
+          "code": "19018742",
+          "name": "brodimoprim"
+        },
+        {
+          "code": "19070174",
+          "name": "cefamandole"
+        },
+        {
+          "code": "19070680",
+          "name": "cefatrizine"
+        },
+        {
+          "code": "19028241",
+          "name": "cefetamet"
+        },
+        {
+          "code": "19072255",
+          "name": "cefmetazole"
+        },
+        {
+          "code": "19028286",
+          "name": "cefodizime"
+        },
+        {
+          "code": "19072857",
+          "name": "cefonicid"
+        },
+        {
+          "code": "19028288",
+          "name": "ceforanide"
+        },
+        {
+          "code": "19051271",
+          "name": "cefotiam"
+        },
+        {
+          "code": "19001904",
+          "name": "cefpirome"
+        },
+        {
+          "code": "19051345",
+          "name": "cefsulodin"
+        },
+        {
+          "code": "19052683",
+          "name": "cephaloridine"
+        },
+        {
+          "code": "19047240",
+          "name": "clofoctol"
+        },
+        {
+          "code": "19047265",
+          "name": "clomocycline"
+        },
+        {
+          "code": "19023508",
+          "name": "dibekacin"
+        },
+        {
+          "code": "19050750",
+          "name": "fleroxacin"
+        },
+        {
+          "code": "19054936",
+          "name": "floxacillin"
+        },
+        {
+          "code": "19064329",
+          "name": "flumequine"
+        },
+        {
+          "code": "19010400",
+          "name": "fusidate"
+        },
+        {
+          "code": "19069006",
+          "name": "hetacillin"
+        },
+        {
+          "code": "19008870",
+          "name": "mandelic acid"
+        },
+        {
+          "code": "19003644",
+          "name": "methacycline"
+        },
+        {
+          "code": "19072054",
+          "name": "methampicillin"
+        },
+        {
+          "code": "19007701",
+          "name": "mezlocillin"
+        },
+        {
+          "code": "19072122",
+          "name": "midecamycin"
+        },
+        {
+          "code": "19009138",
+          "name": "miocamycin"
+        },
+        {
+          "code": "19017585",
+          "name": "netilmicin"
+        },
+        {
+          "code": "19015464",
+          "name": "nitroxoline"
+        },
+        {
+          "code": "19023254",
+          "name": "oleandomycin"
+        },
+        {
+          "code": "19024197",
+          "name": "ornidazole"
+        },
+        {
+          "code": "19027679",
+          "name": "pefloxacin"
+        },
+        {
+          "code": "19010564",
+          "name": "pipemidate"
+        },
+        {
+          "code": "19047071",
+          "name": "pivampicillin"
+        },
+        {
+          "code": "19036545",
+          "name": "rosoxacin"
+        },
+        {
+          "code": "19063874",
+          "name": "roxithromycin"
+        },
+        {
+          "code": "19000817",
+          "name": "sulbenicillin"
+        },
+        {
+          "code": "19000818",
+          "name": "sulfadimethoxine"
+        },
+        {
+          "code": "19000820",
+          "name": "sulfamethoxypyridazine"
+        },
+        {
+          "code": "19040624",
+          "name": "sulfametrole"
+        },
+        {
+          "code": "19002077",
+          "name": "talampicillin"
+        },
+        {
+          "code": "19078399",
+          "name": "teicoplanin"
+        },
+        {
+          "code": "19041153",
+          "name": "temafloxacin"
+        },
+        {
+          "code": "19006043",
+          "name": "troleandomycin"
+        },
+        {
+          "code": "1790868",
+          "name": "amikacin"
+        },
+        {
+          "code": "1768849",
+          "name": "cefaclor"
+        },
+        {
+          "code": "1769535",
+          "name": "cefadroxil"
+        },
+        {
+          "code": "1771162",
+          "name": "cefazolin"
+        },
+        {
+          "code": "1796458",
+          "name": "cefdinir"
+        },
+        {
+          "code": "1748975",
+          "name": "cefepime"
+        },
+        {
+          "code": "1796435",
+          "name": "cefixime"
+        },
+        {
+          "code": "1773402",
+          "name": "cefoperazone"
+        },
+        {
+          "code": "1774470",
+          "name": "cefotaxime"
+        },
+        {
+          "code": "1774932",
+          "name": "cefotetan"
+        },
+        {
+          "code": "1775741",
+          "name": "cefoxitin"
+        },
+        {
+          "code": "1749008",
+          "name": "cefpodoxime"
+        },
+        {
+          "code": "1776684",
+          "name": "ceftazidime"
+        },
+        {
+          "code": "1749083",
+          "name": "ceftibuten"
+        },
+        {
+          "code": "1777254",
+          "name": "ceftizoxime"
+        },
+        {
+          "code": "1777806",
+          "name": "ceftriaxone"
+        },
+        {
+          "code": "1778162",
+          "name": "cefuroxime"
+        },
+        {
+          "code": "1786621",
+          "name": "cephalexin"
+        },
+        {
+          "code": "1786842",
+          "name": "cephradine"
+        },
+        {
+          "code": "1797513",
+          "name": "ciprofloxacin"
+        },
+        {
+          "code": "1750500",
+          "name": "clarithromycin"
+        },
+        {
+          "code": "1759842",
+          "name": "clavulanate"
+        },
+        {
+          "code": "1800835",
+          "name": "cloxacillin"
+        },
+        {
+          "code": "1786617",
+          "name": "daptomycin"
+        },
+        {
+          "code": "1790024",
+          "name": "dirithromycin"
+        },
+        {
+          "code": "1789276",
+          "name": "gatifloxacin"
+        },
+        {
+          "code": "1778262",
+          "name": "imipenem"
+        },
+        {
+          "code": "1784749",
+          "name": "kanamycin"
+        },
+        {
+          "code": "1790692",
+          "name": "lincomycin"
+        },
+        {
+          "code": "1789515",
+          "name": "quinupristin"
+        }
+      ]
+    }
+  ],
+  "cohorts": [
+    {
+      "name": "General population denominator",
+      "kind": "denominator",
+      "data_sources": ["CDW Bordeaux", "CPRD GOLD", "DK-DHR", "IQVIA DA Germany", "NAJS"],
+      "cohortDateRange": ["2015-01-01", "2024-12-31"],
+      "ageGroup": [
+        [0, 150],
+        [12, 17],
+        [0, 11],
+        [0, 17],
+        [18, 150]
+      ],
+      "sex": ["Both"],
+      "daysPriorObservation": [365],
+      "requirementInteractions": true
+    },
+    {
+      "name": "Cataract, Depression, Anxiety",
+      "kind": "outcome",
+      "data_sources": ["CDW Bordeaux", "CPRD GOLD", "DK-DHR", "IQVIA DA Germany", "NAJS"],
+      "entry_events": ["First recorded diagnosis or observation: [cs_cataract], [cs_depression], [cs_anxiety]"],
+      "inclusion_criteria": [],
+      "exit_criteria": ["loss to follow-up", "end of data availability", "date of death", "end of study period (31 December 2024)"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": [
+            "cs_cataract",
+            "cs_depression",
+            "cs_anxiety"
+          ],
+          "exit": "event_start_date"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "exit_at_observation_end"
+        }
+      ]
+    },
+    {
+      "name": "Pulmonary exacerbation",
+      "kind": "outcome",
+      "data_sources": ["CDW Bordeaux", "CPRD GOLD", "DK-DHR", "IQVIA DA Germany", "NAJS"],
+      "entry_events": ["First recorded diagnosis or observation: [cs_pulmonary_exacerbation]"],
+      "inclusion_criteria": [],
+      "exit_criteria": ["loss to follow-up", "end of data availability", "date of death", "end of study period (31 December 2024)"],
+      "operations": [
+        {
+          "op": "concept_cohort",
+          "codelist": [
+            "cs_pulmonary_exacerbation"
+          ],
+          "exit": "event_start_date"
+        },
+        {
+          "op": "require_first_entry"
+        },
+        {
+          "op": "exit_at_observation_end"
+        }
+      ]
+    }
+  ],
+  "proposed_analyses": [
+    {
+      "name": "Patient-level characterisation",
+      "analysis_type": "Other",
+      "objectives": [],
+      "data_sources": ["CDW Bordeaux", "CPRD GOLD", "DK-DHR", "IQVIA DA Germany", "NAJS"],
+      "parameters": {
+        "target_cohort": null,
+        "comparator_cohort": null,
+        "outcome_cohort": null,
+        "covariates": [],
+        "statistical_method": null,
+        "effect_measure": null,
+        "time_at_risk": {
+          "start_offset_days": 0,
+          "start_anchor": "cohort start",
+          "end_offset_days": 0,
+          "end_anchor": "cohort end"
+        },
+        "stratifications": [],
+        "sensitivity_analyses": []
+      }
+    },
+    {
+      "name": "Clinical characterisation",
+      "analysis_type": "Other",
+      "objectives": [],
+      "data_sources": ["CDW Bordeaux", "CPRD GOLD", "DK-DHR", "IQVIA DA Germany", "NAJS"],
+      "parameters": {
+        "target_cohort": null,
+        "comparator_cohort": null,
+        "outcome_cohort": null,
+        "covariates": [],
+        "statistical_method": null,
+        "effect_measure": null,
+        "time_at_risk": {
+          "start_offset_days": 0,
+          "start_anchor": "cohort start",
+          "end_offset_days": 0,
+          "end_anchor": "cohort end"
+        },
+        "stratifications": [],
+        "sensitivity_analyses": []
+      }
+    },
+    {
+      "name": "Background incidence rates of pre-specified events",
+      "analysis_type": "Incidence",
+      "objectives": [],
+      "data_sources": ["CDW Bordeaux", "CPRD GOLD", "DK-DHR", "IQVIA DA Germany", "NAJS"],
+      "parameters": {
+        "denominatorTable": "General population denominator",
+        "outcomeTable": "Cataract, Depression, Anxiety",
+        "censorTable": null,
+        "denominatorCohortId": null,
+        "outcomeCohortId": null,
+        "censorCohortId": null,
+        "interval": ["years"],
+        "completeDatabaseIntervals": true,
+        "outcomeWashout": [365],
+        "repeatedEvents": false,
+        "strata": [],
+        "includeOverallStrata": true
+      }
+    },
+    {
+      "name": "Incidence rates of pulmonary exacerbation",
+      "analysis_type": "Incidence",
+      "objectives": [],
+      "data_sources": ["CDW Bordeaux", "CPRD GOLD", "DK-DHR", "IQVIA DA Germany", "NAJS"],
+      "parameters": {
+        "denominatorTable": "General population denominator",
+        "outcomeTable": "Pulmonary exacerbation",
+        "censorTable": null,
+        "denominatorCohortId": null,
+        "outcomeCohortId": null,
+        "censorCohortId": null,
+        "interval": ["years"],
+        "completeDatabaseIntervals": true,
+        "outcomeWashout": [60],
+        "repeatedEvents": true,
+        "strata": [],
+        "includeOverallStrata": true
+      }
+    },
+    {
+      "name": "Sensitivity analysis",
+      "analysis_type": "Other",
+      "objectives": [],
+      "data_sources": ["CDW Bordeaux", "CPRD GOLD", "DK-DHR", "IQVIA DA Germany", "NAJS"],
+      "parameters": {
+        "target_cohort": null,
+        "comparator_cohort": null,
+        "outcome_cohort": null,
+        "covariates": [],
+        "statistical_method": null,
+        "effect_measure": null,
+        "time_at_risk": {
+          "start_offset_days": 0,
+          "start_anchor": "cohort start",
+          "end_offset_days": 0,
+          "end_anchor": "cohort end"
+        },
+        "stratifications": [],
+        "sensitivity_analyses": []
+      }
+    }
+  ]
+}
