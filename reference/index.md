@@ -30,7 +30,5 @@
   : Create a data-source modification component
 - [`newSapStudy()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapStudy.md)
   : Create the study metadata component of a SAP
-- [`shinySap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/shinySap.md)
-  : Launch the shinySAP Shiny application
 - [`validateSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/validateSap.md)
   : Validate a SAP, throwing an error when problems are found

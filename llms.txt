@@ -7,7 +7,7 @@ coverage](https://codecov.io/gh/oxford-pharmacoepi/shinySAP/graph/badge.svg)](ht
 A Shiny app for writing a Statistical Analysis Plan (SAP) through a
 structured form rather than a prose document. Everything the user enters
 is captured on the backend as a single JSON dictionary and written to
-`output/`.
+`app/output/`.
 
 ## Sections
 
@@ -43,8 +43,8 @@ pak::local_install()
 shinySAP::shinySap()
 ```
 
-By default the app writes to `output/` relative to the working
-directory. Point it somewhere else with:
+By default the app writes to `app/output/`. Point it somewhere else
+with:
 
 ``` r
 
@@ -404,7 +404,7 @@ only agree with that or be wrong — and being wrong was the dangerous
 case: naming an extra ETL column made the strata picker offer it and the
 validator accept it, for a `strata =` that the generator would never
 satisfy. The columns are now fixed (`STRATA_VARIABLES` in
-`R/cohort_kinds.R`). An older file’s declared columns are dropped on
+`app/R/cohort_kinds.R`). An older file’s declared columns are dropped on
 load, and an analysis stratified by a column beyond those two now fails
 validation — which is the honest outcome, since it was never going to
 run.
@@ -522,41 +522,60 @@ with outstanding problems warns rather than refuses.
 
 ### Adding an analysis type’s form
 
-Each type’s inputs live in their own file, `R/analysis_type_<name>.R`,
-which calls `register_analysis_template()` with four mirrored pieces:
-`ui` builds the inputs, `collect` reads them back into JSON, `pickers`
-names the ids that pick a cohort or a CDM source, and `flatten` undoes
-whatever nesting `collect` did so a saved file can repopulate the form.
-Copy an existing one and edit it — that is the whole wiring, no other
-file needs touching.
+Each type’s inputs live in their own file,
+`app/R/analysis_type_<name>.R`, which calls
+`register_analysis_template()` with four mirrored pieces: `ui` builds
+the inputs, `collect` reads them back into JSON, `pickers` names the ids
+that pick a cohort or a CDM source, and `flatten` undoes whatever
+nesting `collect` did so a saved file can repopulate the form. Copy an
+existing one and edit it — that is the whole wiring, no other file needs
+touching.
 
 A type listed in `ANALYSIS_TYPES` with no template of its own falls back
 to `"Other"`, the generic form, so the app keeps working while the rest
-are filled in. `R/analysis_registry.R` holds the registry, the type
+are filled in. `app/R/analysis_registry.R` holds the registry, the type
 resolver, and the input blocks templates share (time at risk,
 stratifications); its header comment sets out the rules, including why
-the template files have to sit flat in `R/`.
+the template files have to sit flat in `app/R/`.
 
 ## Layout
 
-``` R
-R/app.R                    Extra Shiny app and `shinySap()` launcher
-DESCRIPTION               R package metadata
-NAMESPACE                 R package namespace
-R/utils.R                 JSON helpers, slugify, save/read
-R/dynamic_items.R         add/remove machinery and pickers for repeating sections
-R/analysis_registry.R     analysis type registry, resolver, shared input blocks
-R/analysis_type_*.R       one input template per analysis type
-R/mod_study.R             Study metadata
-R/mod_cdm_sources.R       Section: CDM Sources
-R/mod_cdm_changes.R       Section: CDM Changes
-R/mod_cohorts.R           Section: Cohorts
-R/mod_analyses.R          Section: Analyses
-R/mod_review.R            Review, save, download
-tests/testthat/           testthat suite: JSON contract, templates, validators
-tests/testthat.R          runner (Rscript tests/testthat.R)
-output/                   Saved SAPs
-```
+The repo holds two things: the **package** at the root — the versioned
+SAP schema, its constructors and its validators — and the **Shiny app**
+in `app/`, which is a Shiny app *directory*, not a package. The app is
+frozen pending a rewrite against the schema; it does not depend on the
+package, and the package does not depend on it.
+
+    DESCRIPTION               package metadata (the core: no shiny in Imports)
+    NAMESPACE                 package namespace
+    R/sap.R                   SAP constructors, checkSap(), validateSap()
+    R/sap_schema.R            accessors over the versioned schema tables
+    R/utils.R                 core-internal helpers
+    R/sysdata.rda             the built schema tables (see data-raw/)
+    data-raw/                 schema.csv + types.csv per version, and their build script
+    tests/testthat/           the package suite (Rscript tests/testthat.R)
+
+    app/app.R                 the Shiny app: ui, server, shinyApp()
+    app/R/                    sourced by loadSupport(), alphabetically, before app.R
+      utils.R                 JSON helpers, slugify, save/read
+      dynamic_items.R         add/remove machinery and pickers for repeating sections
+      analysis_registry.R     analysis type registry, resolver, shared input blocks
+      analysis_type_*.R       one input template per analysis type
+      cohort_kinds.R          cohort kind templates
+      cohort_operations.R     cohort operation registry and code generation
+      mod_*.R                 one Shiny module per section
+      sap_code.R              SAP -> runnable R
+      sap_study_export.R      SAP -> a study directory
+    app/inst/sap_preview.Rmd  SAP -> HTML/Word preview
+    app/www/                  static assets, served at the app root
+    app/tests/                the app suite (Rscript app/tests/run.R)
+    app/tests/fixtures/       sample SAPs
+    app/NEWS.md               SAP JSON schema history (0.2.0 - 0.4.30)
+    app/output/               working SAPs the app writes (gitignored)
+
+Launch the app with `shiny::runApp("app")` from the repo root.
+`runApp()` sets the working directory to `app/` for the duration, which
+is what makes the app’s relative paths resolve.
 
 Each repeating item is a real Shiny module inserted with `insertUI`, not
 a re-rendered block, so adding or removing one never resets its
@@ -624,8 +643,6 @@ write a SAP.
   : Create a data-source modification component
 - [`newSapStudy()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapStudy.md)
   : Create the study metadata component of a SAP
-- [`shinySap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/shinySap.md)
-  : Launch the shinySAP Shiny application
 - [`validateSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/validateSap.md)
   : Validate a SAP, throwing an error when problems are found
 

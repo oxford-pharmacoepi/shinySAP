@@ -49,7 +49,7 @@
 <div class="page-header"><h1 id="shinysap">shinySAP<a class="anchor" aria-label="anchor" href="#shinysap"></a>
 </h1></div>
 <p><a href="https://github.com/oxford-pharmacoepi/shinySAP/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/oxford-pharmacoepi/shinySAP/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a> <a href="https://app.codecov.io/gh/oxford-pharmacoepi/shinySAP" class="external-link"><img src="https://codecov.io/gh/oxford-pharmacoepi/shinySAP/graph/badge.svg" alt="Codecov test coverage"></a></p>
-<p>A Shiny app for writing a Statistical Analysis Plan (SAP) through a structured form rather than a prose document. Everything the user enters is captured on the backend as a single JSON dictionary and written to <code>output/</code>.</p>
+<p>A Shiny app for writing a Statistical Analysis Plan (SAP) through a structured form rather than a prose document. Everything the user enters is captured on the backend as a single JSON dictionary and written to <code>app/output/</code>.</p>
 <div class="section level2">
 <h2 id="sections">Sections<a class="anchor" aria-label="anchor" href="#sections"></a>
 </h2>
@@ -103,11 +103,11 @@
 <p>Install the package, then run the extra Shiny app from the package root:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/local_install.html" class="external-link">local_install</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu">shinySAP</span><span class="fu">::</span><span class="fu"><a href="reference/shinySap.html">shinySap</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>By default the app writes to <code>output/</code> relative to the working directory. Point it somewhere else with:</p>
+<span><span class="fu">shinySAP</span><span class="fu">::</span><span class="fu">shinySap</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>By default the app writes to <code>app/output/</code>. Point it somewhere else with:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinySAP.output_dir <span class="op">=</span> <span class="st">"~/saps"</span><span class="op">)</span></span>
-<span><span class="fu">shinySAP</span><span class="fu">::</span><span class="fu"><a href="reference/shinySap.html">shinySap</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">shinySAP</span><span class="fu">::</span><span class="fu">shinySap</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="output">Output<a class="anchor" aria-label="anchor" href="#output"></a>
@@ -349,7 +349,7 @@
 <p><code>0.3.2</code> did the same for cohorts: a cohort’s <code>kind</code> now decides which fields it carries, and each denominator kind carries exactly its generator’s arguments. <code>study_period_*</code> became <code>cohort_date_range_*</code>; <code>prior_observation_days</code> became <code>days_prior_observation</code> (a list, since the generator takes a vector); <code>age_groups</code> became numeric pairs rather than free text; and <code>requirement_interactions</code>, <code>requirements_at_entry</code> and <code>strata_variables</code> were added. <code>washout_days</code> was <strong>dropped</strong> — neither generator takes a washout, it is <code>estimateIncidence(outcomeWashout =)</code>, which the Incidence analysis already captures.</p>
 <p><code>0.3.2</code> also made the Incidence <code>outcome_washout</code> <strong>numeric</strong>, matching <code>estimateIncidence(outcomeWashout =)</code>. It was the string <code>"unbounded"</code> (or a bare number); it is now a one-element numeric array, with <code>Inf</code> as <code>[null]</code> — the same Inf-as-null-inside-an-array rule the cohort’s <code>age_groups</code> and <code>time_at_risk</code> use. Both older shapes still load.</p>
 <p><code>0.4.0</code> added cohort sets — a cohort gained <code>parent_cohort</code>, and prevalence gained <code>denominatorCohortId</code> / <code>outcomeCohortId</code> (null = all IDs in the set) — and aligned Prevalence with the estimators the way <code>0.3.1</code> aligned Incidence: <code>parameters</code> use the argument names and order, <code>strata</code> replaces <code>stratifications</code>, <code>sensitivity_analyses</code> is dropped there, and a prevalence <code>analysis_type</code> names the estimator (<code>estimatePointPrevalence</code> / <code>estimatePeriodPrevalence</code>).</p>
-<p><code>0.4.1</code> <strong>dropped <code>strata_variables</code></strong> from the denominator kinds. <code>generateDenominatorCohortSet()</code> puts <code>age_group</code> and <code>sex</code> on the denominator table and nothing else, so the columns an analysis may stratify by were never the author’s to choose. As a textarea it could only agree with that or be wrong — and being wrong was the dangerous case: naming an extra ETL column made the strata picker offer it and the validator accept it, for a <code>strata =</code> that the generator would never satisfy. The columns are now fixed (<code>STRATA_VARIABLES</code> in <code>R/cohort_kinds.R</code>). An older file’s declared columns are dropped on load, and an analysis stratified by a column beyond those two now fails validation — which is the honest outcome, since it was never going to run.</p>
+<p><code>0.4.1</code> <strong>dropped <code>strata_variables</code></strong> from the denominator kinds. <code>generateDenominatorCohortSet()</code> puts <code>age_group</code> and <code>sex</code> on the denominator table and nothing else, so the columns an analysis may stratify by were never the author’s to choose. As a textarea it could only agree with that or be wrong — and being wrong was the dangerous case: naming an extra ETL column made the strata picker offer it and the validator accept it, for a <code>strata =</code> that the generator would never satisfy. The columns are now fixed (<code>STRATA_VARIABLES</code> in <code>app/R/cohort_kinds.R</code>). An older file’s declared columns are dropped on load, and an analysis stratified by a column beyond those two now fails validation — which is the honest outcome, since it was never going to run.</p>
 <p><code>0.4.2</code> <strong>aligned the denominator kinds with their generators</strong>, the way <code>0.3.1</code> aligned Incidence with <code>estimateIncidence()</code> and <code>0.4.0</code> aligned Prevalence with the prevalence estimators. Every key is now the argument name it feeds, in the generator’s own order: <code>target_cohort</code> → <code>targetCohortTable</code>, <code>time_at_risk</code> → <code>timeAtRisk</code>, <code>age_groups</code> → <code>ageGroup</code>, <code>days_prior_observation</code> → <code>daysPriorObservation</code>, <code>requirements_at_entry</code> → <code>requirementsAtEntry</code>, <code>requirement_interactions</code> → <code>requirementInteractions</code>. The two keys <code>cohort_date_range_start</code> / <code>_end</code> became the single <code>cohortDateRange</code> pair the argument actually takes. The input ids are the argument names too, so a field and the key it produces cannot drift apart.</p>
 <p><code>0.4.3</code> finished aligning <strong>Incidence</strong> the same way. <code>0.3.1</code> had matched the <em>set</em> of fields to <code>estimateIncidence()</code> but still wrote them snake_case and wrapped in an <code>estimand</code> object the function has no concept of. Now the keys are the argument names, flat and in signature order — <code>denominator_cohort</code> → <code>denominatorTable</code>, <code>outcome_cohort</code> → <code>outcomeTable</code>, <code>censor_cohort</code> → <code>censorTable</code>, <code>complete_database_intervals</code> → <code>completeDatabaseIntervals</code>, <code>outcome_washout</code> → <code>outcomeWashout</code>, <code>repeated_events</code> → <code>repeatedEvents</code>, <code>include_overall_strata</code> → <code>includeOverallStrata</code>, and <code>interval</code> / <code>strata</code> unchanged. The <code>estimand</code> wrapper is gone, and the three <code>*CohortId</code> arguments (<code>denominatorCohortId</code>, <code>outcomeCohortId</code>, <code>censorCohortId</code>; <code>null</code> = all cohorts in the set) are now present, matching the signature and the Prevalence template. The Incidence <code>flatten()</code> un-nests any old <code>estimand</code> and renames every field, so a pre-0.4.3 file loads unchanged.</p>
 <p><code>0.4.27</code> added <code>role</code> (<code>primary</code> / <code>sensitivity</code>) to an analysis: not an estimator argument — the primary analysis and its sensitivity analyses call the same function with the same arguments — but the distinction is the first thing a reviewer looks for, and without a field an author could only spell it into the analysis name, where nothing could group or check it. <code>analysis_role_problems()</code> reports a plan that states roles but marks none of them primary; the document shows the role per analysis.</p>
@@ -372,29 +372,41 @@
 <div class="section level3">
 <h3 id="adding-an-analysis-types-form">Adding an analysis type’s form<a class="anchor" aria-label="anchor" href="#adding-an-analysis-types-form"></a>
 </h3>
-<p>Each type’s inputs live in their own file, <code>R/analysis_type_&lt;name&gt;.R</code>, which calls <code>register_analysis_template()</code> with four mirrored pieces: <code>ui</code> builds the inputs, <code>collect</code> reads them back into JSON, <code>pickers</code> names the ids that pick a cohort or a CDM source, and <code>flatten</code> undoes whatever nesting <code>collect</code> did so a saved file can repopulate the form. Copy an existing one and edit it — that is the whole wiring, no other file needs touching.</p>
-<p>A type listed in <code>ANALYSIS_TYPES</code> with no template of its own falls back to <code>"Other"</code>, the generic form, so the app keeps working while the rest are filled in. <code>R/analysis_registry.R</code> holds the registry, the type resolver, and the input blocks templates share (time at risk, stratifications); its header comment sets out the rules, including why the template files have to sit flat in <code>R/</code>.</p>
+<p>Each type’s inputs live in their own file, <code>app/R/analysis_type_&lt;name&gt;.R</code>, which calls <code>register_analysis_template()</code> with four mirrored pieces: <code>ui</code> builds the inputs, <code>collect</code> reads them back into JSON, <code>pickers</code> names the ids that pick a cohort or a CDM source, and <code>flatten</code> undoes whatever nesting <code>collect</code> did so a saved file can repopulate the form. Copy an existing one and edit it — that is the whole wiring, no other file needs touching.</p>
+<p>A type listed in <code>ANALYSIS_TYPES</code> with no template of its own falls back to <code>"Other"</code>, the generic form, so the app keeps working while the rest are filled in. <code>app/R/analysis_registry.R</code> holds the registry, the type resolver, and the input blocks templates share (time at risk, stratifications); its header comment sets out the rules, including why the template files have to sit flat in <code>app/R/</code>.</p>
 </div>
 </div>
 <div class="section level2">
 <h2 id="layout">Layout<a class="anchor" aria-label="anchor" href="#layout"></a>
 </h2>
-<div class="sourceCode" id="cb6"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>R<span class="sc">/</span>app.R                    Extra Shiny app and <span class="st">`</span><span class="at">shinySap()</span><span class="st">`</span> launcher</span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>DESCRIPTION               R package metadata</span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>NAMESPACE                 R package namespace</span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>R<span class="sc">/</span>utils.R                 JSON helpers, slugify, save<span class="sc">/</span>read</span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>R<span class="sc">/</span>dynamic_items.R         add<span class="sc">/</span>remove machinery and pickers <span class="cf">for</span> repeating sections</span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>R<span class="sc">/</span>analysis_registry.R     analysis type registry, resolver, shared input blocks</span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>R<span class="sc">/</span>analysis_type_<span class="sc">*</span>.R       one input template per analysis type</span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>R<span class="sc">/</span>mod_study.R             Study metadata</span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>R<span class="sc">/</span>mod_cdm_sources.R       Section<span class="sc">:</span> CDM Sources</span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>R<span class="sc">/</span>mod_cdm_changes.R       Section<span class="sc">:</span> CDM Changes</span>
-<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>R<span class="sc">/</span>mod_cohorts.R           Section<span class="sc">:</span> Cohorts</span>
-<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>R<span class="sc">/</span>mod_analyses.R          Section<span class="sc">:</span> Analyses</span>
-<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a>R<span class="sc">/</span>mod_review.R            Review, save, download</span>
-<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a>tests<span class="sc">/</span>testthat<span class="sc">/</span>           testthat suite<span class="sc">:</span> JSON contract, templates, validators</span>
-<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a>tests<span class="sc">/</span>testthat.R          <span class="fu">runner</span> (Rscript tests<span class="sc">/</span>testthat.R)</span>
-<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a>output<span class="sc">/</span>                   Saved SAPs</span></code></pre></div>
+<p>The repo holds two things: the <strong>package</strong> at the root — the versioned SAP schema, its constructors and its validators — and the <strong>Shiny app</strong> in <code>app/</code>, which is a Shiny app <em>directory</em>, not a package. The app is frozen pending a rewrite against the schema; it does not depend on the package, and the package does not depend on it.</p>
+<pre><code>DESCRIPTION               package metadata (the core: no shiny in Imports)
+NAMESPACE                 package namespace
+R/sap.R                   SAP constructors, checkSap(), validateSap()
+R/sap_schema.R            accessors over the versioned schema tables
+R/utils.R                 core-internal helpers
+R/sysdata.rda             the built schema tables (see data-raw/)
+data-raw/                 schema.csv + types.csv per version, and their build script
+tests/testthat/           the package suite (Rscript tests/testthat.R)
+
+app/app.R                 the Shiny app: ui, server, shinyApp()
+app/R/                    sourced by loadSupport(), alphabetically, before app.R
+  utils.R                 JSON helpers, slugify, save/read
+  dynamic_items.R         add/remove machinery and pickers for repeating sections
+  analysis_registry.R     analysis type registry, resolver, shared input blocks
+  analysis_type_*.R       one input template per analysis type
+  cohort_kinds.R          cohort kind templates
+  cohort_operations.R     cohort operation registry and code generation
+  mod_*.R                 one Shiny module per section
+  sap_code.R              SAP -&gt; runnable R
+  sap_study_export.R      SAP -&gt; a study directory
+app/inst/sap_preview.Rmd  SAP -&gt; HTML/Word preview
+app/www/                  static assets, served at the app root
+app/tests/                the app suite (Rscript app/tests/run.R)
+app/tests/fixtures/       sample SAPs
+app/NEWS.md               SAP JSON schema history (0.2.0 - 0.4.30)
+app/output/               working SAPs the app writes (gitignored)</code></pre>
+<p>Launch the app with <code>shiny::runApp("app")</code> from the repo root. <code>runApp()</code> sets the working directory to <code>app/</code> for the duration, which is what makes the app’s relative paths resolve.</p>
 <p>Each repeating item is a real Shiny module inserted with <code>insertUI</code>, not a re-rendered block, so adding or removing one never resets its siblings.</p>
 </div>
 <div class="section level2">
