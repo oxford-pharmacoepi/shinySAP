@@ -6,7 +6,7 @@ codelist,concept_set_expression,Concept set expression
 cohort,concept_cohort,Concept cohort
 cohort,target,Target
 cohort,denominator,Denominator
-cohort,target_denominator, Target denominator
+cohort,target_denominator,Target denominator
 analysis,incidence,Incidence
 analysis,point_prevalence,Point Prevalence
 analysis,period_prevalence,Period Prevalence
