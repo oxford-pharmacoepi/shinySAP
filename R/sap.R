@@ -243,22 +243,6 @@ checkSap <- function(x) {
     unique(ids[nzchar(ids)])
   }
 
-  checkReferences <- function(values, collectionName, fieldName, availableIds) {
-    purrr::walk(seq_along(values), function(index) {
-      if (!is.list(values[[index]])) return(invisible(NULL))
-      references <- as.character(values[[index]][[fieldName]] %||% character())
-      references <- references[nzchar(references)]
-      missingReferences <- setdiff(references, availableIds)
-      purrr::walk(missingReferences, function(reference) {
-        addProblem(
-          sprintf("%s[%d].%s", collectionName, index, fieldName),
-          "missing_reference",
-          sprintf("The id '%s' is not defined.", reference)
-        )
-      })
-    })
-  }
-
   checkObject(x, "sap", "")
   checkObject(x$study, "study", "study")
 
@@ -289,45 +273,34 @@ checkSap <- function(x) {
   )
   names(collectionIds) <- names(collectionDefinitions)
 
-  checkReferences(
-    x$data_source_modifications %||% list(),
-    "data_source_modifications", "data_source_id",
-    collectionIds$data_sources
+  objectCollections <- stats::setNames(
+    names(collectionDefinitions), unlist(collectionDefinitions)
   )
-  checkReferences(
-    x$cohorts %||% list(), "cohorts", "data_source_id",
-    collectionIds$data_sources
-  )
-  checkReferences(
-    x$analyses %||% list(), "analyses", "data_source_id",
-    collectionIds$data_sources
-  )
+  references <- schemaReferences(version)
 
-  purrr::walk(seq_along(x$cohorts %||% list()), function(index) {
-    cohort <- x$cohorts[[index]]
-    if (!is.list(cohort)) return(invisible(NULL))
-    if (identical(cohort$type, "concept_cohort")) {
-      id <- cohort$parameters$codelist_id %||% ""
-      if (nzchar(as.character(id)) && !id %in% collectionIds$codelists) {
+  purrr::walk(seq_len(nrow(references)), function(rowIndex) {
+    field <- references[rowIndex, , drop = FALSE]
+    collectionName <- unname(objectCollections[field$object[[1]]])
+    if (is.na(collectionName)) return(invisible(NULL))
+    fieldPath <- strsplit(field$path[[1]], ".", fixed = TRUE)[[1]]
+    availableIds <- collectionIds[[field$ref[[1]]]]
+    typeId <- field$type_id[[1]]
+    values <- x[[collectionName]] %||% list()
+
+    purrr::walk(seq_along(values), function(index) {
+      value <- values[[index]]
+      if (!is.list(value)) return(invisible(NULL))
+      if (!is.na(typeId) &&
+          !identical(as.character(value$type %||% ""), typeId)) {
+        return(invisible(NULL))
+      }
+      ids <- as.character(purrr::pluck(value, !!!fieldPath) %||% character())
+      purrr::walk(setdiff(ids[nzchar(ids)], availableIds), function(id) {
         addProblem(
-          sprintf("cohorts[%d].parameters.codelist_id", index),
+          sprintf("%s[%d].%s", collectionName, index, field$path[[1]]),
           "missing_reference", sprintf("The id '%s' is not defined.", id)
         )
-      }
-    }
-  })
-
-  purrr::walk(seq_along(x$analyses %||% list()), function(index) {
-    analysis <- x$analyses[[index]]
-    if (!is.list(analysis)) return(invisible(NULL))
-    purrr::walk(c("denominator_cohort_id", "outcome_cohort_id"), function(parameterName) {
-      id <- analysis$parameters[[parameterName]] %||% ""
-      if (nzchar(as.character(id)) && !id %in% collectionIds$cohorts) {
-        addProblem(
-          sprintf("analyses[%d].parameters.%s", index, parameterName),
-          "missing_reference", sprintf("The id '%s' is not defined.", id)
-        )
-      }
+      })
     })
   })
 

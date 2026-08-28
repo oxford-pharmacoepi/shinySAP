@@ -34,12 +34,31 @@ sapSchema <- purrr::map(
       col_types = c(
         object = "c", type_id = "c", path = "c", node_type = "c",
         value_type = "c", json_type = "c", required = "l",
-        default_json = "c", order = "i"
+        default_json = "c", order = "i", ref = "c"
       )
     )
   }
 )
 names(sapSchema) <- schemaVersions
+
+purrr::iwalk(sapSchema, function(fields, version) {
+  references <- fields[!is.na(fields$ref), , drop = FALSE]
+  collections <- fields$path[fields$object == "sap" & fields$node_type == "collection"]
+  unknown <- setdiff(references$ref, collections)
+  if (length(unknown)) {
+    cli::cli_abort(c(
+      x = "Schema {version}: 'ref' names unknown collections: {unknown}."
+    ))
+  }
+  if (!all(references$value_type %in% c("id", "id_vector"))) {
+    cli::cli_abort(c(
+      x = "Schema {version}: only id fields may declare a 'ref'."
+    ))
+  }
+  if (!all(references$node_type == "field")) {
+    cli::cli_abort(c(x = "Schema {version}: only fields may declare a 'ref'."))
+  }
+})
 
 currentVersion <- schemaVersions[[1]]
 if (length(schemaVersions) > 1L) {
