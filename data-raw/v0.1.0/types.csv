@@ -8,5 +8,6 @@ cohort,target,Target
 cohort,denominator,Denominator
 cohort,target_denominator, Target denominator
 analysis,incidence,Incidence
-analysis,prevalence,Prevalence
+analysis,point_prevalence,Point Prevalence
+analysis,period_prevalence,Period Prevalence
 analysis,other,Other

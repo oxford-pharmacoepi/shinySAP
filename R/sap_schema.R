@@ -33,6 +33,14 @@ schemaFields <- function(object,
   fields[common | typed, , drop = FALSE]
 }
 
+schemaReferences <- function(version = currentSapSchemaVersion()) {
+  fields <- sapSchema[[version]]
+  if (is.null(fields)) {
+    cli::cli_abort(c(x = paste0("Unknown SAP schema version: ", version, ".")))
+  }
+  fields[!is.na(fields$ref), , drop = FALSE]
+}
+
 schemaTypes <- function(object,
                         version = currentSapSchemaVersion()) {
   types <- sapTypes[[version]]
