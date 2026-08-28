@@ -177,8 +177,34 @@ checkSap <- function(x) {
       checkChoice(value, timeIntervalChoices(field$type_id[[1]]), path)
     } else if (valueType == "level") {
       checkChoice(value, LEVELS, path)
-    }
-  }
+    } else if (valueType == "integer") {
+      if (!is.numeric(value) || length(value) != 1L || is.na(value)) {
+        addProblem(path, "invalid_value_type", "A single numeric value is required.")
+      }
+    } else if (valueType %in% c("age_group", "time_at_risk")) {
+      ok <- is.list(value) && all(purrr::map_lgl(value, function(bounds) {
+        bounds <- suppressWarnings(as.numeric(unlist(bounds)))
+        length(bounds) == 2L && !anyNA(bounds) && bounds[1] >= 0 &&
+          bounds[2] >= bounds[1] &&
+          (valueType == "time_at_risk" || is.finite(bounds[2]))
+      }))
+      if (!ok) {
+        addProblem(path, "invalid_value_type", paste0("A list of c(lower, upper) is required, 0 <= lower <= upper", if (valueType == "age_group") " and upper is finite", "."))
+      }
+    } else if (valueType == "strata") {
+      ok <- is.list(value) && all(purrr::map_lgl(value, function(group) {
+        is.character(group) && length(group) > 0L
+      }))
+      if (!ok) {
+        addProblem(path, "invalid_value_type", "A list of character vectors is required.")
+      }
+    } else if (!valueType %in% c("object", "external_object")) {
+      addProblem(path, "unknown_value_type", sprintf(
+        "The value_type '%s' is not permitted.", valueType
+      ))
+    } 
+  } 
+  
 
   checkChoice <- function(value, choices, path) {
     if (!is.character(value) || length(value) != 1L) {
@@ -745,9 +771,31 @@ validateParameterValue <- function(value, valueType, parameterName,
       value, length = 1, na = FALSE, null = FALSE, empty = FALSE,
       nm = parameterName
     )
-  } else if (valueType == "date_range") {
+  } else if (valueType %in% c("character_vector", "id_vector")) {
+    omopgenerics::assertCharacter(value, na = FALSE, nm = parameterName)
+  } else if (valueType == "logic") {
+    omopgenerics::assertLogical(value, length = 1, na = FALSE, nm = parameterName)
+  }  else if (valueType == "date_range") {
     omopgenerics::assertDate(value, length = 2, na = TRUE, nm = parameterName)
-  } else if (valueType == "time_point") {
+  } else if (valueType %in% c("age_group", "time_at_risk")) {
+    omopgenerics::assertList(value, nm = parameterName)
+    purrr::walk(value, function(bounds) {
+      bounds <- as.numeric(unlist(bounds))
+      omopgenerics::assertNumeric(
+        bounds, length = 2, min = 0, na = FALSE, nm = parameterName
+      )
+      boundsAscend <- bounds[2] >= bounds[1]
+      omopgenerics::assertTrue(boundsAscend, msg = paste0(
+        "Each ", parameterName, " pair must have upper >= lower."
+      ))
+      if (valueType == "age_group") {
+        upperIsFinite <- is.finite(bounds[2])
+        omopgenerics::assertTrue(upperIsFinite, msg = paste0(
+          "Each ", parameterName, " pair must have a finite upper bound."
+        ))
+      }
+    })
+  }  else if (valueType == "time_point") {
     omopgenerics::assertChoice(
       value, choices = TIME_POINTS, length = 1, nm = parameterName
     )
@@ -759,8 +807,19 @@ validateParameterValue <- function(value, valueType, parameterName,
     omopgenerics::assertChoice(
       value, choices = LEVELS, length = 1, nm = parameterName
     )
+  } else if (valueType == "integer") {
+    omopgenerics::assertNumeric(value, length = 1, na = FALSE, nm = parameterName)
+  } else if (valueType == "strata") {
+    omopgenerics::assertList(value, nm = parameterName)
+    purrr::walk(value, function(group) {
+      omopgenerics::assertCharacter(group, na = FALSE, nm = parameterName)
+    })
+  } else if (!valueType %in% c("object", "external_object")) {
+    cli::cli_abort(c(x = paste0(
+      "Unknown value type '", valueType, "' for ", parameterName, "."
+    )))
   }
-}
+} 
 
 assertComponentList <- function(value, className, argumentName) {
   omopgenerics::assertList(value, nm = argumentName)
