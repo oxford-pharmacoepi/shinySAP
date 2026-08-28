@@ -10,7 +10,8 @@ library(jsonlite)
 library(shiny)
 library(bslib)
 
-app_root <- normalizePath(system.file(package = "shinySAP"))
+# testthat runs from app/tests/; the app directory is one level up.
+app_root <- normalizePath("..")
 
 picker_ids <- function(tmpl) unlist(tmpl$pickers, use.names = FALSE) %||% character(0)
 

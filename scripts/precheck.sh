@@ -14,8 +14,12 @@
 #
 # The two CI jobs run different subsets because they have different libraries:
 #
-#   test job  project dependencies   ->  parse tests smoke
+#   test job  project dependencies   ->  parse tests apptests smoke
 #   lint job  stock library + lintr  ->  readme lint
+#
+# The repo holds TWO things: the package at the root (R/, tests/) and the frozen
+# Shiny app in app/, which is a shiny app DIRECTORY, not a package. They are
+# checked separately -- `tests` is the package, `apptests` is the app.
 #
 # --fix only touches things with exactly one right answer -- today the README's
 # schema version, mechanically derived from R/app.R. Lints and failing tests are
@@ -23,7 +27,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-ALL_STEPS=(readme lint parse tests smoke render)
+ALL_STEPS=(readme lint parse tests apptests smoke render)
 FIX=0
 STEPS=()
 for arg in "$@"; do
@@ -63,16 +67,16 @@ ok()   { printf '   \033[32mOK\033[0m   %s\n' "$1"; }
 bad()  { printf '   \033[31mFAIL\033[0m %s\n' "$1"; failed+=("$1"); }
 wants() { [[ " ${STEPS[*]} " == *" $1 "* ]]; }
 
-# The README's example JSON must carry the schema version R/app.R defines.
+# The README's example JSON must carry the schema version app/app.R defines.
 #
 # A step of the CI "lint" job but NOT a lint, which is worth knowing: it is the
 # one that fails whenever a schema bump lands without the README following it,
 # and a red X on a job called "lint" reads as a style problem when it is not.
 if wants readme; then
   step "README documents the current schema version"
-  version=$(sed -nE 's/^SAP_SCHEMA_VERSION <- "([0-9.]+)"/\1/p' R/app.R)
+  version=$(sed -nE 's/^SAP_SCHEMA_VERSION <- "([0-9.]+)"/\1/p' app/app.R)
   if [ -z "$version" ]; then
-    bad "SAP_SCHEMA_VERSION not found in app.R"
+    bad "SAP_SCHEMA_VERSION not found in app/app.R"
   elif grep -qF "\"sap_schema_version\": \"$version\"" README.Rmd; then
     ok "README carries $version"
   elif [ "$FIX" = "1" ]; then
@@ -108,17 +112,42 @@ fi
 # The suite only sources part of R/, so this is what catches a syntax error in a
 # module the tests never load, or in R/app.R itself.
 if wants parse; then
-  step "Parse all R sources"
-  out=$(Rscript -e 'invisible(lapply(list.files("R", full.names = TRUE), parse))' 2>&1)
+  step "Parse all R sources (package and app)"
+  out=$(Rscript -e 'files <- c(list.files("R", pattern = "[.]R$", full.names = TRUE),
+                               list.files("app/R", pattern = "[.]R$", full.names = TRUE),
+                               "app/app.R")
+                    invisible(lapply(files, parse))' 2>&1)
   if [ $? -eq 0 ]; then ok "R/ parses"; else printf '%s\n' "$out" | tail -10; bad "a source file does not parse"; fi
 fi
 
+# test_check() loads the INSTALLED package, so the suite needs one. CI gets that
+# from check-r-package; locally we install to a throwaway library rather than
+# ask the developer to remember -- otherwise this step only ever runs on GitHub,
+# which is the exact skew this script exists to prevent.
 if wants tests; then
-  step "Tests"
-  out=$(Rscript tests/testthat.R 2>&1)
+  step "Tests — the package"
+  lib=$(mktemp -d)
+  if ! inst=$(R CMD INSTALL --no-multiarch --no-docs -l "$lib" . 2>&1); then
+    printf '%s\n' "$inst" | tail -15; bad "package would not install"
+  else
+    # test_check() resolves "testthat/" relative to the working directory, so
+    # this runs from tests/ -- which is where R CMD check runs it from too.
+    out=$(cd tests && R_LIBS="$lib:${R_LIBS:-}" Rscript testthat.R 2>&1)
+    code=$?
+    summary=$(printf '%s' "$out" | grep -E "^\[ (FAIL|OK)" | tail -1)
+    if [ $code -eq 0 ]; then ok "${summary:-suite passed}"; else printf '%s\n' "$out" | tail -30; bad "tests failed"; fi
+  fi
+  rm -rf "$lib"
+fi
+
+# The app's own suite. It cannot ride on test_check(): app/ has no namespace, so
+# the runner sources app/R the way loadSupport() does.
+if wants apptests; then
+  step "Tests — the app"
+  out=$(Rscript app/tests/run.R 2>&1)
   code=$?
   summary=$(printf '%s' "$out" | grep -E "^\[ (FAIL|OK)" | tail -1)
-  if [ $code -eq 0 ]; then ok "${summary:-suite passed}"; else printf '%s\n' "$out" | tail -30; bad "tests failed"; fi
+  if [ $code -eq 0 ]; then ok "${summary:-app suite passed}"; else printf '%s\n' "$out" | tail -30; bad "app tests failed"; fi
 fi
 
 # The app has to actually start. A module that errors at UI-build time passes
@@ -126,7 +155,7 @@ fi
 if wants smoke; then
   step "Smoke test — the app starts and serves HTTP 200"
   log=$(mktemp)
-  Rscript -e 'shiny::runApp(system.file("shiny-sap", package = "shinySAP"), port = 8123)' > "$log" 2>&1 &
+  Rscript -e 'shiny::runApp("app", port = 8123)' > "$log" 2>&1 &
   app_pid=$!
   served=1
   for _ in $(seq 1 30); do
@@ -145,11 +174,12 @@ fi
 if wants render; then
   step "Preview renders (HTML)"
   out=$(Rscript -e '
+    setwd("app")
     `%||%` <- function(x, y) if (is.null(x) || length(x) == 0 || (length(x) == 1 && is.na(x))) y else x
     for (f in c("utils.R", "cohort_kinds.R", "analysis_registry.R", "sap_code.R",
                 "cohort_operations.R")) source(file.path("R", f))
-    saps <- list.files("output", pattern = "[.]json$", full.names = TRUE)
-    if (!length(saps)) { cat("no SAP in output/ to render\n"); quit(status = 0) }
+    saps <- list.files("tests/fixtures", pattern = "[.]json$", full.names = TRUE)
+    if (!length(saps)) { cat("no SAP fixture to render\n"); quit(status = 0) }
     sap <- read_sap(saps[[1]])
     rmarkdown::render("inst/sap_preview.Rmd",
       output_format = rmarkdown::html_document(self_contained = TRUE),

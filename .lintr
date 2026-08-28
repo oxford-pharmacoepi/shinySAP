@@ -17,5 +17,8 @@ exclusions: list(
     # Generated study directories are artefacts of an export, not source. Their
     # object names come from whatever the SAP called its cohorts, so linting them
     # would fail CI on a study's vocabulary rather than on this project's code.
-    "sampleStudy"
+    "sampleStudy",
+    # The app is frozen legacy pending the rewrite; linting it churns without
+    # changing anything that ships.
+    "app"
   )

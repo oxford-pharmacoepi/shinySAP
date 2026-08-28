@@ -47,14 +47,18 @@ test_that("rename: clearing a name is not a rename, and re-linking survives it",
 # The follow half resolves updateSelectizeInput lexically through the global
 # environment (where helper-app.R sources the app code), so a recorder defined
 # there intercepts the calls without a real client.
+# The call sites are `shiny::updateSelectizeInput(...)`, so the recorder has to
+# replace the binding inside shiny's own namespace -- a copy in globalenv() is
+# never consulted for a `::`-qualified call.
 with_update_recorder <- function(code) {
   seen <- new.env(parent = emptyenv())
-  assign("updateSelectizeInput", # nolint: object_name_linter. Shiny's own name.
-         function(session, inputId, choices = NULL, selected = NULL, ...) { # nolint: object_name_linter.
-           assign(inputId, list(choices = choices, selected = selected), envir = seen)
-         },
-         envir = globalenv())
-  on.exit(rm("updateSelectizeInput", envir = globalenv()), add = TRUE)
+  testthat::local_mocked_bindings(
+    updateSelectizeInput = function(session, inputId, choices = NULL, # nolint: object_name_linter. Shiny's own name.
+                                    selected = NULL, ...) {
+      assign(inputId, list(choices = choices, selected = selected), envir = seen)
+    },
+    .package = "shiny"
+  )
   force(code)
   seen
 }

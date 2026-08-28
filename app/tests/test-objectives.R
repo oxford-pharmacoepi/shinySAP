@@ -179,7 +179,9 @@ test_that("objective choices reach the analysis card's picker", {
 })
 
 test_that("app.R hands analyses_server its objective choices", {
-  call <- paste(deparse(shinySAP::shinySap), collapse = "\n")
+  # app.R is a Shiny app file, not a function in a namespace, so this reads the
+  # source rather than deparsing an installed binding.
+  call <- paste(readLines(file.path(app_root, "app.R")), collapse = "\n")
   expect_match(call, "objective_choices = objective_choices", fixed = TRUE)
 })
 

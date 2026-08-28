@@ -189,7 +189,10 @@ checkSap <- function(x) {
           (valueType == "time_at_risk" || is.finite(bounds[2]))
       }))
       if (!ok) {
-        addProblem(path, "invalid_value_type", paste0("A list of c(lower, upper) is required, 0 <= lower <= upper", if (valueType == "age_group") " and upper is finite", "."))
+        addProblem(path, "invalid_value_type", paste0(
+          "A list of c(lower, upper) is required, 0 <= lower <= upper",
+          if (valueType == "age_group") " and upper is finite", "."
+        ))
       }
     } else if (valueType == "strata") {
       ok <- is.list(value) && all(purrr::map_lgl(value, function(group) {
@@ -202,9 +205,9 @@ checkSap <- function(x) {
       addProblem(path, "unknown_value_type", sprintf(
         "The value_type '%s' is not permitted.", valueType
       ))
-    } 
-  } 
-  
+    }
+  }
+
 
   checkChoice <- function(value, choices, path) {
     if (!is.character(value) || length(value) != 1L) {
@@ -792,7 +795,7 @@ validateParameterValue <- function(value, valueType, parameterName,
       "Unknown value type '", valueType, "' for ", parameterName, "."
     )))
   }
-} 
+}
 
 assertComponentList <- function(value, className, argumentName) {
   omopgenerics::assertList(value, nm = argumentName)

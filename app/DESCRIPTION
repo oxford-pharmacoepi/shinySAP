@@ -1,0 +1,21 @@
+Package: shinySAPapp
+Title: shinySAP Shiny Application
+Version: 0.4.30
+Description: The Shiny application for authoring a SAP. Not an installable
+    package -- this file exists so rsconnect, renv and pak can discover the
+    app's dependencies. Launch it with shiny::runApp("app") from the repo root.
+License: Apache License (>= 2)
+Imports:
+    bslib,
+    htmltools,
+    jsonlite,
+    purrr,
+    shiny
+Suggests:
+    flextable,
+    IncidencePrevalence,
+    knitr,
+    officedown,
+    rmarkdown,
+    testthat (>= 3.0.0),
+    withr

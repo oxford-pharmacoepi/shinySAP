@@ -15,7 +15,7 @@ test_that("the preview knits with only the files it sources itself", {
   skip_if_not_installed("knitr")
   skip_if_not_installed("flextable")
   rmd <- file.path(app_root, "inst", "sap_preview.Rmd")
-  sap_file <- file.path(app_root, "output", "sap-c1-001-v1.0.json")
+  sap_file <- file.path(app_root, "tests", "fixtures", "sap-c1-001-v1.0.json")
   skip_if(!file.exists(sap_file), "sample SAP not present")
 
   env <- new.env(parent = globalenv())

@@ -15,18 +15,10 @@ License: Apache License (>= 2)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Imports:
-    bslib,
     cli,
-    htmltools,
-    jsonlite,
     omopgenerics,
-    purrr,
-    shiny
+    purrr
 Suggests:
-    IncidencePrevalence,
-    knitr,
-    officedown,
-    rmarkdown,
     testthat (>= 3.0.0),
     withr
 Config/testthat/edition: 3

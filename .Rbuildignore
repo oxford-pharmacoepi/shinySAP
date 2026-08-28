@@ -6,9 +6,7 @@
 ^\.git$
 ^\.gitignore$
 ^\.lintr$
-^renv$
 ^scripts$
-^output$
 ^README\.Rmd$
 ^LICENSE\.md$
 ^data-raw$
@@ -16,3 +14,7 @@
 ^docs$
 ^pkgdown$
 ^\.claude$
+^app$
+^sampleStudy$
+^shinySAP\.Rcheck$
+^shinySAP_.*\.tar\.gz$

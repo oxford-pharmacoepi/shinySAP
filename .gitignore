@@ -12,3 +12,10 @@ codelist/
 # (R/sap_study_export.R), so they are build output, not source.
 sampleStudy/
 docs
+
+# The app writes working SAPs here; sample SAPs live in app/tests/fixtures/.
+app/output/
+
+# R CMD build/check artefacts
+*.Rcheck/
+shinySAP_*.tar.gz

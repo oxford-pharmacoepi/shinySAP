@@ -1,0 +1,41 @@
+# Guards the Shiny app in app/.
+#
+# R-CMD-check.yaml covers the package at the repo root. app/ is a Shiny app
+# DIRECTORY, not a package, so nothing in that workflow ever loads it -- without
+# this job the app's suite and its smoke test would only ever run on a laptop.
+#
+# The steps come from scripts/precheck.sh rather than being restated here, for
+# the same reason the other checks do: one definition of what "passing" means.
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+name: app-check.yaml
+
+permissions: read-all
+
+jobs:
+  app-check:
+    runs-on: ubuntu-latest
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      # app/DESCRIPTION exists to declare these; the app is not installed from it.
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          working-directory: app
+          dependencies: '"all"'
+
+      - name: Tests and smoke test
+        run: bash scripts/precheck.sh apptests smoke
