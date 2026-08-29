@@ -42,6 +42,7 @@ constructSap <- function(x,
 TIME_INTERVALS <- c("weeks", "months", "quarters", "years", "overall")
 TIME_POINTS <- c("start", "middle", "end")
 LEVELS <- c("person", "record")
+SAP_COLLECTIONS <- c(data_sources = "data_source",data_source_modifications = "data_source_modification", codelists = "codelist", cohorts = "cohort", analyses = "analysis")
 
 timeIntervalChoices <- function(typeId) {
   if (identical(as.character(typeId), "incidence")) {
@@ -275,15 +276,9 @@ checkSap <- function(x) {
   checkObject(x, "sap", "")
   checkObject(x$study, "study", "study")
 
-  collectionDefinitions <- list(
-    data_sources = "data_source",
-    data_source_modifications = "data_source_modification",
-    codelists = "codelist",
-    cohorts = "cohort",
-    analyses = "analysis"
-  )
+  
   collectionIds <- purrr::map(
-    names(collectionDefinitions),
+    names(SAP_COLLECTIONS),
     function(collectionName) {
     values <- x[[collectionName]]
     if (!is.list(values)) {
@@ -291,7 +286,7 @@ checkSap <- function(x) {
       return(character())
     }
     ids <- checkIds(values, collectionName)
-    object <- collectionDefinitions[[collectionName]]
+    object <- SAP_COLLECTIONS[[collectionName]]
     purrr::walk(seq_along(values), function(index) {
       value <- values[[index]]
       typeId <- if (is.list(value) && length(value$type) == 1L) value$type else NULL
@@ -300,10 +295,10 @@ checkSap <- function(x) {
     ids
   }
   )
-  names(collectionIds) <- names(collectionDefinitions)
+  names(collectionIds) <- names(SAP_COLLECTIONS)
 
   objectCollections <- stats::setNames(
-    names(collectionDefinitions), unlist(collectionDefinitions)
+    names(SAP_COLLECTIONS), unlist(SAP_COLLECTIONS)
   )
   references <- schemaReferences(version)
 
