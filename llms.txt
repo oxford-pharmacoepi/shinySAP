@@ -625,10 +625,14 @@ write a SAP.
   : Add a data source to a SAP
 - [`addDataSourceModification()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/addDataSourceModification.md)
   : Add a data-source modification to a SAP
+- [`addSapComponent()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/addSapComponent.md)
+  : Add a component to a SAP
 - [`checkSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/checkSap.md)
   : Check a SAP and return structured problems
 - [`createSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/createSap.md)
   : Create a complete SAP from its components
+- [`getSapComponent()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/getSapComponent.md)
+  : Get a component from a SAP by id
 - [`newSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/newSap.md)
   : Create a structured Statistical Analysis Plan
 - [`newSapAnalysis()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapAnalysis.md)
@@ -643,6 +647,14 @@ write a SAP.
   : Create a data-source modification component
 - [`newSapStudy()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapStudy.md)
   : Create the study metadata component of a SAP
+- [`removeSapComponent()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/removeSapComponent.md)
+  : Remove a component from a SAP by id
+- [`sapComponentIds()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapComponentIds.md)
+  : List the ids in a SAP collection
+- [`updateSapComponent()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/updateSapComponent.md)
+  : Replace a component in a SAP, matched by id
+- [`updateStudy()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/updateStudy.md)
+  : Replace the study metadata of a SAP
 - [`validateSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/validateSap.md)
   : Validate a SAP, throwing an error when problems are found
 

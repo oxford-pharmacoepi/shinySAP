@@ -8,8 +8,10 @@
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/addCohort.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/addDataSource.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/addDataSourceModification.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/addSapComponent.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/checkSap.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/createSap.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/getSapComponent.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/index.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/newSap.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapAnalysis.html</loc></url>
@@ -18,6 +20,10 @@
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapDataSource.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapDataSourceModification.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapStudy.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/removeSapComponent.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapComponentIds.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/updateSapComponent.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/updateStudy.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/validateSap.html</loc></url>
 </urlset>
 
