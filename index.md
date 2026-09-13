@@ -296,16 +296,16 @@ no anchoring on cohort end, which is why the pre-0.3.2 anchors were
 dropped rather than carried across.
 
 **The Incidence `parameters` map 1:1 onto
-[`IncidencePrevalence::estimateIncidence()`](https://darwin-eu.github.io/IncidencePrevalence/reference/estimateIncidence.html)**
-— the keys *are* the argument names, flat and in the function’s own
-order, with no wrapper object. If a field is not one of that function’s
-arguments, it is not part of an Incidence analysis. So there is no “rate
-per 1,000” and no denominator unit — those are presentation choices made
-downstream when the result is tabled — and no sensitivity-analysis list,
-because “re-run with a 30-day washout” is a second call, not an argument
-to this one. `cdm` is a runtime database handle, so it is the only
-argument absent. The three `*CohortId` arguments select which cohorts of
-a set to use; `null` (the default) means all of them.
+`IncidencePrevalence::estimateIncidence()`** — the keys *are* the
+argument names, flat and in the function’s own order, with no wrapper
+object. If a field is not one of that function’s arguments, it is not
+part of an Incidence analysis. So there is no “rate per 1,000” and no
+denominator unit — those are presentation choices made downstream when
+the result is tabled — and no sensitivity-analysis list, because “re-run
+with a 30-day washout” is a second call, not an argument to this one.
+`cdm` is a runtime database handle, so it is the only argument absent.
+The three `*CohortId` arguments select which cohorts of a set to use;
+`null` (the default) means all of them.
 
 **`strata` is a list of variable groups**, naming columns on the
 denominator cohort: `[["sex"], ["sex", "age_group"]]` means one
