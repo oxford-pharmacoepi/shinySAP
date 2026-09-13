@@ -11,3 +11,5 @@ analysis,incidence,Incidence
 analysis,point_prevalence,Point Prevalence
 analysis,period_prevalence,Period Prevalence
 analysis,other,Other
+analysis,single_event_survival,Single event survival
+analysis,competing_risk_survival,Competing risk survival

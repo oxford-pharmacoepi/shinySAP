@@ -2,7 +2,8 @@ test_that("schema accessors expose the current version", {
   expect_identical(currentSapSchemaVersion(), "0.1.0")
   expect_identical(
     schemaTypes("analysis"),
-    c("incidence", "point_prevalence", "period_prevalence", "other")
+    c("incidence", "point_prevalence", "period_prevalence", "other",
+      "single_event_survival", "competing_risk_survival")
   )
   expect_true(all(c("study", "data_sources", "analyses") %in%
                   schemaObjectNames("sap")))

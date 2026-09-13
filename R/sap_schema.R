@@ -192,6 +192,10 @@ checkSap <- function(x) {
       if (!inherits(value, "Date") || length(value) != 2L) {
         addProblem(path, "invalid_value_type", "A two-element Date vector is required.")
       }
+    } else if (valueType == "date") {
+      if (!inherits(value, "Date") || length(value) != 1L || is.na(value)) {
+        addProblem(path, "invalid_value_type", "A single Date value is required.")
+      }
     } else if (valueType == "data_source_description") {
       if (!inherits(value, "data_source_description")) {
         addProblem(
@@ -439,6 +443,8 @@ validateParameterValue <- function(value, valueType, parameterName,
     omopgenerics::assertLogical(value, length = 1, na = FALSE, nm = parameterName)
   }  else if (valueType == "date_range") {
     omopgenerics::assertDate(value, length = 2, na = TRUE, nm = parameterName)
+  } else if (valueType == "date") {
+    omopgenerics::assertDate(value, length = 1, na = FALSE, nm = parameterName)
   } else if (valueType %in% c("age_group", "time_at_risk")) {
     omopgenerics::assertList(value, nm = parameterName)
     purrr::walk(value, function(bounds) {
