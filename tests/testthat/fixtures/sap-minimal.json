@@ -1,0 +1,14 @@
+{
+  "sap_schema_version": "0.1.0",
+  "generated_at": "2026-09-14T00:00:00+0000",
+  "study": {
+    "study_id": "MIN-1",
+    "title": "Minimal study",
+    "version": "v1.0.0"
+  },
+  "data_sources": [],
+  "data_source_modifications": [],
+  "codelists": [],
+  "cohorts": [],
+  "analyses": []
+}

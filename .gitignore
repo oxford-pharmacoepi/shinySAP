@@ -13,8 +13,8 @@ codelist/
 sampleStudy/
 docs
 
-# The app writes working SAPs here; sample SAPs live in app/tests/fixtures/.
-app/output/
+# The app writes working SAPs here; sample SAPs live in tests/testthat/fixtures/.
+inst/app/output/
 
 # R CMD build/check artefacts
 *.Rcheck/

@@ -1,0 +1,359 @@
+---
+title: "Statistical Analysis Plan"
+subtitle: |
+  `r params$sap$study$study_id %||% ''`\
+  `r params$sap$study$title %||% ''`
+author: "`r paste(unlist(params$sap$study$authors %||% ''), collapse = ', ')`"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    self_contained: true
+  officedown::rdocx_document:
+    toc: false
+    number_sections: false
+    reference_docx: reference.docx
+    tables:
+      style: Table
+      caption:
+        style: Table Caption
+    page_margins:
+      bottom: 1
+      top: 1
+      right: 1
+      left: 1
+      header: 0.5
+      footer: 0.5
+params:
+  sap: NULL
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+
+`%||%` <- function(x, y) {
+  if (is.null(x) || length(x) == 0) return(y)
+  if (length(x) == 1 && is.na(x)) return(y)
+  x
+}
+
+# The document renders the calls the SAP describes, so it needs the generator
+# (R/sap_code.R) and the helpers it stands on. Sourced rather than copied: the SAP
+# and the code it generates must never drift apart. knitr runs with the working
+# directory set to this file's own, where R/ sits beside it.
+source_app <- function(file) {
+  path <- file.path("R", file)
+  if (!file.exists(path)) {
+    stop("sap_preview.Rmd cannot find R/", file, " (working directory: ", getwd(), ")")
+  }
+  source(path, local = knitr::knit_global())
+}
+for (f in c("cohort_kinds.R", "problems.R", "sap_code.R", "utils.R")) source_app(f)
+
+is_word <- isTRUE(knitr::opts_knit$get("rmarkdown.pandoc.to") == "docx")
+
+code_block <- function(code) {
+  if (is.null(code) || !nzchar(code)) return(invisible(NULL))
+  cat("\n``` r\n", code, "\n```\n\n", sep = "")
+}
+
+sap   <- params$sap
+study <- sap$study %||% list()
+
+library(flextable)
+set_flextable_defaults(font.family = "Calibri", font.size = 10)
+
+# A two-column label/value table, skipping rows with no value.
+field_table <- function(rows) {
+  rows <- Filter(function(r) !is.null(r[2]) && !is.na(r[2]) && nzchar(trimws(r[2])), rows)
+  if (!length(rows)) return(invisible(NULL))
+  df <- as.data.frame(do.call(rbind, rows), stringsAsFactors = FALSE)
+  colnames(df) <- c("Field", "Value")
+  ft <- flextable(df) |>
+    bold(j = 1) |>
+    border_remove() |>
+    hline(border = officer::fp_border(color = "#DDDDDD", width = 0.5)) |>
+    set_table_properties(layout = "autofit", width = 1) |>
+    padding(padding = 4) |>
+    fontsize(size = 10)
+  if (nrow(df) >= 2) ft <- bg(ft, i = seq(2, nrow(df), 2), bg = "#F5F5F5")
+  ft
+}
+
+items_table <- function(df) {
+  ft <- flextable(df) |>
+    bold(part = "header") |>
+    border_remove() |>
+    hline(border = officer::fp_border(color = "#DDDDDD", width = 0.5)) |>
+    set_table_properties(layout = "autofit", width = 1) |>
+    padding(padding = 4) |>
+    fontsize(size = 10)
+  if (nrow(df) >= 2) ft <- bg(ft, i = seq(2, nrow(df), 2), bg = "#F5F5F5")
+  ft
+}
+
+chr <- function(x) {
+  x <- as.character(x %||% "")[1]
+  if (is.na(x)) "" else x
+}
+dash <- function(x) if (nzchar(trimws(x))) x else "—"
+
+type_label <- function(object, type) {
+  types <- shinySAP::sapSchemaTypes(object)
+  hit <- names(types)[match(chr(type), types)]
+  if (is.na(hit)) dash(chr(type)) else hit
+}
+
+# Cohort ids -> names, so the document never shows an id where a name exists.
+cohort_name <- function(id) {
+  co <- sap_item_by_id(sap$cohorts, id)
+  if (is.null(co)) chr(id) else item_label(co, "cohort")
+}
+codelist_name <- function(id) {
+  cl <- sap_item_by_id(sap$codelists, id)
+  if (is.null(cl)) chr(id) else item_label(cl, "codelist")
+}
+
+# When an item runs on every data source -- the usual case -- its cell says so
+# in two words instead of repeating the same five names on every row.
+all_sources <- sap_source_names(sap)
+sources_cell <- function(x) {
+  ds <- data_source_names(sap, x$data_source_id)
+  if (!length(ds)) return("—")
+  if (length(all_sources) && setequal(ds, all_sources)) return("All data sources")
+  paste(ds, collapse = ", ")
+}
+
+# A parameter as prose, by its value type and key.
+parameter_text <- function(key, value, value_type) {
+  if (is.null(value)) return(NULL)
+  if (grepl("_cohort_id$", key)) return(paste(vapply(chr_vec(value), cohort_name, character(1)), collapse = ", "))
+  if (identical(key, "codelist_id")) return(codelist_name(value))
+  switch(as.character(value_type),
+    logic = if (isTRUE(value)) "yes" else "no",
+    integer = if (is.infinite(value)) "unbounded" else format(value),
+    date = format(as.Date(value), "%Y-%m-%d"),
+    date_range = {
+      dr <- as.Date(value)
+      sprintf("%s to %s",
+              if (is.na(dr[[1]])) "start of available data" else format(dr[[1]]),
+              if (is.na(dr[[2]])) "end of available data" else format(dr[[2]]))
+    },
+    age_group = paste(format_bound_list(value, open = AGE_MAX), collapse = "; "),
+    time_at_risk = paste(format_bound_list(value, open = "∞"), collapse = "; "),
+    strata = paste(vapply(value, function(g) paste(as.character(unlist(g)), collapse = " × "),
+                          character(1)), collapse = "\n"),
+    paste(as.character(unlist(value)), collapse = ", ")
+  )
+}
+
+# Every parameter an item carries, labelled from the schema, one per line.
+parameters_text <- function(object, item) {
+  p <- item$parameters %||% list()
+  if (!length(p)) return("")
+  fields <- shinySAP::sapSchemaFields(object, item$type)
+  fields <- fields[grepl("^parameters\\.", fields$path), , drop = FALSE]
+  keys <- sub("^parameters\\.", "", fields$path)
+  lines <- character(0)
+  for (i in seq_along(keys)) {
+    txt <- parameter_text(keys[[i]], p[[keys[[i]]]], fields$value_type[[i]])
+    if (!is.null(txt) && nzchar(txt)) {
+      lines <- c(lines, sprintf("%s: %s", gsub("_", " ", keys[[i]]), txt))
+    }
+  }
+  paste(lines, collapse = "\n")
+}
+```
+
+```{r justify-html, results='asis'}
+if (!is_word) cat("<style>p, li { text-align: justify; }</style>\n")
+```
+
+# Study information
+
+```{r study-table}
+field_table(list(
+  c("Study id",    chr(study$study_id)),
+  c("Title",       chr(study$title)),
+  c("Authors",     paste(unlist(study$authors %||% list()), collapse = ", ")),
+  c("SAP version", chr(study$version)),
+  c("Description", chr(study$description))
+))
+```
+
+`r if (is_word) "\\newpage"`
+
+---
+
+# Data sources
+
+```{r data-sources, results='asis'}
+sources <- sap$data_sources %||% list()
+if (!length(sources)) {
+  cat("_No data sources defined._\n")
+} else {
+  df <- data.frame(
+    `Id`   = vapply(sources, function(s) chr(s$id), character(1)),
+    `Name` = vapply(sources, function(s) dash(chr(s$name)), character(1)),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+  flextable::flextable_to_rmd(items_table(df))
+  cat("\n\n")
+}
+```
+
+```{r modifications, results='asis'}
+mods <- sap$data_source_modifications %||% list()
+if (length(mods)) {
+  cat("\n**Modifications applied before analysis**\n\n")
+  df <- data.frame(
+    `Modification` = vapply(mods, function(m) item_label(m, "modification"), character(1)),
+    `Type`         = vapply(mods, function(m) type_label("data_source_modification", m$type), character(1)),
+    `Data sources` = vapply(mods, sources_cell, character(1)),
+    `Details`      = vapply(mods, function(m) parameters_text("data_source_modification", m), character(1)),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+  flextable::flextable_to_rmd(items_table(df))
+  cat("\n\n")
+}
+```
+
+`r if (is_word) "\\newpage"`
+
+---
+
+# Codelists
+
+```{r codelists, results='asis'}
+codelists <- sap$codelists %||% list()
+if (!length(codelists)) {
+  cat("_No codelists defined._\n")
+} else {
+  # The codes live in the SAP; their full listing is the last appendix. Here:
+  # what each codelist is and how big it is.
+  df <- data.frame(
+    `Codelist` = vapply(codelists, function(cl) item_label(cl, "codelist"), character(1)),
+    `Type`     = vapply(codelists, function(cl) type_label("codelist", cl$type), character(1)),
+    `Content`  = vapply(codelists, function(cl) codelist_content_summary(cl$content), character(1)),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+  flextable::flextable_to_rmd(items_table(df))
+  cat("\n\n")
+}
+```
+
+`r if (is_word) "\\newpage"`
+
+---
+
+# Description of cohorts
+
+```{r cohorts, results='asis'}
+cohorts <- sap$cohorts %||% list()
+if (!length(cohorts)) {
+  cat("_No cohorts defined._\n")
+} else {
+  cohort_details <- function(co) {
+    txt <- parameters_text("cohort", co)
+    if (is_denominator_type(co$type)) {
+      txt <- paste(c(txt, sprintf("cohorts generated: %d", length(denominator_cohort_set(co)))),
+                   collapse = "\n")
+    }
+    txt
+  }
+  df <- data.frame(
+    `Cohort`       = vapply(cohorts, function(co) item_label(co, "cohort"), character(1)),
+    `Type`         = vapply(cohorts, function(co) type_label("cohort", co$type), character(1)),
+    `Data sources` = vapply(cohorts, sources_cell, character(1)),
+    `Definition`   = vapply(cohorts, cohort_details, character(1)),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+  flextable::flextable_to_rmd(items_table(df))
+  cat("\n\n")
+}
+```
+
+`r if (is_word) "\\newpage"`
+
+---
+
+# Analyses
+
+```{r analyses, results='asis'}
+analyses <- sap$analyses %||% list()
+if (!length(analyses)) {
+  cat("_No analyses defined._\n")
+} else {
+  # Every argument the author decided, one row per analysis. The generated calls
+  # live in the appendix under each analysis's own heading.
+  df <- data.frame(
+    `Analysis`     = vapply(analyses, function(a) item_label(a, "analysis"), character(1)),
+    `Type`         = vapply(analyses, function(a) type_label("analysis", a$type), character(1)),
+    `Data sources` = vapply(analyses, sources_cell, character(1)),
+    `Details`      = vapply(analyses, function(a) parameters_text("analysis", a), character(1)),
+    check.names = FALSE, stringsAsFactors = FALSE
+  )
+  flextable::flextable_to_rmd(items_table(df))
+  cat("\n\n")
+}
+```
+
+`r if (is_word) "\\newpage"`
+
+---
+
+# Appendix: analysis code
+
+```{r script, results='asis'}
+# The whole plan as code, in the order it has to run. `cdm` is the live database
+# connection the study opens; every other argument comes from this SAP. An
+# argument the plan does not decide is absent, and the package's default applies.
+secs <- sap_script_sections(sap)
+if (!length(secs)) {
+  cat("_No cohorts or analyses generate code yet._\n")
+} else {
+  cat("Target cohorts are instantiated outside this script and are referred to by",
+      "table name only. The blocks below run in the order they appear.\n\n")
+  group <- NULL
+  for (s in secs) {
+    if (!identical(s$group, group)) {
+      group <- s$group
+      cat("\n\n## ", group, "\n\n", sep = "")
+    }
+    if (!is.na(s$title)) cat("### ", s$title, "\n\n", sep = "")
+    if (is.null(s$code)) cat("_", s$note, "_\n\n", sep = "") else code_block(s$code)
+  }
+}
+```
+
+`r if (is_word) "\\newpage"`
+
+---
+
+# Appendix: codelist contents
+
+```{r codelist-contents, results='asis'}
+codelists <- sap$codelists %||% list()
+with_content <- Filter(function(cl) !is.null(cl$content), codelists)
+if (!length(with_content)) {
+  cat("_No codelist carries codes yet._\n")
+} else {
+  for (cl in with_content) {
+    cat("\n\n## ", item_label(cl, "codelist"), "\n\n", sep = "")
+    content <- unclass(cl$content)
+    for (set in names(content)) {
+      x <- content[[set]]
+      cat("**", set, "**\n\n", sep = "")
+      df <- if (is.data.frame(x)) as.data.frame(x) else data.frame(concept_id = x)
+      flextable::flextable_to_rmd(items_table(df))
+      cat("\n\n")
+    }
+  }
+}
+```
+
+---
+
+`r sprintf("_Generated by shinySAP · schema %s · %s_", sap$sap_schema_version %||% "unknown", sap$generated_at %||% as.character(Sys.time()))`

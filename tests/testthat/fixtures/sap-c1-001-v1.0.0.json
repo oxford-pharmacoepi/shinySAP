@@ -1,0 +1,254 @@
+{
+  "sap_schema_version": "0.1.0",
+  "generated_at": "2026-09-14T00:00:00+0000",
+  "study": {
+    "study_id": "C1-001",
+    "title": "Prevalence of rare blood cancers in Europe",
+    "authors": ["Edward Burn", "Marti Catala", "Katia Verhamme", "Daniel Prieto-Alhambra"],
+    "version": "v1.0.0",
+    "description": "Population-based prevalence of rare haematological malignancies across European databases."
+  },
+  "data_sources": [
+    {
+      "id": "ds_1",
+      "name": "CPRD GOLD",
+      "description": []
+    },
+    {
+      "id": "ds_2",
+      "name": "SIDIAP",
+      "description": []
+    },
+    {
+      "id": "ds_3",
+      "name": "IPCI",
+      "description": []
+    }
+  ],
+  "data_source_modifications": [
+    {
+      "id": "mod_1",
+      "name": "Restrict to the study period",
+      "type": "trim_observation_period",
+      "data_source_id": ["ds_1", "ds_2", "ds_3"],
+      "parameters": {
+        "date_range": ["2010-01-01", null]
+      }
+    }
+  ],
+  "codelists": [
+    {
+      "id": "cl_1",
+      "name": "Follicular lymphoma",
+      "type": "codelist",
+      "content": {
+        "follicular_lymphoma": [4147411, 4300704]
+      }
+    },
+    {
+      "id": "cl_2",
+      "name": "Hairy cell leukaemia",
+      "type": "concept_set_expression",
+      "content": {
+        "hairy_cell_leukaemia": [
+          {
+            "concept_id": 4147806,
+            "excluded": false,
+            "descendants": true,
+            "mapped": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "cl_3",
+      "name": "Death",
+      "type": "codelist_with_details",
+      "content": {
+        "death": [
+          {
+            "concept_id": 4306655,
+            "concept_name": "Death",
+            "domain_id": "Observation"
+          }
+        ]
+      }
+    }
+  ],
+  "cohorts": [
+    {
+      "id": "coh_1",
+      "name": "Follicular lymphoma",
+      "data_source_id": ["ds_1", "ds_2", "ds_3"],
+      "type": "concept_cohort",
+      "parameters": {
+        "codelist_id": "cl_1",
+        "exit": "event_start_date",
+        "overlap": "merge"
+      }
+    },
+    {
+      "id": "coh_2",
+      "name": "Hairy cell leukaemia",
+      "data_source_id": ["ds_1", "ds_2", "ds_3"],
+      "type": "concept_cohort",
+      "parameters": {
+        "codelist_id": "cl_2",
+        "exit": "event_start_date",
+        "overlap": "merge"
+      }
+    },
+    {
+      "id": "coh_3",
+      "name": "Death",
+      "data_source_id": ["ds_1", "ds_2", "ds_3"],
+      "type": "concept_cohort",
+      "parameters": {
+        "codelist_id": "cl_3",
+        "exit": "event_end_date",
+        "overlap": "merge"
+      }
+    },
+    {
+      "id": "coh_4",
+      "name": "General population denominator",
+      "data_source_id": ["ds_1", "ds_2", "ds_3"],
+      "type": "denominator",
+      "parameters": {
+        "age_group": [
+          [0, 150],
+          [0, 19],
+          [20, 39],
+          [40, 59],
+          [60, 79],
+          [80, 150]
+        ],
+        "sex": "Both",
+        "days_prior_observation": 365,
+        "requirement_interactions": true
+      }
+    },
+    {
+      "id": "coh_5",
+      "name": "Follicular lymphoma denominator",
+      "data_source_id": ["ds_1", "ds_2"],
+      "type": "target_denominator",
+      "parameters": {
+        "target_cohort_id": ["coh_1"],
+        "target_cohort_date_range": ["2010-01-01", "2022-12-31"],
+        "time_at_risk": [
+          [0, null]
+        ],
+        "age_group": [
+          [18, 150]
+        ],
+        "sex": "Both",
+        "days_prior_observation": 0,
+        "requirements_at_entry": true,
+        "requirement_interactions": true
+      }
+    },
+    {
+      "id": "coh_6",
+      "name": "External target",
+      "data_source_id": ["ds_1"],
+      "type": "target",
+      "parameters": {}
+    }
+  ],
+  "analyses": [
+    {
+      "id": "an_1",
+      "name": "Point prevalence of follicular lymphoma",
+      "data_source_id": ["ds_1", "ds_2", "ds_3"],
+      "type": "point_prevalence",
+      "parameters": {
+        "denominator_cohort_id": "coh_4",
+        "outcome_cohort_id": "coh_1",
+        "interval": "years",
+        "time_point": "start",
+        "strata": [
+          ["sex"],
+          ["sex", "age_group"]
+        ],
+        "include_overall_strata": true
+      }
+    },
+    {
+      "id": "an_2",
+      "name": "Period prevalence of hairy cell leukaemia",
+      "data_source_id": ["ds_1", "ds_2", "ds_3"],
+      "type": "period_prevalence",
+      "parameters": {
+        "denominator_cohort_id": "coh_4",
+        "outcome_cohort_id": "coh_2",
+        "interval": "years",
+        "complete_database_intervals": true,
+        "full_contribution": false,
+        "level": "person",
+        "strata": [
+          ["age_group"]
+        ],
+        "include_overall_strata": true
+      }
+    },
+    {
+      "id": "an_3",
+      "name": "Incidence of follicular lymphoma",
+      "data_source_id": ["ds_1", "ds_2", "ds_3"],
+      "type": "incidence",
+      "parameters": {
+        "denominator_cohort_id": "coh_4",
+        "outcome_cohort_id": "coh_1",
+        "interval": "years",
+        "complete_database_intervals": true,
+        "repeated_events": false,
+        "strata": [
+          ["sex"]
+        ],
+        "include_overall_strata": true
+      }
+    },
+    {
+      "id": "an_4",
+      "name": "Survival after follicular lymphoma",
+      "data_source_id": ["ds_1", "ds_2"],
+      "type": "single_event_survival",
+      "parameters": {
+        "target_cohort_id": "coh_1",
+        "outcome_cohort_id": "coh_3",
+        "outcome_date_variable": "cohort_start_date",
+        "censor_on_cohort_exit": false,
+        "follow_up_days": 1825,
+        "strata": [
+          ["sex"]
+        ],
+        "event_gap": 30,
+        "estimate_gap": 1,
+        "minimum_survival_days": 1
+      }
+    },
+    {
+      "id": "an_5",
+      "name": "Competing risk of death",
+      "data_source_id": ["ds_1", "ds_2"],
+      "type": "competing_risk_survival",
+      "parameters": {
+        "target_cohort_id": "coh_1",
+        "outcome_cohort_id": "coh_2",
+        "competing_outcome_cohort_id": "coh_3",
+        "outcome_washout": 365,
+        "competing_outcome_washout": 0,
+        "censor_on_cohort_exit": false,
+        "censor_on_date_variable": "end_of_study"
+      }
+    },
+    {
+      "id": "an_6",
+      "name": "Descriptive characterisation",
+      "data_source_id": ["ds_1", "ds_2", "ds_3"],
+      "type": "other",
+      "parameters": {}
+    }
+  ]
+}

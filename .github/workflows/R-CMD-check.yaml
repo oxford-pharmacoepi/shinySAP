@@ -26,6 +26,9 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
+      # The OMOP packages in Suggests are heavy and occasionally unavailable on a
+      # given CRAN mirror; the tests that need them skip_if_not_installed().
+      _R_CHECK_FORCE_SUGGESTS_: false
 
     steps:
       - uses: actions/checkout@v6
@@ -46,3 +49,9 @@ jobs:
         with:
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
+
+      # The app is installed with the package; the smoke test launches it from
+      # the installed copy (scripts/precheck.sh is the single definition).
+      - name: Smoke test the app
+        if: runner.os == 'Linux'
+        run: bash scripts/precheck.sh smoke

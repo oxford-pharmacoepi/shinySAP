@@ -182,3 +182,29 @@ test_that("every schema reference names a collection that exists", {
   expect_true(all(references$value_type %in% c("id", "id_vector")))
   expect_true(all(references$ref %in% schemaObjectNames("sap")))
 })
+
+test_that("exported schema accessors mirror the internal tables", {
+  expect_identical(sapSchemaVersion(), currentSapSchemaVersion())
+
+  types <- sapSchemaTypes("analysis")
+  expect_identical(unname(types), schemaTypes("analysis"))
+  expect_true(all(nzchar(names(types))))
+  expect_identical(types[["Incidence"]], "incidence")
+
+  fields <- sapSchemaFields("analysis", "incidence")
+  expect_true("parameters.denominator_cohort_id" %in% fields$path)
+  expect_true("id" %in% fields$path)
+  expect_false(is.unsorted(fields$order))
+
+  vocab <- sapSchemaVocabulary()
+  expect_identical(vocab$time_points, c("start", "middle", "end"))
+  expect_true("overall" %in% vocab$time_intervals("incidence"))
+  expect_false("overall" %in% vocab$time_intervals("point_prevalence"))
+  expect_identical(vocab$collections[["analyses"]], "analysis")
+})
+
+test_that("constructSap fills every collection regardless of version arg", {
+  sap <- constructSap(list(study = list()), version = currentSapSchemaVersion())
+  expect_true(all(names(SAP_COLLECTIONS) %in% names(sap)))
+  expect_true(all(vapply(sap[names(SAP_COLLECTIONS)], is.list, logical(1))))
+})

@@ -30,7 +30,7 @@ constructSap <- function(x,
     )
   }
 
-  sapFields <- schemaFields("sap", version)
+  sapFields <- schemaFields("sap", version = version)
   collectionNames <- sapFields$path[sapFields$node_type == "collection"]
   for (collectionName in collectionNames) {
     if (is.null(x[[collectionName]])) x[[collectionName]] <- list()

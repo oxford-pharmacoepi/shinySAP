@@ -16,11 +16,26 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Imports:
     cli,
+    dplyr,
+    jsonlite,
     omopgenerics,
     purrr,
     stats,
     utils
 Suggests:
+    bslib,
+    CDMConnector,
+    CohortConstructor,
+    CohortSurvival,
+    duckdb,
+    flextable,
+    htmltools,
+    IncidencePrevalence,
+    knitr,
+    officedown,
+    officer,
+    rmarkdown,
+    shiny,
     testthat (>= 3.0.0),
     withr
 Config/testthat/edition: 3

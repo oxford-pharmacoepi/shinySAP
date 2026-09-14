@@ -74,6 +74,64 @@ schemaObjectNames <- function(object,
 }
 
 
+# Exported, read-only views of the schema. The Shiny app in inst/app builds its
+# dropdowns and parameter blocks from these rather than restating the schema, so
+# a row added to schema.csv / types.csv reaches the UI without an app change.
+
+#' The current SAP schema version
+#'
+#' @return A single string, e.g. `"0.1.0"`.
+#' @export
+sapSchemaVersion <- function() {
+  currentSapSchemaVersion()
+}
+
+#' Types defined for a SAP object
+#'
+#' @param object One of `"data_source_modification"`, `"codelist"`, `"cohort"`
+#'   or `"analysis"`.
+#' @return A named character vector: names are the human labels from the
+#'   schema, values are the type ids. Ready for a `selectInput()` `choices`.
+#' @export
+sapSchemaTypes <- function(object) {
+  version <- currentSapSchemaVersion()
+  types <- sapTypes[[version]]
+  types <- types[types$object == object, , drop = FALSE]
+  stats::setNames(types$type_id, types$label)
+}
+
+#' Schema fields for a SAP object
+#'
+#' @param object The SAP object name (`"sap"`, `"study"`, `"data_source"`,
+#'   `"data_source_modification"`, `"codelist"`, `"cohort"`, `"analysis"`).
+#' @param typeId Optional type id; when given, the type-specific rows are
+#'   included alongside the common ones.
+#' @return A data frame with one row per field: `path`, `node_type`,
+#'   `value_type`, `json_type`, `required`, `default_json`, `order`, `ref`.
+#' @export
+sapSchemaFields <- function(object, typeId = NULL) {
+  fields <- schemaFields(object, typeId)
+  fields <- fields[order(fields$order), , drop = FALSE]
+  rownames(fields) <- NULL
+  fields
+}
+
+#' Controlled vocabularies used by SAP fields
+#'
+#' @return A list with `time_points`, `levels`, `time_intervals` (a function of
+#'   the analysis type id, since `"overall"` is not valid for every type) and
+#'   `collections` (collection name -> object name).
+#' @export
+sapSchemaVocabulary <- function() {
+  list(
+    time_points    = TIME_POINTS,
+    levels         = LEVELS,
+    time_intervals = timeIntervalChoices,
+    collections    = SAP_COLLECTIONS
+  )
+}
+
+
 
 timeIntervalChoices <- function(typeId) {
   if (identical(as.character(typeId), "incidence")) {

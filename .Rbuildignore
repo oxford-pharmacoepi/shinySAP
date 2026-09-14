@@ -14,7 +14,8 @@
 ^docs$
 ^pkgdown$
 ^\.claude$
-^app$
+^inst/app/output$
 ^sampleStudy$
 ^shinySAP\.Rcheck$
 ^shinySAP_.*\.tar\.gz$
+^\.gstack$
