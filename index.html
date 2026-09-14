@@ -32,6 +32,7 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
+<li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
 <li class="nav-item"><form class="form-inline" role="search">
@@ -49,10 +50,25 @@
 <div class="page-header"><h1 id="shinysap">shinySAP<a class="anchor" aria-label="anchor" href="#shinysap"></a>
 </h1></div>
 <p><a href="https://github.com/oxford-pharmacoepi/shinySAP/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/oxford-pharmacoepi/shinySAP/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a> <a href="https://app.codecov.io/gh/oxford-pharmacoepi/shinySAP" class="external-link"><img src="https://codecov.io/gh/oxford-pharmacoepi/shinySAP/graph/badge.svg" alt="Codecov test coverage"></a></p>
-<p>A Shiny app for writing a Statistical Analysis Plan (SAP) through a structured form rather than a prose document. Everything the user enters is captured on the backend as a single JSON dictionary and written to <code>app/output/</code>.</p>
+<p>An R package for capturing a Statistical Analysis Plan (SAP) in a structured, machine-readable form, with a Shiny app for writing one. The package defines what a SAP <em>is</em> – a versioned schema of sections, typed components and their parameters – and gives you constructors, validation and a JSON file format. The app is a form over exactly that schema: everything it saves is a <code>sap</code> object the package can read, check and turn into runnable study code.</p>
+<div class="section level2">
+<h2 id="running">Running<a class="anchor" aria-label="anchor" href="#running"></a>
+</h2>
+<p>Install the package, then launch the app:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/local_install.html" class="external-link">local_install</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="fu">shinySAP</span><span class="fu">::</span><span class="fu"><a href="reference/shinySap.html">shinySap</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>The app saves each SAP as one JSON file in the folder you launch it from. Point it somewhere else with:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">shinySAP</span><span class="fu">::</span><span class="fu"><a href="reference/shinySap.html">shinySap</a></span><span class="op">(</span>outputDir <span class="op">=</span> <span class="st">"~/saps"</span><span class="op">)</span></span>
+<span><span class="co"># or, before launching</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinySAP.output_dir <span class="op">=</span> <span class="st">"~/saps"</span><span class="op">)</span></span></code></pre></div>
+<p>The app is a plain Shiny app directory shipped inside the package, so <code>shiny::runApp(system.file("app", package = "shinySAP"))</code> works too. The document preview needs a pandoc; <code><a href="reference/shinySap.html">shinySap()</a></code> finds RStudio’s copy when there is no other, and otherwise runs the app with the preview disabled.</p>
+</div>
 <div class="section level2">
 <h2 id="sections">Sections<a class="anchor" aria-label="anchor" href="#sections"></a>
 </h2>
+<p>The tabs are the schema’s sections, one for one.</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -65,359 +81,263 @@
 <tbody>
 <tr>
 <td><strong>Study</strong></td>
-<td>Title, study code, authors, SAP version, date, minimum cell count, rationale &amp; background, aim / research question, specific objectives, and an amendment history (version, date, description of change)</td>
+<td>
+<code>study_id</code>, title, authors, SAP version, description</td>
 </tr>
 <tr>
-<td><strong>CDM Sources</strong></td>
-<td>The databases the study runs against — name, short key, country/region</td>
+<td><strong>Data sources</strong></td>
+<td>The databases the study runs against: a name behind an immutable id</td>
 </tr>
 <tr>
-<td><strong>CDM Changes</strong></td>
-<td>Extra CDM validations and database-specific alterations applied before analysis — a change type (extra validation; subset a CDM table; limit observation periods; remap concepts; remove people with no year of birth or sex data; remove people with implausible dates; other), the data sources it applies to, and a description</td>
+<td><strong>Modifications</strong></td>
+<td>Changes applied to a database before analysis, typed by the schema (<code>trim_observation_period</code> with a date range) and pointing at the data sources they apply to</td>
 </tr>
 <tr>
 <td><strong>Codelists</strong></td>
-<td>The concept sets cohorts cite in <code>[square brackets]</code> — name, an optional category (Index event, Outcome or Covariate, which the document groups by) and description. The codes themselves live with the study (the CSVs a codelist tool produces, placed under <code>studyCode/codelist/</code>), not in the plan</td>
+<td>A named codelist with its <strong>codes</strong>: an omopgenerics <code>codelist</code>, <code>codelist_with_details</code> or <code>concept_set_expression</code>, uploaded from the csv/json those functions export and carried inside the SAP</td>
 </tr>
 <tr>
 <td><strong>Cohorts</strong></td>
-<td>Name, kind and the CDM sources the cohort is built against (the SAP-level counterpart of the generators’ <code>cdm</code> argument) — plus a set of inputs that <strong>depends on the cohort’s kind</strong>. A denominator is <em>generated</em>, so it asks for the generator’s arguments (cohort date range, age groups, sex, prior observation); a target denominator asks for those plus the target cohort and the time at risk; every other kind (target, outcome, censoring, other) is a plain cohort <em>definition</em> — entry events (citing the codelist inline in <code>[square brackets]</code>), inclusion &amp; exclusion criteria (including the index-date rule), exit criteria</td>
+<td>Name, data sources and a <strong>type</strong> that decides the parameters: <code>concept_cohort</code> (a codelist, exit and overlap rule for <code><a href="https://ohdsi.github.io/CohortConstructor/reference/conceptCohort.html" class="external-link">CohortConstructor::conceptCohort()</a></code>), <code>denominator</code> and <code>target_denominator</code> (the arguments of the IncidencePrevalence generators), or <code>target</code> (a cohort instantiated outside the plan)</td>
 </tr>
 <tr>
 <td><strong>Analyses</strong></td>
-<td>Name, analysis type, role (primary or sensitivity), the objectives it answers, CDM sources it runs on — plus a set of inputs that <strong>depends on the analysis type</strong> (an incidence asks for a denominator, a washout and an interval; a prevalence asks for time points instead)</td>
+<td>Name, data sources and a <strong>type</strong> that decides the parameters: <code>incidence</code>, <code>point_prevalence</code>, <code>period_prevalence</code> (IncidencePrevalence), <code>single_event_survival</code>, <code>competing_risk_survival</code> (CohortSurvival), or <code>other</code>
+</td>
 </tr>
 <tr>
 <td><strong>Review</strong></td>
-<td>Live JSON preview, document preview, and download as JSON or Word. Saving sits in the navbar: one file per SAP, created on the first save (you choose the folder once) and rewritten in place by every save and autosave after it — loading a SAP adopts that file</td>
+<td>The problems <code><a href="reference/checkSap.html">checkSap()</a></code> and the app’s own checks report, the live JSON, the document preview, and downloads as JSON or Word</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Load SAP</strong> sits in the navbar, visible from every tab: it reloads a saved plan into all sections at once.</p>
-<p>CDM sources, CDM changes, cohorts and analyses are repeating sections — use <strong>Add</strong> to append another, <strong>Remove</strong> to drop one.</p>
-<p>Sections cross-reference each other. The cohort pickers on Analyses are populated from the cohorts you have defined; the data-source pickers on CDM Changes and Analyses are populated from the CDM Sources tab. All of them accept free text, so you can reference something you have not written down yet.</p>
+<p>Every item carries an immutable <strong>id</strong> minted when it is added (<code>ds_1</code>, <code>coh_3</code>, <code>an_2</code>). Every reference between items – a cohort’s codelist, an analysis’s denominator – is by id, so renaming something never breaks what points at it. The pickers show names and store ids; a reference to an item that has since been removed is reported on Review rather than silently dropped.</p>
+<p>Saving sits in the navbar: one file per SAP, created on the first save (you choose the folder once) and rewritten in place by every save and autosave after it. <strong>Load SAP</strong> reads a saved file back into every section, and adopts it as the working file.</p>
 </div>
 <div class="section level2">
-<h2 id="running">Running<a class="anchor" aria-label="anchor" href="#running"></a>
+<h2 id="the-sap-object">The SAP object<a class="anchor" aria-label="anchor" href="#the-sap-object"></a>
 </h2>
-<p>Install the package, then run the extra Shiny app from the package root:</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/local_install.html" class="external-link">local_install</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="fu">shinySAP</span><span class="fu">::</span><span class="fu">shinySap</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>By default the app writes to <code>app/output/</code>. Point it somewhere else with:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>shinySAP.output_dir <span class="op">=</span> <span class="st">"~/saps"</span><span class="op">)</span></span>
-<span><span class="fu">shinySAP</span><span class="fu">::</span><span class="fu">shinySap</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>The package is the source of truth. <code>data-raw/v&lt;version&gt;/schema.csv</code> lists every field of every object – its path, value type, whether it is required, and which collection an id field refers into – and <code>types.csv</code> lists the types a component may take. Both are baked into the package and read through <code><a href="reference/sapSchemaVersion.html">sapSchemaVersion()</a></code>, <code><a href="reference/sapSchemaTypes.html">sapSchemaTypes()</a></code>, <code><a href="reference/sapSchemaFields.html">sapSchemaFields()</a></code> and <code><a href="reference/sapSchemaVocabulary.html">sapSchemaVocabulary()</a></code>; the app builds its dropdowns and parameter blocks from them, so a type added to the schema reaches the UI without an app change.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://oxford-pharmacoepi.github.io/shinySAP/">shinySAP</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">study</span>    <span class="op">&lt;-</span> <span class="fu"><a href="reference/newSapStudy.html">newSapStudy</a></span><span class="op">(</span><span class="st">"C1-001"</span>, <span class="st">"Prevalence of rare blood cancers"</span>, authors <span class="op">=</span> <span class="st">"E. Burn"</span><span class="op">)</span></span>
+<span><span class="va">source</span>   <span class="op">&lt;-</span> <span class="fu"><a href="reference/newSapDataSource.html">newSapDataSource</a></span><span class="op">(</span><span class="st">"ds_1"</span>, <span class="st">"CPRD GOLD"</span>, <span class="fu"><a href="https://rdrr.io/r/base/structure.html" class="external-link">structure</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>, class <span class="op">=</span> <span class="st">"data_source_description"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">codelist</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/newSapCodelist.html">newSapCodelist</a></span><span class="op">(</span><span class="st">"cl_1"</span>, <span class="st">"Follicular lymphoma"</span>, <span class="st">"codelist"</span>,</span>
+<span>                           <span class="fu">omopgenerics</span><span class="fu">::</span><span class="fu"><a href="https://darwin-eu.github.io/omopgenerics/reference/newCodelist.html" class="external-link">newCodelist</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>follicular_lymphoma <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">4147411L</span>, <span class="fl">4300704L</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">cohort</span>   <span class="op">&lt;-</span> <span class="fu"><a href="reference/newSapCohort.html">newSapCohort</a></span><span class="op">(</span><span class="st">"coh_1"</span>, <span class="st">"Follicular lymphoma"</span>, <span class="st">"ds_1"</span>, <span class="st">"concept_cohort"</span>,</span>
+<span>                         <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>codelist_id <span class="op">=</span> <span class="st">"cl_1"</span>, exit <span class="op">=</span> <span class="st">"event_start_date"</span>, overlap <span class="op">=</span> <span class="st">"merge"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">denom</span>    <span class="op">&lt;-</span> <span class="fu"><a href="reference/newSapCohort.html">newSapCohort</a></span><span class="op">(</span><span class="st">"coh_2"</span>, <span class="st">"General population"</span>, <span class="st">"ds_1"</span>, <span class="st">"denominator"</span>,</span>
+<span>                         <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>age_group <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">150</span><span class="op">)</span><span class="op">)</span>, sex <span class="op">=</span> <span class="st">"Both"</span>,</span>
+<span>                              days_prior_observation <span class="op">=</span> <span class="fl">365</span>, requirement_interactions <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">analysis</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/newSapAnalysis.html">newSapAnalysis</a></span><span class="op">(</span><span class="st">"an_1"</span>, <span class="st">"Point prevalence"</span>, <span class="st">"ds_1"</span>, <span class="st">"point_prevalence"</span>,</span>
+<span>                           <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>denominator_cohort_id <span class="op">=</span> <span class="st">"coh_2"</span>, outcome_cohort_id <span class="op">=</span> <span class="st">"coh_1"</span>,</span>
+<span>                                interval <span class="op">=</span> <span class="st">"years"</span>, time_point <span class="op">=</span> <span class="st">"start"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">sap</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/createSap.html">createSap</a></span><span class="op">(</span><span class="va">study</span>, dataSources <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">source</span><span class="op">)</span>, codelists <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">codelist</span><span class="op">)</span>,</span>
+<span>                 cohorts <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">cohort</span>, <span class="va">denom</span><span class="op">)</span>, analyses <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">analysis</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/checkSap.html">checkSap</a></span><span class="op">(</span><span class="va">sap</span><span class="op">)</span>             <span class="co"># list() -- no problems</span></span>
+<span><span class="fu"><a href="reference/writeSap.html">writeSap</a></span><span class="op">(</span><span class="va">sap</span>, <span class="st">"sap.json"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/readSap.html">readSap</a></span><span class="op">(</span><span class="st">"sap.json"</span><span class="op">)</span></span></code></pre></div>
+<p>The constructors validate each component as it is built; <code><a href="reference/createSap.html">createSap()</a></code> and every CRUD function (<code><a href="reference/addCohort.html">addCohort()</a></code>, <code><a href="reference/updateSapComponent.html">updateSapComponent()</a></code>, <code><a href="reference/removeSapComponent.html">removeSapComponent()</a></code>, …) re-validate the whole document, so a reference to an id nothing defines, or a removal of something still referenced, is refused. <code>newSap(x, validate = FALSE)</code> builds a work-in-progress SAP without aborting, and <code><a href="reference/checkSap.html">checkSap()</a></code> returns its problems as a list of <code>{path, code, message}</code> – which is how the app works: it keeps an unvalidated <code>sap</code> object and shows <code><a href="reference/checkSap.html">checkSap()</a></code>’s findings on Review.</p>
 </div>
 <div class="section level2">
-<h2 id="output">Output<a class="anchor" aria-label="anchor" href="#output"></a>
+<h2 id="the-file">The file<a class="anchor" aria-label="anchor" href="#the-file"></a>
 </h2>
-<p>Files are named <code>sap-&lt;study-code-or-title-slug&gt;-v&lt;version&gt;.json</code>, one file per SAP, rewritten in place by every save and autosave. The shape is stable: optional text fields serialise to <code>null</code> when blank, and list fields are always JSON arrays even when they hold a single entry.</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="dt">"sap_schema_version"</span><span class="fu">:</span> <span class="st">"0.4.30"</span><span class="fu">,</span></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="dt">"generated_at"</span><span class="fu">:</span> <span class="st">"2026-07-09T14:02:11+0100"</span><span class="fu">,</span></span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="dt">"study"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    <span class="dt">"title"</span><span class="fu">:</span> <span class="st">"Metformin and lactic acidosis"</span><span class="fu">,</span></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    <span class="dt">"study_code"</span><span class="fu">:</span> <span class="st">"P3-C1-006"</span><span class="fu">,</span></span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>    <span class="dt">"authors"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"A. Researcher"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>    <span class="dt">"version"</span><span class="fu">:</span> <span class="st">"1.1"</span><span class="fu">,</span></span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>    <span class="dt">"min_cell_count"</span><span class="fu">:</span> <span class="dv">5</span><span class="fu">,</span></span>
-<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>    <span class="dt">"date"</span><span class="fu">:</span> <span class="st">"2026-07-09"</span><span class="fu">,</span></span>
-<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>    <span class="dt">"background"</span><span class="fu">:</span> <span class="st">"..."</span><span class="fu">,</span></span>
-<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>    <span class="dt">"aim"</span><span class="fu">:</span> <span class="st">"The aim of this study is to ..."</span><span class="fu">,</span></span>
-<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>    <span class="dt">"objectives"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>      <span class="fu">{</span> <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"obj_1"</span><span class="fu">,</span> <span class="dt">"text"</span><span class="fu">:</span> <span class="st">"Estimate the incidence of lactic acidosis"</span> <span class="fu">}</span></span>
-<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a>    <span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a>    <span class="dt">"amendments"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a>      <span class="fu">{</span> <span class="dt">"version"</span><span class="fu">:</span> <span class="st">"1.1"</span><span class="fu">,</span> <span class="dt">"date"</span><span class="fu">:</span> <span class="st">"2026-07-09"</span><span class="fu">,</span></span>
-<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a>        <span class="dt">"description"</span><span class="fu">:</span> <span class="st">"Added the SIDIAP data source."</span> <span class="fu">}</span></span>
-<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a>    <span class="ot">]</span></span>
-<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a>  <span class="dt">"cdm_sources"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a>    <span class="fu">{</span></span>
-<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"CPRD GOLD"</span><span class="fu">,</span></span>
-<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a>      <span class="dt">"source_key"</span><span class="fu">:</span> <span class="st">"cprd"</span><span class="fu">,</span></span>
-<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a>      <span class="dt">"country"</span><span class="fu">:</span> <span class="st">"United Kingdom"</span></span>
-<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a>  <span class="dt">"cdm_changes"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb3-29"><a href="#cb3-29" tabindex="-1"></a>    <span class="fu">{</span></span>
-<span id="cb3-30"><a href="#cb3-30" tabindex="-1"></a>      <span class="dt">"change_type"</span><span class="fu">:</span> <span class="st">"Subset a CDM table"</span><span class="fu">,</span></span>
-<span id="cb3-31"><a href="#cb3-31" tabindex="-1"></a>      <span class="dt">"data_sources"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"cprd"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-32"><a href="#cb3-32" tabindex="-1"></a>      <span class="dt">"description"</span><span class="fu">:</span> <span class="st">"Restrict drug_exposure to records with a valid quantity."</span></span>
-<span id="cb3-33"><a href="#cb3-33" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb3-34"><a href="#cb3-34" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-35"><a href="#cb3-35" tabindex="-1"></a>  <span class="dt">"codelists"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb3-36"><a href="#cb3-36" tabindex="-1"></a>    <span class="fu">{</span></span>
-<span id="cb3-37"><a href="#cb3-37" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"cs_metformin"</span><span class="fu">,</span></span>
-<span id="cb3-38"><a href="#cb3-38" tabindex="-1"></a>      <span class="dt">"category"</span><span class="fu">:</span> <span class="st">"Index event"</span><span class="fu">,</span></span>
-<span id="cb3-39"><a href="#cb3-39" tabindex="-1"></a>      <span class="dt">"description"</span><span class="fu">:</span> <span class="st">"CodelistGenerator, ATC A10BA02"</span></span>
-<span id="cb3-40"><a href="#cb3-40" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb3-41"><a href="#cb3-41" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-42"><a href="#cb3-42" tabindex="-1"></a>  <span class="dt">"cohorts"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb3-43"><a href="#cb3-43" tabindex="-1"></a>    <span class="fu">{</span></span>
-<span id="cb3-44"><a href="#cb3-44" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Metformin new users"</span><span class="fu">,</span></span>
-<span id="cb3-45"><a href="#cb3-45" tabindex="-1"></a>      <span class="dt">"kind"</span><span class="fu">:</span> <span class="st">"target"</span><span class="fu">,</span></span>
-<span id="cb3-46"><a href="#cb3-46" tabindex="-1"></a>      <span class="dt">"data_sources"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"cprd"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-47"><a href="#cb3-47" tabindex="-1"></a>      <span class="dt">"entry_events"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Metformin dispensation [cs_metformin]"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-48"><a href="#cb3-48" tabindex="-1"></a>      <span class="dt">"inclusion_criteria"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Index on the first occurrence ever"</span><span class="ot">,</span></span>
-<span id="cb3-49"><a href="#cb3-49" tabindex="-1"></a>                             <span class="st">"Aged 18 or over at index"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-50"><a href="#cb3-50" tabindex="-1"></a>      <span class="dt">"exit_criteria"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"End of continuous observation"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-51"><a href="#cb3-51" tabindex="-1"></a>      <span class="dt">"operations"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb3-52"><a href="#cb3-52" tabindex="-1"></a>        <span class="fu">{</span> <span class="dt">"op"</span><span class="fu">:</span> <span class="st">"concept_cohort"</span><span class="fu">,</span> <span class="dt">"codelist"</span><span class="fu">:</span> <span class="st">"cs_metformin"</span> <span class="fu">}</span><span class="ot">,</span></span>
-<span id="cb3-53"><a href="#cb3-53" tabindex="-1"></a>        <span class="fu">{</span> <span class="dt">"op"</span><span class="fu">:</span> <span class="st">"require_first_entry"</span> <span class="fu">}</span><span class="ot">,</span></span>
-<span id="cb3-54"><a href="#cb3-54" tabindex="-1"></a>        <span class="fu">{</span> <span class="dt">"op"</span><span class="fu">:</span> <span class="st">"require_demographics"</span><span class="fu">,</span> <span class="dt">"age_range"</span><span class="fu">:</span> <span class="ot">[[</span><span class="dv">18</span><span class="ot">,</span> <span class="dv">150</span><span class="ot">]]</span> <span class="fu">}</span><span class="ot">,</span></span>
-<span id="cb3-55"><a href="#cb3-55" tabindex="-1"></a>        <span class="fu">{</span> <span class="dt">"op"</span><span class="fu">:</span> <span class="st">"exit_at_observation_end"</span> <span class="fu">}</span></span>
-<span id="cb3-56"><a href="#cb3-56" tabindex="-1"></a>      <span class="ot">]</span></span>
-<span id="cb3-57"><a href="#cb3-57" tabindex="-1"></a>    <span class="fu">}</span><span class="ot">,</span></span>
-<span id="cb3-58"><a href="#cb3-58" tabindex="-1"></a>    <span class="fu">{</span></span>
-<span id="cb3-59"><a href="#cb3-59" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Metformin denominator"</span><span class="fu">,</span></span>
-<span id="cb3-60"><a href="#cb3-60" tabindex="-1"></a>      <span class="dt">"kind"</span><span class="fu">:</span> <span class="st">"target_denominator"</span><span class="fu">,</span></span>
-<span id="cb3-61"><a href="#cb3-61" tabindex="-1"></a>      <span class="dt">"data_sources"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"cprd"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-62"><a href="#cb3-62" tabindex="-1"></a>      <span class="dt">"targetCohortTable"</span><span class="fu">:</span> <span class="st">"Metformin new users"</span><span class="fu">,</span></span>
-<span id="cb3-63"><a href="#cb3-63" tabindex="-1"></a>      <span class="dt">"cohortDateRange"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"2015-01-01"</span><span class="ot">,</span> <span class="st">"2024-12-31"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-64"><a href="#cb3-64" tabindex="-1"></a>      <span class="dt">"timeAtRisk"</span><span class="fu">:</span> <span class="ot">[[</span><span class="dv">0</span><span class="ot">,</span> <span class="dv">30</span><span class="ot">],</span> <span class="ot">[</span><span class="dv">31</span><span class="ot">,</span> <span class="kw">null</span><span class="ot">]]</span><span class="fu">,</span></span>
-<span id="cb3-65"><a href="#cb3-65" tabindex="-1"></a>      <span class="dt">"ageGroup"</span><span class="fu">:</span> <span class="ot">[[</span><span class="dv">0</span><span class="ot">,</span> <span class="dv">17</span><span class="ot">],</span> <span class="ot">[</span><span class="dv">18</span><span class="ot">,</span> <span class="dv">64</span><span class="ot">],</span> <span class="ot">[</span><span class="dv">65</span><span class="ot">,</span> <span class="dv">150</span><span class="ot">]]</span><span class="fu">,</span></span>
-<span id="cb3-66"><a href="#cb3-66" tabindex="-1"></a>      <span class="dt">"sex"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Both"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-67"><a href="#cb3-67" tabindex="-1"></a>      <span class="dt">"daysPriorObservation"</span><span class="fu">:</span> <span class="ot">[</span><span class="dv">365</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-68"><a href="#cb3-68" tabindex="-1"></a>      <span class="dt">"requirementsAtEntry"</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
-<span id="cb3-69"><a href="#cb3-69" tabindex="-1"></a>      <span class="dt">"requirementInteractions"</span><span class="fu">:</span> <span class="kw">true</span></span>
-<span id="cb3-70"><a href="#cb3-70" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb3-71"><a href="#cb3-71" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-72"><a href="#cb3-72" tabindex="-1"></a>  <span class="dt">"proposed_analyses"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb3-73"><a href="#cb3-73" tabindex="-1"></a>    <span class="fu">{</span></span>
-<span id="cb3-74"><a href="#cb3-74" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Incidence of lactic acidosis"</span><span class="fu">,</span></span>
-<span id="cb3-75"><a href="#cb3-75" tabindex="-1"></a>      <span class="dt">"analysis_type"</span><span class="fu">:</span> <span class="st">"Incidence"</span><span class="fu">,</span></span>
-<span id="cb3-76"><a href="#cb3-76" tabindex="-1"></a>      <span class="dt">"role"</span><span class="fu">:</span> <span class="st">"primary"</span><span class="fu">,</span></span>
-<span id="cb3-77"><a href="#cb3-77" tabindex="-1"></a>      <span class="dt">"objectives"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"obj_1"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-78"><a href="#cb3-78" tabindex="-1"></a>      <span class="dt">"data_sources"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"cprd"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-79"><a href="#cb3-79" tabindex="-1"></a>      <span class="dt">"parameters"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb3-80"><a href="#cb3-80" tabindex="-1"></a>        <span class="dt">"denominatorTable"</span><span class="fu">:</span> <span class="st">"Metformin denominator"</span><span class="fu">,</span></span>
-<span id="cb3-81"><a href="#cb3-81" tabindex="-1"></a>        <span class="dt">"outcomeTable"</span><span class="fu">:</span> <span class="st">"Lactic acidosis"</span><span class="fu">,</span></span>
-<span id="cb3-82"><a href="#cb3-82" tabindex="-1"></a>        <span class="dt">"censorTable"</span><span class="fu">:</span> <span class="kw">null</span><span class="fu">,</span></span>
-<span id="cb3-83"><a href="#cb3-83" tabindex="-1"></a>        <span class="dt">"denominatorCohortId"</span><span class="fu">:</span> <span class="kw">null</span><span class="fu">,</span></span>
-<span id="cb3-84"><a href="#cb3-84" tabindex="-1"></a>        <span class="dt">"outcomeCohortId"</span><span class="fu">:</span> <span class="kw">null</span><span class="fu">,</span></span>
-<span id="cb3-85"><a href="#cb3-85" tabindex="-1"></a>        <span class="dt">"censorCohortId"</span><span class="fu">:</span> <span class="kw">null</span><span class="fu">,</span></span>
-<span id="cb3-86"><a href="#cb3-86" tabindex="-1"></a>        <span class="dt">"interval"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"years"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-87"><a href="#cb3-87" tabindex="-1"></a>        <span class="dt">"completeDatabaseIntervals"</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
-<span id="cb3-88"><a href="#cb3-88" tabindex="-1"></a>        <span class="dt">"outcomeWashout"</span><span class="fu">:</span> <span class="ot">[</span><span class="dv">365</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-89"><a href="#cb3-89" tabindex="-1"></a>        <span class="dt">"repeatedEvents"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span></span>
-<span id="cb3-90"><a href="#cb3-90" tabindex="-1"></a>        <span class="dt">"strata"</span><span class="fu">:</span> <span class="ot">[[</span><span class="st">"sex"</span><span class="ot">],</span> <span class="ot">[</span><span class="st">"sex"</span><span class="ot">,</span> <span class="st">"age_group"</span><span class="ot">]]</span><span class="fu">,</span></span>
-<span id="cb3-91"><a href="#cb3-91" tabindex="-1"></a>        <span class="dt">"includeOverallStrata"</span><span class="fu">:</span> <span class="kw">true</span></span>
-<span id="cb3-92"><a href="#cb3-92" tabindex="-1"></a>      <span class="fu">}</span></span>
-<span id="cb3-93"><a href="#cb3-93" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb3-94"><a href="#cb3-94" tabindex="-1"></a>  <span class="ot">]</span></span>
-<span id="cb3-95"><a href="#cb3-95" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
-<p>An analysis carries five keys of its own — <code>name</code>, <code>analysis_type</code>, <code>role</code> (<code>primary</code> or <code>sensitivity</code>), <code>objectives</code> (the objectives it answers, many-to-many) and <code>data_sources</code> — and everything else under <code>parameters</code>. Which keys appear there is decided by <code>analysis_type</code>, so a reader can tell “no comparator, because this is an incidence analysis” from “the comparator was left blank”.</p>
-<p><strong>Every field on an analysis reaches the generated code.</strong> That is the contract: a field the app captures but the script ignores is a plan that says something the study does not do. Where each one lands:</p>
+<p><code><a href="reference/writeSap.html">writeSap()</a></code> / <code><a href="reference/readSap.html">readSap()</a></code> (and <code><a href="reference/sapToJson.html">sapToJson()</a></code> / <code><a href="reference/sapFromJson.html">sapFromJson()</a></code> for strings) serialise the object by the schema: every key is a schema path and every value is encoded by its value type, so nothing app-specific ever reaches the file.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="dt">"sap_schema_version"</span><span class="fu">:</span> <span class="st">"0.1.0"</span><span class="fu">,</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="dt">"generated_at"</span><span class="fu">:</span> <span class="st">"2026-09-14T11:13:15+0100"</span><span class="fu">,</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="dt">"study"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>    <span class="dt">"study_id"</span><span class="fu">:</span> <span class="st">"C1-001"</span><span class="fu">,</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>    <span class="dt">"title"</span><span class="fu">:</span> <span class="st">"Prevalence of rare blood cancers"</span><span class="fu">,</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>    <span class="dt">"authors"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Edward Burn"</span><span class="ot">,</span> <span class="st">"Marti Catala"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>    <span class="dt">"version"</span><span class="fu">:</span> <span class="st">"v1.0.0"</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>  <span class="dt">"data_sources"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>    <span class="fu">{</span> <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"ds_1"</span><span class="fu">,</span> <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"CPRD GOLD"</span> <span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>    <span class="fu">{</span> <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"ds_2"</span><span class="fu">,</span> <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"SIDIAP"</span> <span class="fu">}</span></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a>  <span class="dt">"data_source_modifications"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a>  <span class="dt">"codelists"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"cl_1"</span><span class="fu">,</span></span>
+<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Diabetes"</span><span class="fu">,</span></span>
+<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"codelist"</span><span class="fu">,</span></span>
+<span id="cb4-20"><a href="#cb4-20" tabindex="-1"></a>      <span class="dt">"content"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"diabetes"</span><span class="fu">:</span> <span class="ot">[</span><span class="dv">201826</span><span class="ot">,</span> <span class="dv">443238</span><span class="ot">]</span> <span class="fu">}</span></span>
+<span id="cb4-21"><a href="#cb4-21" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb4-22"><a href="#cb4-22" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb4-23"><a href="#cb4-23" tabindex="-1"></a>  <span class="dt">"cohorts"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb4-24"><a href="#cb4-24" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb4-25"><a href="#cb4-25" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"coh_1"</span><span class="fu">,</span></span>
+<span id="cb4-26"><a href="#cb4-26" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Diabetes"</span><span class="fu">,</span></span>
+<span id="cb4-27"><a href="#cb4-27" tabindex="-1"></a>      <span class="dt">"data_source_id"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"ds_1"</span><span class="ot">,</span> <span class="st">"ds_2"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb4-28"><a href="#cb4-28" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"concept_cohort"</span><span class="fu">,</span></span>
+<span id="cb4-29"><a href="#cb4-29" tabindex="-1"></a>      <span class="dt">"parameters"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"codelist_id"</span><span class="fu">:</span> <span class="st">"cl_1"</span><span class="fu">,</span> <span class="dt">"exit"</span><span class="fu">:</span> <span class="st">"event_end_date"</span><span class="fu">,</span> <span class="dt">"overlap"</span><span class="fu">:</span> <span class="st">"merge"</span> <span class="fu">}</span></span>
+<span id="cb4-30"><a href="#cb4-30" tabindex="-1"></a>    <span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb4-31"><a href="#cb4-31" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb4-32"><a href="#cb4-32" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"coh_2"</span><span class="fu">,</span></span>
+<span id="cb4-33"><a href="#cb4-33" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"General population"</span><span class="fu">,</span></span>
+<span id="cb4-34"><a href="#cb4-34" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"denominator"</span><span class="fu">,</span></span>
+<span id="cb4-35"><a href="#cb4-35" tabindex="-1"></a>      <span class="dt">"parameters"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb4-36"><a href="#cb4-36" tabindex="-1"></a>        <span class="dt">"age_group"</span><span class="fu">:</span> <span class="ot">[[</span><span class="dv">0</span><span class="ot">,</span> <span class="dv">17</span><span class="ot">],</span> <span class="ot">[</span><span class="dv">18</span><span class="ot">,</span> <span class="dv">150</span><span class="ot">]]</span><span class="fu">,</span></span>
+<span id="cb4-37"><a href="#cb4-37" tabindex="-1"></a>        <span class="dt">"sex"</span><span class="fu">:</span> <span class="st">"Both"</span><span class="fu">,</span></span>
+<span id="cb4-38"><a href="#cb4-38" tabindex="-1"></a>        <span class="dt">"days_prior_observation"</span><span class="fu">:</span> <span class="dv">365</span><span class="fu">,</span></span>
+<span id="cb4-39"><a href="#cb4-39" tabindex="-1"></a>        <span class="dt">"requirement_interactions"</span><span class="fu">:</span> <span class="kw">true</span></span>
+<span id="cb4-40"><a href="#cb4-40" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb4-41"><a href="#cb4-41" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb4-42"><a href="#cb4-42" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb4-43"><a href="#cb4-43" tabindex="-1"></a>  <span class="dt">"analyses"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb4-44"><a href="#cb4-44" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb4-45"><a href="#cb4-45" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"an_1"</span><span class="fu">,</span></span>
+<span id="cb4-46"><a href="#cb4-46" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Incidence of diabetes"</span><span class="fu">,</span></span>
+<span id="cb4-47"><a href="#cb4-47" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"incidence"</span><span class="fu">,</span></span>
+<span id="cb4-48"><a href="#cb4-48" tabindex="-1"></a>      <span class="dt">"parameters"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb4-49"><a href="#cb4-49" tabindex="-1"></a>        <span class="dt">"denominator_cohort_id"</span><span class="fu">:</span> <span class="st">"coh_2"</span><span class="fu">,</span></span>
+<span id="cb4-50"><a href="#cb4-50" tabindex="-1"></a>        <span class="dt">"outcome_cohort_id"</span><span class="fu">:</span> <span class="st">"coh_1"</span><span class="fu">,</span></span>
+<span id="cb4-51"><a href="#cb4-51" tabindex="-1"></a>        <span class="dt">"interval"</span><span class="fu">:</span> <span class="st">"years"</span><span class="fu">,</span></span>
+<span id="cb4-52"><a href="#cb4-52" tabindex="-1"></a>        <span class="dt">"complete_database_intervals"</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb4-53"><a href="#cb4-53" tabindex="-1"></a>        <span class="dt">"washout"</span><span class="fu">:</span> <span class="dv">365</span><span class="fu">,</span></span>
+<span id="cb4-54"><a href="#cb4-54" tabindex="-1"></a>        <span class="dt">"repeated_events"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span></span>
+<span id="cb4-55"><a href="#cb4-55" tabindex="-1"></a>        <span class="dt">"strata"</span><span class="fu">:</span> <span class="ot">[[</span><span class="st">"sex"</span><span class="ot">]]</span><span class="fu">,</span></span>
+<span id="cb4-56"><a href="#cb4-56" tabindex="-1"></a>        <span class="dt">"include_overall_strata"</span><span class="fu">:</span> <span class="kw">true</span></span>
+<span id="cb4-57"><a href="#cb4-57" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb4-58"><a href="#cb4-58" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb4-59"><a href="#cb4-59" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb4-60"><a href="#cb4-60" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>The conventions, all decided by the schema’s value types:</p>
+<ul>
+<li>Dates are ISO strings. A <code>date_range</code> with one open bound writes <code>null</code> for that bound (<code>["2010-01-01", null]</code>); a range with neither bound is omitted.</li>
+<li>
+<code>age_group</code> and <code>time_at_risk</code> are lists of <code>[lower, upper]</code> pairs; an infinite upper bound is <code>null</code> inside the pair and reads back as <code>Inf</code>.</li>
+<li>A scalar day count whose estimator default is <code>Inf</code> (<code>washout</code>, <code>outcome_washout</code>, <code>follow_up_days</code>, …) is <strong>omitted</strong> when it is <code>Inf</code>: the generated call leaves the argument out and the package default applies.</li>
+<li>A field the author never set is omitted, never written as <code>null</code>. An empty <code>parameters</code> object is <code><a href="https://rdrr.io/r/base/Paren.html" class="external-link">{}</a></code>. Vector fields are always arrays.</li>
+<li>A codelist’s <code>content</code> is encoded by its <code>type</code> – <code>{"set": [ids]}</code> for a codelist, <code>{"set": [{row}, ...]}</code> for a codelist with details or a concept set expression – and reads back through the omopgenerics constructors, so the object that comes out has the class the schema requires.</li>
+<li>Keys the schema does not define survive a read, so <code><a href="reference/checkSap.html">checkSap()</a></code> can report them as <code>unknown_field</code>.</li>
+</ul>
+<p>A file written by the standalone app before this rewrite (<code>sap_schema_version</code> <code>0.4.x</code>) is refused: there is no migration layer, and <code>NEWS.md</code> keeps that history as the rationale for how the fields were shaped.</p>
+</div>
+<div class="section level2">
+<h2 id="generated-code">Generated code<a class="anchor" aria-label="anchor" href="#generated-code"></a>
+</h2>
+<p>The app turns a SAP into the R that runs it – shown as the last appendix of the document preview, and written as an OmopStudyBuilder study directory by <code>write_study_files()</code>. Every parameter reaches the call under its estimator’s argument name, in signature order, and an argument the author never decided is omitted so the package default applies. Cohort references are by id in the SAP and by <strong>table name</strong> in the code: the table is a slug of the cohort’s name (readable for the reviewer who signs the plan), and two names that collapse to one table are reported.</p>
 <table class="table">
 <colgroup>
 <col width="50%">
 <col width="50%">
 </colgroup>
 <thead><tr>
-<th>Field</th>
-<th>In the generated script</th>
+<th>SAP</th>
+<th>Generated call</th>
 </tr></thead>
 <tbody>
 <tr>
-<td><code>name</code></td>
-<td>the <code>results[["…"]]</code> key, the comment above the call, and <code>sap_analysis</code> in the result’s settings</td>
+<td>codelist</td>
+<td>
+<code><a href="https://darwin-eu.github.io/omopgenerics/reference/importCodelist.html" class="external-link">omopgenerics::importCodelist()</a></code> (or the with-details / concept-set-expression reader) from the files the study export writes beside the script</td>
 </tr>
 <tr>
-<td><code>analysis_type</code></td>
+<td><code>concept_cohort</code></td>
+<td><code>CohortConstructor::conceptCohort(cdm, conceptSet, name, exit, overlap)</code></td>
+</tr>
+<tr>
 <td>
-<em>which estimator is called</em> — <code>estimatePointPrevalence</code> / <code>estimatePeriodPrevalence</code> / <code>estimateIncidence</code>
+<code>denominator</code> / <code>target_denominator</code>
+</td>
+<td>
+<code><a href="https://darwin-eu.github.io/IncidencePrevalence/reference/generateDenominatorCohortSet.html" class="external-link">IncidencePrevalence::generateDenominatorCohortSet()</a></code> / <code>generateTargetDenominatorCohortSet()</code>
 </td>
 </tr>
 <tr>
-<td><code>role</code></td>
+<td><code>target</code></td>
+<td>nothing: the cohort is instantiated outside this script and referred to by table name</td>
+</tr>
+<tr>
 <td>
-<code>(primary)</code> / <code>(sensitivity)</code> in that comment, <strong>and</strong> <code>sap_role</code> in the result’s settings</td>
-</tr>
-<tr>
-<td><code>objectives</code></td>
+<code>incidence</code>, <code>point_prevalence</code>, <code>period_prevalence</code>
+</td>
 <td>
-<code>[objectives 1, 3]</code> in that comment, <strong>and</strong> <code>sap_objectives</code> in the result’s settings</td>
+<code><a href="https://darwin-eu.github.io/IncidencePrevalence/reference/estimateIncidence.html" class="external-link">IncidencePrevalence::estimateIncidence()</a></code> / <code>estimatePointPrevalence()</code> / <code>estimatePeriodPrevalence()</code>
+</td>
 </tr>
 <tr>
-<td><code>data_sources</code></td>
-<td>an <code>omopgenerics::cdmName(cdm) %in% c(…)</code> guard, when the analysis runs on fewer than all the study’s sources</td>
+<td>
+<code>single_event_survival</code>, <code>competing_risk_survival</code>
+</td>
+<td>
+<code><a href="https://darwin-eu.github.io/CohortSurvival/reference/estimateSingleEventSurvival.html" class="external-link">CohortSurvival::estimateSingleEventSurvival()</a></code> / <code>estimateCompetingRiskSurvival()</code>; <code>censor_on_date</code> and <code>censor_on_date_variable</code> both feed <code>censorOnDate</code>, which takes a Date or a column name</td>
 </tr>
 <tr>
-<td><code>parameters.*</code></td>
-<td>the estimator’s arguments, by the same name, in signature order</td>
+<td><code>other</code></td>
+<td>nothing; the analysis is listed with a note</td>
 </tr>
 </tbody>
 </table>
-<p>A <code>parameters</code> key is omitted from the call only when it holds the package’s own default (<code>denominatorCohortId = NULL</code> meaning all cohorts in the set, <code>strata = list()</code>, and <code>includeOverallStrata</code>, which is inert with no strata). Writing those out would put a decision in the code that nobody made; the omission falls back to the documented default. Every argument name and default above was checked against IncidencePrevalence 1.2.1 and omopgenerics 1.4.1.</p>
-<p><strong><code>name</code>, <code>role</code> and <code>objectives</code> travel with the RESULT, not just the code.</strong> None of the three is an argument to any DARWIN function, and that is not an oversight in the packages: neither is a computational choice, since the primary analysis and its sensitivity analyses call the same estimator with the same arguments and differ only in which one the study may conclude from. But the exported results are what a study report is written from, and a results file that cannot say which of nine prevalence estimates is the primary one just moves the problem downstream. So the generated script defines a <code>sapTag()</code> helper and labels each estimate:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">results</span><span class="op">[[</span><span class="st">"…"</span><span class="op">]</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu">sapTag</span><span class="op">(</span></span>
-<span>  <span class="va">results</span><span class="op">[[</span><span class="st">"…"</span><span class="op">]</span><span class="op">]</span>,</span>
-<span>  analysis <span class="op">=</span> <span class="st">"Partial prevalence (5-year) – annual point prevalence as of 1st January"</span>,</span>
-<span>  role <span class="op">=</span> <span class="st">"primary"</span>,</span>
-<span>  objectives <span class="op">=</span> <span class="st">"1, 2, 3, 4, 5, 6"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p><code>omopgenerics</code> allows extra settings columns beyond the required ones, and they survive <code>bind()</code>, <code>suppress()</code> and the export/import round trip — verified by running the generated C1-001 estimates against IncidencePrevalence 1.2.1 on a mock CDM and reading <code>sap_role</code> back out of the exported CSV. An unstated role passes no <code>role</code> argument at all, so the helper’s <code>NA</code> default stands for “the plan never said”, and an empty result is left alone because it has no settings rows to label.</p>
-<p><strong><code>data_sources</code> is a run-time guard, not a build-time one</strong>, because a DARWIN study package ships one script to every partner and each runs it against their own CDM — so “this analysis runs on SIDIAP and CPRD GOLD” can only be a test the script performs. A guarded estimate is written <code>x &lt;- if (…) estimate…(…) else omopgenerics::emptySummarisedResult()</code>, never a bare <code>if</code>: the estimates are bound together before export, so the variable has to exist at every partner or <code>bind()</code> fails with “object not found” wherever the guard is false. The guard compares the SAP’s source keys against whatever <code>codeToRun.R</code> passed as <code>cdmName</code>, which nothing in the generated code can check — <code>study_export_notes()</code> says so whenever a guard is emitted. And because a cohort carries <code>data_sources</code> too, <code>cohort_source_coverage_problems()</code> reports an analysis that runs where one of its cohorts is never built, which would otherwise generate a script that dies at that partner.</p>
-<p><strong><code>role</code> is not an estimator argument, and that is why it needs a key.</strong> “Re-run with a 30-day washout” is a second <em>call</em>, not an argument to the first — which is why <code>sensitivity_analyses</code> was dropped from Incidence in <code>0.3.1</code> and from Prevalence in <code>0.4.0</code>. But primary-versus-sensitivity is the first thing a reviewer looks for, and with no field for it an author can only spell it into the analysis name, where nothing can group or check it. Unset is a real state, as with the analysis type; a plan that states roles but marks none of them primary is reported on Review.</p>
-<p><strong>A cohort’s <code>kind</code> decides what it carries</strong>, because the kinds are not the same object. A denominator is a cohort <em>set</em> produced by <code>generateDenominatorCohortSet()</code>; a <code>target_denominator</code> is produced by <code>generateTargetDenominatorCohortSet()</code>. <strong>A denominator kind’s keys are its generator’s argument names, in the generator’s own order</strong> — so the JSON reads as the call it describes, and nothing can drift:</p>
-<table class="table">
-<thead><tr>
-<th><code>denominator</code></th>
-<th><code>target_denominator</code></th>
-</tr></thead>
-<tbody>
-<tr>
-<td></td>
-<td><code>targetCohortTable</code></td>
-</tr>
-<tr>
-<td><code>cohortDateRange</code></td>
-<td><code>cohortDateRange</code></td>
-</tr>
-<tr>
-<td></td>
-<td><code>timeAtRisk</code></td>
-</tr>
-<tr>
-<td><code>ageGroup</code></td>
-<td><code>ageGroup</code></td>
-</tr>
-<tr>
-<td><code>sex</code></td>
-<td><code>sex</code></td>
-</tr>
-<tr>
-<td><code>daysPriorObservation</code></td>
-<td><code>daysPriorObservation</code></td>
-</tr>
-<tr>
-<td></td>
-<td><code>requirementsAtEntry</code></td>
-</tr>
-<tr>
-<td><code>requirementInteractions</code></td>
-<td><code>requirementInteractions</code></td>
-</tr>
-</tbody>
-</table>
-<p><code>cdm</code> is a live database handle, not a plan field, and <code>name</code> is the cohort’s own name in the common half of the card, so neither is repeated in the block. <code>targetCohortId</code> is not captured yet — cohort IDs are handled internally for now. Neither kind carries entry criteria: a denominator cohort set is <em>generated</em>, not defined by them. Every other kind — <code>target</code>, <code>outcome</code>, <code>comparator</code>, <code>censor</code>, <code>strata</code> — is a plain cohort <em>definition</em>: entry events, inclusion and exit criteria, a concept set, and none of the generator arguments.</p>
-<p>The distinction that matters most is between a <strong>target</strong> and a <strong>target denominator</strong>. A target cohort is defined by entry criteria (“first metformin dispensation”); a target denominator is <em>generated from</em> that target, restricted to the time each person spends in it. They are two entries, not one — which is why the example above has both.</p>
-<p><strong>Time at risk belongs to the denominator, not the analysis</strong>, and so do the cohort date range, the age groups and the sex. Two analyses on the same denominator cannot disagree about them, and an analysis inherits them rather than restating them — the Analyses tab shows a read-only echo of what the chosen denominator already fixes.</p>
-<p><strong><code>cohortDateRange</code> is ONE key holding TWO dates</strong>, because that is what the argument takes — its default is literally <code>as.Date(c(NA, NA))</code>. A missing bound is <code>null</code>, meaning exactly what <code>NA</code> means to the generator: use the earliest (or latest) observation period in the database. So <code>["2015-01-01", null]</code> is “from 2015 to the end of the data”, and <code>[null, null]</code> is the argument’s own default.</p>
-<p><strong><code>ageGroup</code> and <code>timeAtRisk</code> are lists of numeric pairs</strong> — <code>[[0, 17], [18, 64]]</code> and <code>[[0, 30], [31, null]]</code> — matching <code>ageGroup = list(c(0, 17), c(18, 64))</code> and <code>timeAtRisk = list(c(0, 30), c(31, Inf))</code>. Each interval generates its own cohort. JSON has no <code>Infinity</code>, so an unbounded upper bound is written <code>null</code>: <code>[31, null]</code> is “day 31 onwards”. Both of a time-at-risk pair’s bounds are counted in days from <em>target cohort entry</em> — there is no anchoring on cohort end, which is why the pre-0.3.2 anchors were dropped rather than carried across.</p>
-<p><strong>The Incidence <code>parameters</code> map 1:1 onto <code>IncidencePrevalence::estimateIncidence()</code></strong> — the keys <em>are</em> the argument names, flat and in the function’s own order, with no wrapper object. If a field is not one of that function’s arguments, it is not part of an Incidence analysis. So there is no “rate per 1,000” and no denominator unit — those are presentation choices made downstream when the result is tabled — and no sensitivity-analysis list, because “re-run with a 30-day washout” is a second call, not an argument to this one. <code>cdm</code> is a runtime database handle, so it is the only argument absent. The three <code>*CohortId</code> arguments select which cohorts of a set to use; <code>null</code> (the default) means all of them.</p>
-<p><strong><code>strata</code> is a list of variable groups</strong>, naming columns on the denominator cohort: <code>[["sex"], ["sex", "age_group"]]</code> means one stratification by sex and another by the cross of sex and age group — exactly <code>strata = list("sex", c("sex", "age_group"))</code>. The only columns available are <code>age_group</code> and <code>sex</code> — the ones <code>generateDenominatorCohortSet()</code> puts on the denominator table — and an analysis may only stratify by those. This is <strong>not</strong> a field on the cohort: the generator makes those two columns and no others, so there is nothing for an author to decide, and the strata picker on an analysis offers exactly them.</p>
-<p><strong><code>outcomeWashout</code> is a number of days</strong>, matching <code>estimateIncidence(outcomeWashout =)</code>, which takes a number and defaults to <code>Inf</code>. It is written as a <strong>one-element numeric array</strong>, for the same reason <code>timeAtRisk</code> is a list of pairs: JSON has no <code>Infinity</code>, so <code>Inf</code> travels as <code>null</code> <em>inside</em> an array, leaving a bare <code>null</code> to keep its schema-wide meaning of “absent”.</p>
-<table class="table">
-<thead><tr>
-<th>JSON</th>
-<th>Means</th>
-</tr></thead>
-<tbody>
-<tr>
-<td><code>[365]</code></td>
-<td>a 365-day washout</td>
-</tr>
-<tr>
-<td><code>[0]</code></td>
-<td>no washout</td>
-</tr>
-<tr>
-<td><code>[null]</code></td>
-<td>
-<code>Inf</code> — unbounded, one event per person</td>
-</tr>
-<tr>
-<td><code>null</code></td>
-<td>the author never said</td>
-</tr>
-</tbody>
-</table>
-<p>All three of the first rows are numbers, and all four states are distinct — which is what the incidence validator needs. A 0-day washout is a substantively different analysis from an unstated one, and an unbounded washout is different again. <code>estimateIncidence()</code> defaults to <code>Inf</code>, but the SAP deliberately refuses to inherit that silently and makes the author choose.</p>
-<p>Loading a saved file back into the form (<strong>Load SAP</strong>, in the navbar) repopulates every section, so a SAP can be revised and re-saved.</p>
-<div class="section level3">
-<h3 id="schema-versions">Schema versions<a class="anchor" aria-label="anchor" href="#schema-versions"></a>
-</h3>
-<p><strong>There is no migration layer.</strong> <code>0.4.25</code>–<code>0.4.26</code> removed <code>migrate_sap()</code> and its helpers: the app is pre-release, no SAPs exist in the wild, and every one of those repairs was fixing a file that cannot exist. A file is read as the current schema — unknown keys are ignored, expected-but-missing ones come back empty.</p>
-<p>The history below is kept as the <em>rationale</em> for why each field is shaped the way it is, which is still worth reading. Read it as history, not as behaviour: where an entry says an older file still loads, that is no longer true.</p>
-<p><code>0.2.0</code> added <code>cdm_sources</code> and renamed <code>analyses</code> to <code>proposed_analyses</code>.</p>
-<p><code>0.3.0</code> gave each analysis type its own set of inputs and moved the type-specific fields under <code>parameters</code>. It also replaced a cohort’s <code>role</code> (Target / Comparator / …) with <code>kind</code> (<code>denominator</code>, <code>target_denominator</code>, …), and moved <code>time_at_risk</code> from the analysis onto the cohort.</p>
-<p><code>0.3.1</code> made the Incidence <code>parameters</code> map 1:1 onto <code>estimateIncidence()</code>: it added <code>strata</code> (as variable groups) and <code>include_overall_strata</code>, and dropped <code>reporting</code> (<code>denominator_unit</code>, <code>rate_multiplier</code>) and <code>sensitivity_analyses</code>, none of which are arguments to that function. A <code>0.3.0</code> file still loads — those fields are simply discarded.</p>
-<p><code>0.3.2</code> did the same for cohorts: a cohort’s <code>kind</code> now decides which fields it carries, and each denominator kind carries exactly its generator’s arguments. <code>study_period_*</code> became <code>cohort_date_range_*</code>; <code>prior_observation_days</code> became <code>days_prior_observation</code> (a list, since the generator takes a vector); <code>age_groups</code> became numeric pairs rather than free text; and <code>requirement_interactions</code>, <code>requirements_at_entry</code> and <code>strata_variables</code> were added. <code>washout_days</code> was <strong>dropped</strong> — neither generator takes a washout, it is <code>estimateIncidence(outcomeWashout =)</code>, which the Incidence analysis already captures.</p>
-<p><code>0.3.2</code> also made the Incidence <code>outcome_washout</code> <strong>numeric</strong>, matching <code>estimateIncidence(outcomeWashout =)</code>. It was the string <code>"unbounded"</code> (or a bare number); it is now a one-element numeric array, with <code>Inf</code> as <code>[null]</code> — the same Inf-as-null-inside-an-array rule the cohort’s <code>age_groups</code> and <code>time_at_risk</code> use. Both older shapes still load.</p>
-<p><code>0.4.0</code> added cohort sets — a cohort gained <code>parent_cohort</code>, and prevalence gained <code>denominatorCohortId</code> / <code>outcomeCohortId</code> (null = all IDs in the set) — and aligned Prevalence with the estimators the way <code>0.3.1</code> aligned Incidence: <code>parameters</code> use the argument names and order, <code>strata</code> replaces <code>stratifications</code>, <code>sensitivity_analyses</code> is dropped there, and a prevalence <code>analysis_type</code> names the estimator (<code>estimatePointPrevalence</code> / <code>estimatePeriodPrevalence</code>).</p>
-<p><code>0.4.1</code> <strong>dropped <code>strata_variables</code></strong> from the denominator kinds. <code>generateDenominatorCohortSet()</code> puts <code>age_group</code> and <code>sex</code> on the denominator table and nothing else, so the columns an analysis may stratify by were never the author’s to choose. As a textarea it could only agree with that or be wrong — and being wrong was the dangerous case: naming an extra ETL column made the strata picker offer it and the validator accept it, for a <code>strata =</code> that the generator would never satisfy. The columns are now fixed (<code>STRATA_VARIABLES</code> in <code>app/R/cohort_kinds.R</code>). An older file’s declared columns are dropped on load, and an analysis stratified by a column beyond those two now fails validation — which is the honest outcome, since it was never going to run.</p>
-<p><code>0.4.2</code> <strong>aligned the denominator kinds with their generators</strong>, the way <code>0.3.1</code> aligned Incidence with <code>estimateIncidence()</code> and <code>0.4.0</code> aligned Prevalence with the prevalence estimators. Every key is now the argument name it feeds, in the generator’s own order: <code>target_cohort</code> → <code>targetCohortTable</code>, <code>time_at_risk</code> → <code>timeAtRisk</code>, <code>age_groups</code> → <code>ageGroup</code>, <code>days_prior_observation</code> → <code>daysPriorObservation</code>, <code>requirements_at_entry</code> → <code>requirementsAtEntry</code>, <code>requirement_interactions</code> → <code>requirementInteractions</code>. The two keys <code>cohort_date_range_start</code> / <code>_end</code> became the single <code>cohortDateRange</code> pair the argument actually takes. The input ids are the argument names too, so a field and the key it produces cannot drift apart.</p>
-<p><code>0.4.3</code> finished aligning <strong>Incidence</strong> the same way. <code>0.3.1</code> had matched the <em>set</em> of fields to <code>estimateIncidence()</code> but still wrote them snake_case and wrapped in an <code>estimand</code> object the function has no concept of. Now the keys are the argument names, flat and in signature order — <code>denominator_cohort</code> → <code>denominatorTable</code>, <code>outcome_cohort</code> → <code>outcomeTable</code>, <code>censor_cohort</code> → <code>censorTable</code>, <code>complete_database_intervals</code> → <code>completeDatabaseIntervals</code>, <code>outcome_washout</code> → <code>outcomeWashout</code>, <code>repeated_events</code> → <code>repeatedEvents</code>, <code>include_overall_strata</code> → <code>includeOverallStrata</code>, and <code>interval</code> / <code>strata</code> unchanged. The <code>estimand</code> wrapper is gone, and the three <code>*CohortId</code> arguments (<code>denominatorCohortId</code>, <code>outcomeCohortId</code>, <code>censorCohortId</code>; <code>null</code> = all cohorts in the set) are now present, matching the signature and the Prevalence template. The Incidence <code>flatten()</code> un-nests any old <code>estimand</code> and renames every field, so a pre-0.4.3 file loads unchanged.</p>
-<p><code>0.4.27</code> added <code>role</code> (<code>primary</code> / <code>sensitivity</code>) to an analysis: not an estimator argument — the primary analysis and its sensitivity analyses call the same function with the same arguments — but the distinction is the first thing a reviewer looks for, and without a field an author could only spell it into the analysis name, where nothing could group or check it. <code>analysis_role_problems()</code> reports a plan that states roles but marks none of them primary; the document shows the role per analysis.</p>
-<p><code>0.4.27</code> also made <code>data_sources</code> load-bearing in the generated code rather than documentation-only. It is the SAP-level counterpart of <code>cdm</code> — which databases an item runs against — and it reached the document and stopped there, so a plan restricting an analysis to two of five databases generated a script that ran it at all five. Restricted cohorts and estimates are now guarded with <code>omopgenerics::cdmName(cdm)</code>, and <code>cohort_source_coverage_problems()</code> reports an estimate that runs where its cohort is not built. No JSON key changed: the field was always there, it was simply ignored.</p>
-<p><code>0.4.28</code> added the <code>bind_cohorts</code> operation: several cohort definitions gathered into <strong>one table</strong>, so one estimator call covers all of them.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">{</span> <span class="dt">"op"</span><span class="fu">:</span> <span class="st">"bind_cohorts"</span><span class="fu">,</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="dt">"cohorts"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Diabetes drugs"</span><span class="ot">,</span> <span class="st">"Cardiovascular drugs"</span><span class="ot">]</span> <span class="fu">}</span></span></code></pre></div>
-<p><code>estimatePrevalence()</code>’s <code>outcomeTable</code> takes one table — passing a vector fails with <em>“You can only read one table of a cdm_reference”</em> — but a table may hold many cohorts, and the estimator runs across all of them in a single call, reporting each separately in the result’s <code>group_level</code>. That is already why C1-001’s six cancers are one analysis rather than six: <code>conceptCohort()</code> puts one cohort per codelist in one table. What it could not do was combine definitions built by <em>different pipelines</em>. <code><a href="https://darwin-eu.github.io/omopgenerics/reference/bind.html" class="external-link">omopgenerics::bind()</a></code> joins their tables, renumbering the cohort ids in argument order, so one call covers them all.</p>
-<p><strong>Only cohorts with disjoint names can merge.</strong> <code>bind()</code> aborts on a duplicated <code>cohort_name</code> — and even if it did not, the estimator labels its results by <code>cohort_name</code>, so two definitions under one name would be indistinguishable in the output. <code>conceptCohort()</code> names one cohort per codelist, <em>after</em> the codelist, which is why definitions that differ only in exit — C1-001’s 5-year, 2-year and complete prevalence trio, built from the same six codelists — do not merge, and stay separate analyses in that SAP.</p>
-<p>This is the first operation whose call returns a <strong>CDM reference</strong> rather than a cohort table, so <code>register_cohort_op()</code> gained <code>assigns</code>: <code>"cdm"</code> emits <code>cdm &lt;- bind(...)</code>, and <code>"table"</code> (the default, every CohortConstructor verb) emits <code>cdm$x &lt;- ...</code>. Getting that wrong does not fail loudly — it leaves the table unattached and every estimate on it dies at the data partner — so it is declared per operation rather than inferred. A step <em>after</em> a bind pipes from the attached table as a second statement, since there is no pipeline to sit in.</p>
-<p><code>bound_cohort_problems()</code> reports the four things the operation’s own <code>validate()</code> cannot see, because each is a property of the whole cohort list rather than of one operation. Three end the same way — <code>cdm$&lt;table&gt;</code> read before anything creates it: binding a cohort nothing builds, one the SAP defines <em>after</em> the bind (the script emits cohorts in listed order), or a generated denominator cohort set. The fourth is the name collision above, which the generated <code>bind()</code> would otherwise be the first to report, at the data partner.</p>
-<p><strong>Merge only what shares a role.</strong> A merged call carries one <code>role</code>, so definitions that differ in role have to stay separate analyses even when their names are disjoint: the primary/sensitivity distinction is the whole point of stating a role.</p>
-<p>Saving writes the current schema version (<code>0.4.28</code>) back out.</p>
+<p>An item whose <code>data_source_id</code> names fewer than all the study’s data sources is guarded with <code>omopgenerics::cdmName(cdm) %in% c(...)</code>, so one script can ship to every data partner. A guarded estimate yields <code><a href="https://darwin-eu.github.io/omopgenerics/reference/emptySummarisedResult.html" class="external-link">omopgenerics::emptySummarisedResult()</a></code> where it does not run, so the variable exists everywhere and the final <code><a href="https://darwin-eu.github.io/omopgenerics/reference/bind.html" class="external-link">omopgenerics::bind()</a></code> + <code>suppress(minCellCount = 5)</code> step never fails on a missing object. The schema carries no minimum cell count, so the suppression step states omopgenerics’ default and says so in a comment.</p>
 </div>
-<div class="section level3">
-<h3 id="validation">Validation<a class="anchor" aria-label="anchor" href="#validation"></a>
-</h3>
-<p>A template may declare a <code>validate(params, cohorts)</code> that returns a character vector of problems — for instance, that an incidence analysis’s denominator is not actually a denominator cohort, or that it stratifies by sex on a male-only cohort. Problems are listed on <strong>Review</strong>. They do <strong>not</strong> block saving: a SAP is drafted over many sittings and an incomplete one still has to be checkpointed, so saving with outstanding problems warns rather than refuses.</p>
+<div class="section level2">
+<h2 id="validation">Validation<a class="anchor" aria-label="anchor" href="#validation"></a>
+</h2>
+<p>Two layers, both reported on <strong>Review</strong> and neither blocking a save – a SAP is drafted over many sittings and an incomplete one still has to be checkpointed:</p>
+<ul>
+<li>
+<strong>Structural</strong>, from <code><a href="reference/checkSap.html">shinySAP::checkSap()</a></code>: missing required fields, wrong value types, unknown fields, duplicate ids, references to ids nothing defines.</li>
+<li>
+<strong>Semantic</strong>, in <code>inst/app/R/problems.R</code>: the handful of checks the schema cannot express – that a denominator slot names a denominator, that strata are columns the chosen denominator carries and can still vary, that a target denominator is not built from itself, that an analysis does not run where one of its cohorts is never built, that two cohort names do not collapse to one table.</li>
+</ul>
 </div>
-<div class="section level3">
-<h3 id="adding-an-analysis-types-form">Adding an analysis type’s form<a class="anchor" aria-label="anchor" href="#adding-an-analysis-types-form"></a>
-</h3>
-<p>Each type’s inputs live in their own file, <code>app/R/analysis_type_&lt;name&gt;.R</code>, which calls <code>register_analysis_template()</code> with four mirrored pieces: <code>ui</code> builds the inputs, <code>collect</code> reads them back into JSON, <code>pickers</code> names the ids that pick a cohort or a CDM source, and <code>flatten</code> undoes whatever nesting <code>collect</code> did so a saved file can repopulate the form. Copy an existing one and edit it — that is the whole wiring, no other file needs touching.</p>
-<p>A type listed in <code>ANALYSIS_TYPES</code> with no template of its own falls back to <code>"Other"</code>, the generic form, so the app keeps working while the rest are filled in. <code>app/R/analysis_registry.R</code> holds the registry, the type resolver, and the input blocks templates share (time at risk, stratifications); its header comment sets out the rules, including why the template files have to sit flat in <code>app/R/</code>.</p>
-</div>
+<div class="section level2">
+<h2 id="adding-an-analysis-type">Adding an analysis type<a class="anchor" aria-label="anchor" href="#adding-an-analysis-type"></a>
+</h2>
+<ol style="list-style-type: decimal">
+<li>Add its rows to <code>data-raw/v&lt;version&gt;/types.csv</code> and <code>schema.csv</code>, and rebuild the package data with <code>Rscript data-raw/sysdata.R</code>. The package now accepts and validates the type; <code>sapSchemaTypes("analysis")</code> lists it.</li>
+<li>Register a template for its parameter block in <code>inst/app/R/analysis_type_&lt;name&gt;.R</code> with <code>register_analysis_template()</code>: <code>ui</code> builds the inputs (their ids <strong>are</strong> the parameter keys), <code>collect</code> reads them back into the parameters, <code>flatten</code> undoes any nesting so a saved file repopulates the form. The app refuses to start while a schema type has no template.</li>
+<li>Add its argument map to <code>ANALYSIS_ARGS</code> in <code>inst/app/R/sap_code.R</code> – the estimator, its package, and schema key -&gt; argument name in signature order.</li>
+</ol>
+<p>Cohort types follow the same pattern with <code>register_cohort_type()</code> in <code>inst/app/R/cohort_kinds.R</code> and <code>cohort_r_code()</code> in <code>sap_code.R</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="layout">Layout<a class="anchor" aria-label="anchor" href="#layout"></a>
 </h2>
-<p>The repo holds two things: the <strong>package</strong> at the root — the versioned SAP schema, its constructors and its validators — and the <strong>Shiny app</strong> in <code>app/</code>, which is a Shiny app <em>directory</em>, not a package. The app is frozen pending a rewrite against the schema; it does not depend on the package, and the package does not depend on it.</p>
-<pre><code>DESCRIPTION               package metadata (the core: no shiny in Imports)
-NAMESPACE                 package namespace
-R/sap.R                   SAP constructors, checkSap(), validateSap()
-R/sap_schema.R            accessors over the versioned schema tables
-R/utils.R                 core-internal helpers
-R/sysdata.rda             the built schema tables (see data-raw/)
-data-raw/                 schema.csv + types.csv per version, and their build script
-tests/testthat/           the package suite (Rscript tests/testthat.R)
-
-app/app.R                 the Shiny app: ui, server, shinyApp()
-app/R/                    sourced by loadSupport(), alphabetically, before app.R
-  utils.R                 JSON helpers, slugify, save/read
-  dynamic_items.R         add/remove machinery and pickers for repeating sections
-  analysis_registry.R     analysis type registry, resolver, shared input blocks
-  analysis_type_*.R       one input template per analysis type
-  cohort_kinds.R          cohort kind templates
-  cohort_operations.R     cohort operation registry and code generation
-  mod_*.R                 one Shiny module per section
-  sap_code.R              SAP -&gt; runnable R
-  sap_study_export.R      SAP -&gt; a study directory
-app/inst/sap_preview.Rmd  SAP -&gt; HTML/Word preview
-app/www/                  static assets, served at the app root
-app/tests/                the app suite (Rscript app/tests/run.R)
-app/tests/fixtures/       sample SAPs
-app/NEWS.md               SAP JSON schema history (0.2.0 - 0.4.30)
-app/output/               working SAPs the app writes (gitignored)</code></pre>
-<p>Launch the app with <code>shiny::runApp("app")</code> from the repo root. <code>runApp()</code> sets the working directory to <code>app/</code> for the duration, which is what makes the app’s relative paths resolve.</p>
+<p>One package. The Shiny app lives in <code>inst/app</code> as a plain Shiny app directory: <code><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">shiny::runApp()</a></code> sources its <code>R/</code> folder (alphabetically, non-recursively) and sets the working directory to it, and everything it needs from the package it calls as <code>shinySAP::&lt;fn&gt;()</code>.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>DESCRIPTION                  package metadata; shiny and the OMOP packages are Suggests</span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>R<span class="sc">/</span>sap.R                      SAP constructors and CRUD</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>R<span class="sc">/</span>sap_schema.R               schema accessors, <span class="fu">checkSap</span>(), <span class="fu">validateSap</span>()</span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>R<span class="sc">/</span>sap_json.R                 <span class="fu">sapToJson</span>(), <span class="fu">sapFromJson</span>(), <span class="fu">writeSap</span>(), <span class="fu">readSap</span>()</span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>R<span class="sc">/</span>shiny_app.R                <span class="fu">shinySap</span>()</span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>R<span class="sc">/</span>sysdata.rda                the built schema <span class="fu">tables</span> (see data<span class="sc">-</span>raw<span class="sc">/</span>)</span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>data<span class="sc">-</span>raw<span class="sc">/</span>v<span class="sc">&lt;</span>version<span class="sc">&gt;</span><span class="er">/</span>         schema.csv <span class="sc">+</span> types.csv, ground truth <span class="cf">for</span> what a SAP is</span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>data<span class="sc">-</span>raw<span class="sc">/</span>sysdata.R           builds R<span class="sc">/</span>sysdata.rda from them</span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>inst<span class="sc">/</span>app<span class="sc">/</span>app.R               the Shiny app<span class="sc">:</span> ui, server, <span class="fu">shinyApp</span>()</span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>inst<span class="sc">/</span>app<span class="sc">/</span>R<span class="sc">/</span>                  sourced by <span class="fu">loadSupport</span>(), alphabetically, before app.R</span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>  analysis_registry.R        analysis template registry and shared input blocks</span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>  analysis_type_<span class="sc">*</span>.R          one parameter template per analysis type</span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>  cohort_kinds.R             cohort type templates</span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>  dynamic_items.R            add<span class="sc">/</span>remove<span class="sc">/</span>duplicate machinery, id minting, pickers</span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>  mod_<span class="sc">*</span>.R                    one Shiny module per section</span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>  problems.R                 <span class="fu">checkSap</span>() problems regrouped by item, plus semantic checks</span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>  sap_code.R                 SAP <span class="ot">-&gt;</span> runnable R</span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a>  sap_study_export.R         SAP <span class="ot">-&gt;</span> a study <span class="fu">directory</span> (scripts and codelist files)</span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a>  utils.R                    small helpers</span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a>inst<span class="sc">/</span>app<span class="sc">/</span>sap_preview.Rmd     SAP <span class="ot">-&gt;</span> HTML<span class="sc">/</span>Word preview</span>
+<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a>inst<span class="sc">/</span>app<span class="sc">/</span>reference.docx      Word <span class="fu">styles</span> (regenerate with data<span class="sc">-</span>raw<span class="sc">/</span>make_reference_docx.R)</span>
+<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a></span>
+<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a>tests<span class="sc">/</span>testthat<span class="sc">/</span>              the package suite<span class="sc">:</span> test<span class="sc">-</span>sap<span class="sc">-</span><span class="er">*</span>.R <span class="cf">for</span> the package,</span>
+<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a>                             test<span class="sc">-</span>app<span class="sc">-</span><span class="er">*</span>.R <span class="cf">for</span> the <span class="fu">app</span> (helper<span class="sc">-</span>app.R sources inst<span class="sc">/</span>app<span class="sc">/</span>R)</span>
+<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a>tests<span class="sc">/</span>testthat<span class="sc">/</span>fixtures<span class="sc">/</span>     sample SAPs <span class="cf">in</span> the package schema</span>
+<span id="cb5-27"><a href="#cb5-27" tabindex="-1"></a>NEWS.md                      package news, then the retired app<span class="sc">-</span>private schema history</span>
+<span id="cb5-28"><a href="#cb5-28" tabindex="-1"></a>scripts<span class="sc">/</span>precheck.sh          every gate CI applies, runnable step by step</span></code></pre></div>
 <p>Each repeating item is a real Shiny module inserted with <code>insertUI</code>, not a re-rendered block, so adding or removing one never resets its siblings.</p>
 </div>
 <div class="section level2">
 <h2 id="tests">Tests<a class="anchor" aria-label="anchor" href="#tests"></a>
 </h2>
-<p>The suite needs <code>testthat</code>, which should be installed along with everything else. From the repo root:</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="ex">Rscript</span> tests/testthat.R</span></code></pre></div>
-<p>One file is <strong>skipped by default</strong>. <code>test-generated-runs.R</code> executes the analyses file the export writes — against real <code>IncidencePrevalence</code>, <code>omopgenerics</code> and <code>duckdb</code> — instead of grepping it. Parsing is not running, and the gap between them is where the expensive mistakes live: a guarded estimate that leaves its variable undefined parses perfectly and then takes <code>bind()</code> down at the data partner. This app does not depend on those packages (it generates text and never calls them), so the file skips wherever they are absent. To actually run it, install them into the project library:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"IncidencePrevalence"</span>, <span class="st">"omopgenerics"</span>, <span class="st">"duckdb"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>That is a deliberate choice, not an oversight — it puts a heavy dependency tree into a Shiny app that has no run-time use for it, in exchange for proving the generated code executes. Worth it on a developer machine or in CI; unnecessary for someone who only wants to write a SAP.</p>
+<p>One suite covers the package and the app. From the repo root:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>or <code>scripts/precheck.sh</code>, which also lints, parses every file, installs the package into a scratch library, smoke-tests <code><a href="reference/shinySap.html">shinySap()</a></code> and renders the preview. The app tests skip where shiny is not installed, and <code>test-app-generated-runs.R</code> – which executes the generated denominator and incidence code against IncidencePrevalence’s mock database rather than grepping it – skips where <code>IncidencePrevalence</code>, <code>CDMConnector</code> or <code>duckdb</code> are absent.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">

@@ -3,6 +3,7 @@
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/LICENSE.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/authors.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/index.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/news/index.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/addAnalysis.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/addCodelist.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/addCohort.html</loc></url>
@@ -20,10 +21,19 @@
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapDataSource.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapDataSourceModification.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapStudy.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/readSap.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/removeSapComponent.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapComponentIds.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapFromJson.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaFields.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaTypes.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaVersion.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaVocabulary.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapToJson.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/shinySap.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/updateSapComponent.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/updateStudy.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/validateSap.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/writeSap.html</loc></url>
 </urlset>
 

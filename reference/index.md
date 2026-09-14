@@ -34,13 +34,31 @@
   : Create a data-source modification component
 - [`newSapStudy()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapStudy.md)
   : Create the study metadata component of a SAP
+- [`readSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/readSap.md)
+  : Read a SAP from a JSON file
 - [`removeSapComponent()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/removeSapComponent.md)
   : Remove a component from a SAP by id
 - [`sapComponentIds()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapComponentIds.md)
   : List the ids in a SAP collection
+- [`sapFromJson()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapFromJson.md)
+  : Read a SAP from JSON
+- [`sapSchemaFields()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaFields.md)
+  : Schema fields for a SAP object
+- [`sapSchemaTypes()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaTypes.md)
+  : Types defined for a SAP object
+- [`sapSchemaVersion()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaVersion.md)
+  : The current SAP schema version
+- [`sapSchemaVocabulary()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaVocabulary.md)
+  : Controlled vocabularies used by SAP fields
+- [`sapToJson()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapToJson.md)
+  : Serialise a SAP to JSON
+- [`shinySap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/shinySap.md)
+  : Launch the SAP authoring app
 - [`updateSapComponent()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/updateSapComponent.md)
   : Replace a component in a SAP, matched by id
 - [`updateStudy()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/updateStudy.md)
   : Replace the study metadata of a SAP
 - [`validateSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/validateSap.md)
   : Validate a SAP, throwing an error when problems are found
+- [`writeSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/writeSap.md)
+  : Write a SAP to a JSON file
