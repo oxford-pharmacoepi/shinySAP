@@ -4,7 +4,7 @@
 \alias{removeSapComponent}
 \title{Remove a component from a SAP by id}
 \usage{
-removeSapComponent(sap, collection, id)
+removeSapComponent(sap, collection, id, validate = TRUE)
 }
 \arguments{
 \item{sap}{A \code{sap} object.}
@@ -12,11 +12,16 @@ removeSapComponent(sap, collection, id)
 \item{collection}{One of the SAP collection names.}
 
 \item{id}{The component id.}
+
+\item{validate}{Whether to validate the whole SAP after the change. An id
+already in use is refused either way.}
 }
 \value{
 The updated \code{sap} object.
 }
 \description{
-Removal is refused (with a \code{missing_reference} validation error) while any
-other component still references the id.
+With \code{validate = TRUE} removal is refused (with a \code{missing_reference}
+validation error) while any other component still references the id. With
+\code{validate = FALSE} the component is removed and \code{\link[=checkSap]{checkSap()}} reports the
+dangling reference.
 }

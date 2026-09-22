@@ -4,12 +4,15 @@
 \alias{writeSap}
 \title{Write a SAP to a JSON file}
 \usage{
-writeSap(sap, path)
+writeSap(sap, path, stamp = TRUE)
 }
 \arguments{
 \item{sap}{A \code{sap} object or a named list in SAP shape.}
 
 \item{path}{File to write; its directory is created if needed.}
+
+\item{stamp}{Whether to set \code{generated_at} to now in the output. \code{FALSE}
+keeps the value the object carries.}
 }
 \value{
 The path, invisibly.

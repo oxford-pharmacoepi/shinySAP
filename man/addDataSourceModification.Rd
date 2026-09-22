@@ -4,12 +4,15 @@
 \alias{addDataSourceModification}
 \title{Add a data-source modification to a SAP}
 \usage{
-addDataSourceModification(sap, dataSourceModification)
+addDataSourceModification(sap, dataSourceModification, validate = TRUE)
 }
 \arguments{
 \item{sap}{A \code{sap} object.}
 
 \item{dataSourceModification}{A \code{sap_data_source_modification} object.}
+
+\item{validate}{Whether to validate the whole SAP after the change. An id
+already in use is refused either way.}
 }
 \value{
 The updated \code{sap} object.

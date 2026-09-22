@@ -3,8 +3,7 @@
 # What the study does to a database before analysis, typed by the schema
 # (data_source_modification types, each with its own parameters). The type
 # registry is inline: with one type today it is not worth a file per type, but
-# the ui/collect/flatten shape is the same as the cohort and analysis registries,
-# so a second type is one more entry here.
+# the ui/collect/flatten shape is the same as the cohort and analysis registries.
 
 MODIFICATION_TEMPLATES <- list(
   trim_observation_period = list(
@@ -60,13 +59,14 @@ modification_item_ui <- function(id, prefill = NULL) {
   )
 }
 
-modification_item_server <- function(id, prefill = NULL, on_remove = function() {},
+modification_item_server <- function(id, sap_id, prefill = NULL, on_remove = function() {},
+                                     write = function(component) {},
                                      source_choices = shiny::reactive(character(0))) {
   shiny::moduleServer(id, function(input, output, session) {
     shiny::observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
     ns <- session$ns
     base_pf <- prefiller(prefill)
-    sap_id <- prefill$id
+    read <- card_reader(input, prefill)
 
     item_card_label(output, shiny::reactive({
       nm <- trimws(input$name %||% "")
@@ -96,14 +96,15 @@ modification_item_server <- function(id, prefill = NULL, on_remove = function() 
 
     sync_pickers(session, "data_source_id", source_choices, base_pf)
 
-    shiny::reactive({
+    shiny::observe({
       type <- type_r()
-      compact(list(
-        id             = sap_id,
-        name           = chr_or_null(input$name),
-        type           = chr_or_null(type),
-        data_source_id = if (length(chr_vec(input$data_source_id))) chr_vec(input$data_source_id) else NULL,
-        parameters     = if (nzchar(type)) modification_template(type)$collect(input) else list()
+      write(shinySAP::newSapDataSourceModification(
+        sap_id,
+        name         = chr_or_null(read("name")),
+        type         = chr_or_null(type),
+        dataSourceId = chr_vec(read("data_source_id")),
+        parameters   = card_parameters(input, type, modification_template(type), prefill),
+        validate     = FALSE
       ))
     })
   })
@@ -134,26 +135,33 @@ data_source_modifications_ui <- function(id) {
   )
 }
 
-data_source_modifications_server <- function(id, source_choices = shiny::reactive(character(0))) {
+data_source_modifications_server <- function(id, sap, source_choices = shiny::reactive(character(0))) {
   shiny::moduleServer(id, function(input, output, session) {
-    settled_sources <- shiny::debounce(source_choices, 600)
-    item_server <- function(iid, prefill, on_remove) {
-      modification_item_server(iid, prefill, on_remove, settled_sources)
+    settled_sources <- shiny::debounce(shiny::reactive(source_choices()), 600)
+    coll <- sap_collection(
+      sap, "data_source_modifications",
+      new_component = function(id) shinySAP::newSapDataSourceModification(id, validate = FALSE),
+      copy = function(source, id) shinySAP::newSapDataSourceModification(
+        id, name = copy_name(source$name), type = source$type, dataSourceId = source$data_source_id,
+        parameters = source$parameters, validate = FALSE),
+      to_prefill = modification_to_prefill
+    )
+    item_server <- function(iid, sap_id, prefill, on_remove) {
+      modification_item_server(iid, sap_id, prefill, on_remove,
+                               write = function(component) if (items$is_live(iid, sap_id)) coll$write(component),
+                               source_choices = settled_sources)
     }
     items <- dynamic_items("modification", "items", modification_item_ui, item_server,
-                           to_prefill = modification_to_prefill,
-                           noun = "Modification", id_prefix = "mod")
+                           ids = coll$ids, prefill_of = coll$prefill_of, noun = "Modification",
+                           on_remove = coll$remove,
+                           on_duplicate = function(id) items$reveal(coll$duplicate(id)),
+                           on_undo = coll$undo)
 
-    shiny::observeEvent(input$add, items$add(reveal = TRUE))
+    shiny::observeEvent(input$add, items$reveal(coll$add()))
 
     output$n <- shiny::renderText(items$count())
     shiny::outputOptions(output, "n", suspendWhenHidden = FALSE)
 
-    load <- function(modifications) {
-      items$clear()
-      for (m in modifications) items$add(modification_to_prefill(m))
-    }
-
-    list(data = items$data, load = load)
+    list(reset = items$reset)
   })
 }

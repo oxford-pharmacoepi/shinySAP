@@ -4,12 +4,15 @@
 \alias{addAnalysis}
 \title{Add an analysis to a SAP}
 \usage{
-addAnalysis(sap, analysis)
+addAnalysis(sap, analysis, validate = TRUE)
 }
 \arguments{
 \item{sap}{A \code{sap} object.}
 
 \item{analysis}{A \code{sap_analysis} object.}
+
+\item{validate}{Whether to validate the whole SAP after the change. An id
+already in use is refused either way.}
 }
 \value{
 The updated \code{sap} object.

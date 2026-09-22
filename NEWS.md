@@ -8,6 +8,16 @@
   `sapSchemaFields()`, `sapSchemaVocabulary()`.
 * `constructSap()` passed the schema version in the `typeId` slot of
   `schemaFields()`; fixed.
+* Draft mode: every component constructor and CRUD function takes
+  `validate = FALSE`, building the classed object from incomplete input so
+  `checkSap()` can report what is missing. The app populates its SAP only this
+  way. `newSapDataSource()` now accepts a missing `description`, as the schema
+  always allowed.
+* `newSapId()` mints the next `<prefix>_<n>` id for a collection.
+* Components are classed (`sap_cohort`, ...) on every read path, including
+  `readSap()`.
+* `writeSap()` stamps `generated_at` at write time (`stamp = FALSE` keeps the
+  object's value).
 
 # Legacy app JSON schema history (0.2.0 - 0.4.30)
 

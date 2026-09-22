@@ -4,12 +4,15 @@
 \alias{addCohort}
 \title{Add a cohort to a SAP}
 \usage{
-addCohort(sap, cohort)
+addCohort(sap, cohort, validate = TRUE)
 }
 \arguments{
 \item{sap}{A \code{sap} object.}
 
 \item{cohort}{A \code{sap_cohort} object.}
+
+\item{validate}{Whether to validate the whole SAP after the change. An id
+already in use is refused either way.}
 }
 \value{
 The updated \code{sap} object.

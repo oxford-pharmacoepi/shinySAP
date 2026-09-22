@@ -27,10 +27,13 @@
 #'
 #' @param sap A `sap` object or a named list in SAP shape.
 #' @param pretty Whether to indent the output.
+#' @param stamp Whether to set `generated_at` to now in the output. `FALSE`
+#'   keeps the value the object carries.
 #' @return A JSON string (class `json`).
 #' @export
-sapToJson <- function(sap, pretty = TRUE) {
+sapToJson <- function(sap, pretty = TRUE, stamp = FALSE) {
   omopgenerics::assertList(sap, named = TRUE, nm = "sap")
+  if (isTRUE(stamp)) sap$generated_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
   version <- as.character(sap$sap_schema_version %||% currentSapSchemaVersion())
   if (is.null(sapSchema[[version]])) {
     cli::cli_abort(c(x = paste0("Unknown SAP schema version: ", version, ".")))
@@ -47,10 +50,10 @@ sapToJson <- function(sap, pretty = TRUE) {
 #' @param path File to write; its directory is created if needed.
 #' @return The path, invisibly.
 #' @export
-writeSap <- function(sap, path) {
+writeSap <- function(sap, path, stamp = TRUE) {
   omopgenerics::assertCharacter(path, length = 1, na = FALSE, nm = "path")
   dir.create(dirname(path), showWarnings = FALSE, recursive = TRUE)
-  writeLines(sapToJson(sap), path, useBytes = TRUE)
+  writeLines(sapToJson(sap, stamp = stamp), path, useBytes = TRUE)
   invisible(path)
 }
 

@@ -4,12 +4,15 @@
 \alias{addSapComponent}
 \title{Add a component to a SAP}
 \usage{
-addSapComponent(sap, component)
+addSapComponent(sap, component, validate = TRUE)
 }
 \arguments{
 \item{sap}{A \code{sap} object.}
 
 \item{component}{A \verb{sap_*} component object.}
+
+\item{validate}{Whether to validate the whole SAP after the change. An id
+already in use is refused either way.}
 }
 \value{
 The updated \code{sap} object.

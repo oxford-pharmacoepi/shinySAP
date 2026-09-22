@@ -1,7 +1,8 @@
 # Section: Analyses ------------------------------------------------------------
 #
 # The card is in two halves: the common fields (id, name, data sources, type)
-# and a parameter block rendered from the registry in analysis_registry.R.
+# and a parameter block rendered from the registry in analysis_registry.R. Every
+# edit writes a draft shinySAP::newSapAnalysis() back through the section's CRUD.
 
 analysis_item_ui <- function(id, prefill = NULL) {
   ns <- shiny::NS(id)
@@ -25,7 +26,8 @@ analysis_item_ui <- function(id, prefill = NULL) {
   )
 }
 
-analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
+analysis_item_server <- function(id, sap_id, prefill = NULL, on_remove = function() {},
+                                 write = function(component) {},
                                  cohort_choices = shiny::reactive(list()),
                                  source_choices = shiny::reactive(character(0)),
                                  cohort_index = shiny::reactive(list())) {
@@ -34,7 +36,7 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
 
     ns      <- session$ns
     base_pf <- prefiller(prefill)
-    sap_id  <- prefill$id
+    read    <- card_reader(input, prefill)
 
     item_card_label(output, shiny::reactive({
       nm   <- trimws(input$name %||% "")
@@ -44,11 +46,6 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
              " -- ", sap_id)
     }))
 
-    # Shiny keeps an input's last reported value after its node leaves the DOM,
-    # so a block rebuilt after a type switch reads back what was typed into it.
-    # NULL means never rendered -> the saved file. A length-1 NA means the user
-    # cleared a numeric, and must stay cleared. Pickers are excluded:
-    # sync_pickers() owns those.
     live_pf <- function(key, default = NULL) {
       v <- shiny::isolate(input[[key]])
       if (is.null(v)) return(base_pf(key, default))
@@ -58,8 +55,6 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
 
     type_r <- shiny::reactive(as.character(input$type %||% base_pf("type") %||% ""))
 
-    # Only the type may invalidate this; anything else would rebuild the block
-    # mid-edit and steal focus.
     output$type_fields <- shiny::renderUI({
       type <- type_r()
       if (!nzchar(type)) {
@@ -72,17 +67,12 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
         tmpl$ui(ns, live_pf)
       )
     })
-    # Load-bearing: the tab is hidden until selected, and a hidden output does
-    # not render, so without this a loaded SAP would save every analysis with
-    # empty parameters.
     shiny::outputOptions(output, "type_fields", suspendWhenHidden = FALSE)
 
     sync_pickers(session, function() analysis_template(type_r())$pickers$cohorts %||% character(0),
                  cohort_choices, base_pf)
     sync_pickers(session, "data_source_id", source_choices, base_pf)
 
-    # Which input names the denominator differs by template (the registry's
-    # `denominator` slot); NULL for estimators without one.
     denominator_pick <- function() {
       key <- analysis_template(type_r())$denominator
       if (is.null(key)) NULL else input[[key]]
@@ -108,24 +98,21 @@ analysis_item_server <- function(id, prefill = NULL, on_remove = function() {},
       denominator_summary(denominator_cohort(), picked = denominator_pick())
     })
 
-    shiny::reactive({
+    shiny::observe({
       type <- type_r()
-      sources <- chr_vec(input$data_source_id)
-      compact(list(
-        id             = sap_id,
-        name           = chr_or_null(input$name),
-        data_source_id = vec_or_null(sources),
-        type           = chr_or_null(type),
-        # collect() reads only its own template's input ids, so values stranded
-        # by a previously selected template never reach the SAP.
-        parameters     = if (nzchar(type)) analysis_template(type)$collect(input) else list()
+      write(shinySAP::newSapAnalysis(
+        sap_id,
+        name         = chr_or_null(read("name")),
+        dataSourceId = chr_vec(read("data_source_id")),
+        type         = chr_or_null(type),
+        parameters   = card_parameters(input, type, analysis_template(type), prefill),
+        validate     = FALSE
       ))
     })
   })
 }
 
-# One saved (or live) analysis -> the prefill its card is rebuilt from. Shared by
-# load() and the Duplicate button, so the two can never drift.
+# One saved (or live) analysis -> the prefill its card is rebuilt from.
 analysis_to_prefill <- function(a) {
   c(a[intersect(ANALYSIS_COMMON_FIELDS, names(a))],
     analysis_template(a$type)$flatten(a$parameters %||% list()))
@@ -154,31 +141,42 @@ analyses_ui <- function(id) {
   )
 }
 
-analyses_server <- function(id, cohort_choices = shiny::reactive(list()),
+# `cohort_choices` are the grouped picker choices; `cohort_index` is id -> the
+# whole cohort component, for the denominator summary and strata columns.
+analyses_server <- function(id, sap,
+                            cohort_choices = shiny::reactive(list()),
                             cohort_index = shiny::reactive(list()),
                             source_choices = shiny::reactive(character(0))) {
   shiny::moduleServer(id, function(input, output, session) {
-    settled_sources <- shiny::debounce(source_choices, 600)
+    settled_sources <- shiny::debounce(shiny::reactive(source_choices()), 600)
+    settled_choices <- shiny::debounce(shiny::reactive(cohort_choices()), 600)
 
-    item_server <- function(iid, prefill, on_remove) {
-      analysis_item_server(iid, prefill, on_remove,
-                           cohort_choices = cohort_choices,
+    coll <- sap_collection(
+      sap, "analyses",
+      new_component = function(id) shinySAP::newSapAnalysis(id, validate = FALSE),
+      copy = function(source, id) shinySAP::newSapAnalysis(
+        id, name = copy_name(source$name), dataSourceId = source$data_source_id,
+        type = source$type, parameters = source$parameters, validate = FALSE),
+      to_prefill = analysis_to_prefill
+    )
+    item_server <- function(iid, sap_id, prefill, on_remove) {
+      analysis_item_server(iid, sap_id, prefill, on_remove,
+                           write = function(component) if (items$is_live(iid, sap_id)) coll$write(component),
+                           cohort_choices = settled_choices,
                            source_choices = settled_sources,
                            cohort_index = cohort_index)
     }
     items <- dynamic_items("analysis", "items", analysis_item_ui, item_server,
-                           to_prefill = analysis_to_prefill, noun = "Analysis", id_prefix = "an")
+                           ids = coll$ids, prefill_of = coll$prefill_of, noun = "Analysis",
+                           on_remove = coll$remove,
+                           on_duplicate = function(id) items$reveal(coll$duplicate(id)),
+                           on_undo = coll$undo)
 
-    shiny::observeEvent(input$add, items$add(reveal = TRUE))
+    shiny::observeEvent(input$add, items$reveal(coll$add()))
 
     output$n <- shiny::renderText(items$count())
     shiny::outputOptions(output, "n", suspendWhenHidden = FALSE)
 
-    load <- function(analyses) {
-      items$clear()
-      for (a in analyses) items$add(analysis_to_prefill(a))
-    }
-
-    list(data = items$data, load = load)
+    list(reset = items$reset)
   })
 }

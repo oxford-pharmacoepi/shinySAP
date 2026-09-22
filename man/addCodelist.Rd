@@ -4,12 +4,15 @@
 \alias{addCodelist}
 \title{Add a codelist to a SAP}
 \usage{
-addCodelist(sap, codelist)
+addCodelist(sap, codelist, validate = TRUE)
 }
 \arguments{
 \item{sap}{A \code{sap} object.}
 
 \item{codelist}{A \code{sap_codelist} object.}
+
+\item{validate}{Whether to validate the whole SAP after the change. An id
+already in use is refused either way.}
 }
 \value{
 The updated \code{sap} object.

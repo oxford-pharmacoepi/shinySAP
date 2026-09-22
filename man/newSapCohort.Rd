@@ -4,7 +4,14 @@
 \alias{newSapCohort}
 \title{Create a SAP cohort component}
 \usage{
-newSapCohort(id, name, dataSourceId, type, parameters = list())
+newSapCohort(
+  id,
+  name = NULL,
+  dataSourceId = character(),
+  type = NULL,
+  parameters = list(),
+  validate = TRUE
+)
 }
 \arguments{
 \item{id}{Immutable cohort identifier.}
@@ -16,6 +23,9 @@ newSapCohort(id, name, dataSourceId, type, parameters = list())
 \item{type}{Cohort type.}
 
 \item{parameters}{Type-specific cohort parameters.}
+
+\item{validate}{Whether to require a complete study. With \code{FALSE} a draft is
+built from whatever is given and \code{\link[=checkSap]{checkSap()}} reports what is missing.}
 }
 \value{
 An object of class \code{sap_cohort}.

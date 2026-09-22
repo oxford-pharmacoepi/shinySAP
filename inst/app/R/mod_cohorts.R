@@ -2,8 +2,10 @@
 #
 # A cohort card is in two halves: the common fields (id, name, data sources,
 # type) and a parameter block that depends on the type -- see cohort_kinds.R for
-# the registry and what each type carries. References between cards are by id,
-# so renaming a cohort changes only its label in every picker.
+# the registry and what each type carries. Every edit writes a draft
+# shinySAP::newSapCohort() back into the SAP through the section's CRUD.
+# References between cards are by id, so renaming a cohort changes only its
+# label in every picker.
 
 cohort_item_ui <- function(id, prefill = NULL) {
   ns <- shiny::NS(id)
@@ -27,7 +29,8 @@ cohort_item_ui <- function(id, prefill = NULL) {
   )
 }
 
-cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
+cohort_item_server <- function(id, sap_id, prefill = NULL, on_remove = function() {},
+                               write = function(component) {},
                                source_choices = shiny::reactive(character(0)),
                                codelist_choices = shiny::reactive(character(0)),
                                cohort_index = shiny::reactive(list())) {
@@ -36,7 +39,7 @@ cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
 
     ns      <- session$ns
     base_pf <- prefiller(prefill)
-    sap_id  <- prefill$id
+    read    <- card_reader(input, prefill)
 
     item_card_label(output, shiny::reactive({
       nm   <- trimws(input$name %||% "")
@@ -75,8 +78,7 @@ cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
       )
     })
     # The tab is a hidden tab-pane until selected, and a hidden output does not
-    # render -- without this a loaded SAP would leave every block unbuilt and
-    # every cohort would save with empty parameters.
+    # render -- without this a loaded SAP would leave every block unbuilt.
     shiny::outputOptions(output, "type_fields", suspendWhenHidden = FALSE)
 
     # The live preview of the set a denominator generates. It renders no inputs,
@@ -101,17 +103,18 @@ cohort_item_server <- function(id, prefill = NULL, on_remove = function() {},
                  codelist_choices, base_pf)
     sync_pickers(session, "data_source_id", source_choices, base_pf)
 
-    shiny::reactive({
+    # The card as a draft component, written on every edit. collect() reads only
+    # its own type's input ids, so values stranded by a previously selected type
+    # never reach the SAP.
+    shiny::observe({
       type <- type_r()
-      sources <- chr_vec(input$data_source_id)
-      compact(list(
-        id             = sap_id,
-        name           = chr_or_null(input$name),
-        data_source_id = if (length(sources)) sources else NULL,
-        type           = chr_or_null(type),
-        # collect() reads only its own type's input ids, so values stranded by
-        # a previously selected type never reach the SAP.
-        parameters     = if (nzchar(type)) cohort_template(type)$collect(input) else list()
+      write(shinySAP::newSapCohort(
+        sap_id,
+        name         = chr_or_null(read("name")),
+        dataSourceId = chr_vec(read("data_source_id")),
+        type         = chr_or_null(type),
+        parameters   = card_parameters(input, type, cohort_template(type), prefill),
+        validate     = FALSE
       ))
     })
   })
@@ -140,56 +143,43 @@ cohorts_ui <- function(id) {
   )
 }
 
-cohorts_server <- function(id, source_choices = shiny::reactive(character(0)),
-                           codelist_choices = shiny::reactive(character(0))) {
+# `cohort_index` is the app-level view id -> list(name, type) that feeds the
+# cohort pickers (a target denominator names another cohort).
+cohorts_server <- function(id, sap,
+                           source_choices = shiny::reactive(character(0)),
+                           codelist_choices = shiny::reactive(character(0)),
+                           cohort_index = shiny::reactive(list())) {
   shiny::moduleServer(id, function(input, output, session) {
+    settled_sources   <- shiny::debounce(shiny::reactive(source_choices()), 600)
+    settled_codelists <- shiny::debounce(shiny::reactive(codelist_choices()), 600)
+    settled_index     <- shiny::debounce(shiny::reactive(cohort_index()), 600)
 
-    # The target-cohort picker on a cohort card is fed by the cohort list, which
-    # is derived from the cards -- a cycle. A reactiveVal holding only what the
-    # pickers need (id -> name, type) invalidates only when a name or type
-    # changes, so editing an age group does not re-trigger every picker.
-    index_v <- shiny::reactiveVal(list())
-    settled_index <- shiny::debounce(shiny::reactive(index_v()), 600)
-    settled_sources <- shiny::debounce(source_choices, 600)
-    settled_codelists <- shiny::debounce(codelist_choices, 600)
-
-    item_server <- function(iid, prefill, on_remove) {
-      cohort_item_server(iid, prefill, on_remove,
+    coll <- sap_collection(
+      sap, "cohorts",
+      new_component = function(id) shinySAP::newSapCohort(id, validate = FALSE),
+      copy = function(source, id) shinySAP::newSapCohort(
+        id, name = copy_name(source$name), dataSourceId = source$data_source_id,
+        type = source$type, parameters = source$parameters, validate = FALSE),
+      to_prefill = cohort_to_prefill
+    )
+    item_server <- function(iid, sap_id, prefill, on_remove) {
+      cohort_item_server(iid, sap_id, prefill, on_remove,
+                         write = function(component) if (items$is_live(iid, sap_id)) coll$write(component),
                          source_choices = settled_sources,
                          codelist_choices = settled_codelists,
                          cohort_index = settled_index)
     }
     items <- dynamic_items("cohort", "items", cohort_item_ui, item_server,
-                           to_prefill = cohort_to_prefill, noun = "Cohort", id_prefix = "coh")
+                           ids = coll$ids, prefill_of = coll$prefill_of, noun = "Cohort",
+                           on_remove = coll$remove,
+                           on_duplicate = function(id) items$reveal(coll$duplicate(id)),
+                           on_undo = coll$undo)
 
-    shiny::observeEvent(input$add, items$add(reveal = TRUE))
+    shiny::observeEvent(input$add, items$reveal(coll$add()))
 
     output$n <- shiny::renderText(items$count())
     shiny::outputOptions(output, "n", suspendWhenHidden = FALSE)
 
-    data_r <- shiny::reactive(items$data())
-
-    shiny::observe({
-      d <- data_r()
-      idx <- stats::setNames(
-        lapply(d, function(x) list(name = x$name, type = x$type)),
-        vapply(d, function(x) as.character(x$id), character(1)))
-      if (!identical(idx, shiny::isolate(index_v()))) index_v(idx)
-    })
-
-    load <- function(cohorts) {
-      items$clear()
-      for (ch in cohorts) items$add(cohort_to_prefill(ch))
-    }
-
-    # Feeds the cohort pickers on the Analyses tab (grouped by type) and the
-    # denominator summaries there (the whole cohort, keyed by id).
-    choices_r <- shiny::reactive(grouped_cohort_choices(settled_index()))
-    by_id_r <- shiny::reactive({
-      d <- data_r()
-      stats::setNames(d, vapply(d, function(x) as.character(x$id), character(1)))
-    })
-
-    list(data = data_r, load = load, choices = choices_r, by_id = by_id_r)
+    list(reset = items$reset)
   })
 }

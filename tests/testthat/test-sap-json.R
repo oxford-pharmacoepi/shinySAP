@@ -126,10 +126,14 @@ test_that("a file from the retired app schema is refused by version", {
 test_that("writeSap and readSap round-trip through a file", {
   path <- file.path(withr::local_tempdir(), "nested", "sap.json")
   sap <- fullSap()
+  sap$generated_at <- "2020-01-01T00:00:00+0000"
   expect_identical(writeSap(sap, path), path)
   expect_true(file.exists(path))
   back <- readSap(path)
+  expect_false(identical(back$generated_at, sap$generated_at))   # writeSap() stamps the file
+  back$generated_at <- sap$generated_at
   expect_identical(as.character(sapToJson(back)), as.character(sapToJson(sap)))
+  expect_identical(readSap(writeSap(sap, path, stamp = FALSE))$generated_at, sap$generated_at)
   expect_error(readSap(file.path(tempdir(), "nope.json")), "not found")
 })
 
