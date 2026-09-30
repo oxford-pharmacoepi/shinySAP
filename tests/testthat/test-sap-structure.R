@@ -122,31 +122,57 @@ test_that("interval and time point values are checked against their vocabularies
   bad$analyses[[1]]$parameters$interval <- c("years", "months")
   expect_true("invalid_value_type" %in% codes(bad))
 
-  expect_error(incidence(list(interval = "decades")), "choice between")
+  expect_error(incidence(list(interval = "decades")), "must be one of")
 })
 
 test_that("only incidence may be estimated over the overall interval", {
-  expect_silent(validateParameterValue("overall", "time_interval", "interval", "incidence"))
-  expect_error(
-    validateParameterValue("overall", "time_interval", "interval", "point_prevalence"),
-    "choice between"
-  )
-  expect_silent(validateParameterValue("years", "time_interval", "interval", "point_prevalence"))
+  expect_length(checkValue("overall", "time_interval", "interval", "incidence"), 0)
+  problems <- checkValue("overall", "time_interval", "interval", "point_prevalence")
+  expect_equal(purrr::map_chr(problems, "code"), "invalid_value")
+  expect_length(checkValue("years", "time_interval", "interval", "point_prevalence"), 0)
 })
 
 test_that("a time point is one of start, middle or end", {
   purrr::walk(c("start", "middle", "end"), function(value) {
-    expect_silent(validateParameterValue(value, "time_point", "time_point"))
+    expect_length(checkValue(value, "time_point", "time_point"), 0)
   })
-  expect_error(validateParameterValue("midpoint", "time_point", "time_point"), "choice between")
+  problems <- checkValue("midpoint", "time_point", "time_point")
+  expect_equal(purrr::map_chr(problems, "code"), "invalid_value")
 })
 
 test_that("an estimation level is one of person or record", {
   purrr::walk(c("person", "record"), function(value) {
-    expect_silent(validateParameterValue(value, "level", "level"))
+    expect_length(checkValue(value, "level", "level"), 0)
   })
-  expect_error(validateParameterValue("episode", "level", "level"), "choice between")
-  expect_error(validateParameterValue(c("person", "record"), "level", "level"), "choice between")
+  expect_equal(
+    purrr::map_chr(checkValue("episode", "level", "level"), "code"),
+    "invalid_value"
+  )
+  expect_equal(
+    purrr::map_chr(checkValue(c("person", "record"), "level", "level"), "code"),
+    "invalid_value_type"
+  )
+})
+
+test_that("validateParameters throws on exactly what checkParameters reports", {
+  cases <- list(
+    list(washout = "abc"),
+    list(interval = "overall"),
+    list(strata = list(1, 2)),
+    list(bogus = TRUE),
+    list()
+  )
+  purrr::walk(cases, function(parameters) {
+    problems <- checkParameters(parameters, "analysis", "point_prevalence", "")
+    expect_gt(length(problems), 0)
+    expect_error(
+      validateParameters(parameters, "analysis", "point_prevalence"),
+      problems[[1]]$code, fixed = TRUE
+    )
+  })
+  ok <- list(denominator_cohort_id = "coh_001", interval = "years")
+  expect_length(checkParameters(ok, "analysis", "point_prevalence", ""), 0)
+  expect_identical(validateParameters(ok, "analysis", "point_prevalence"), ok)
 })
 
 test_that("reference checks follow the schema's ref column", {

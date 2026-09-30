@@ -204,9 +204,9 @@ newSapCodelist <- function(id, name, type, content) {
 #' @return An object of class `sap_cohort`.
 #' @export
 newSapCohort <- function(id,
-                         name,
-                         dataSourceId,
-                         type,
+                         name = NULL,
+                         dataSourceId = NULL,
+                         type = NULL,
                          parameters = list()) {
   omopgenerics::assertCharacter(
     id, length = 1, na = FALSE, null = FALSE, empty = FALSE,
