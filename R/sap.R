@@ -235,21 +235,23 @@ newSapCodelist <- function(id, name = NULL, type = NULL, content = NULL, validat
 #' @export
 newSapCohort <- function(id,
                          name = NULL,
-                         dataSourceId = character(),
+                         dataSourceId = NULL,
                          type = NULL,
-                         parameters = list(),
-                         validate = TRUE) {
-  assertId(id)
-  omopgenerics::assertList(parameters, named = TRUE, nm = "parameters")
-  if (isTRUE(validate)) {
-    assertId(name, "name")
-    omopgenerics::assertCharacter(dataSourceId, na = FALSE, nm = "dataSourceId")
-    omopgenerics::assertChoice(
-      type, schemaTypes("cohort"), length = 1,
-      na = FALSE, null = FALSE, empty = FALSE, nm = "type"
-    )
-    parameters <- validateParameters(parameters, "cohort", type)
-  }
+                         parameters = list()) {
+  omopgenerics::assertCharacter(
+    id, length = 1, na = FALSE, null = FALSE, empty = FALSE,
+    minNumCharacter = 1, nm = "id"
+  )
+  omopgenerics::assertCharacter(
+    name, length = 1, na = FALSE, null = FALSE, empty = FALSE,
+    minNumCharacter = 1, nm = "name"
+  )
+  omopgenerics::assertCharacter(dataSourceId, na = FALSE, nm = "dataSourceId")
+  omopgenerics::assertChoice(
+    type, schemaTypes("cohort"), length = 1,
+    na = FALSE, null = FALSE, empty = FALSE, nm = "type"
+  )
+  parameters <- validateParameters(parameters, "cohort", type)
   structure(
     list(
       id = id,
