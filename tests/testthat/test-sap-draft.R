@@ -35,7 +35,7 @@ test_that("validate = TRUE still enforces the contract", {
   expect_error(newSapCohort("coh_1"), "name")
   expect_error(newSapCohort("coh_1", "Diabetes", "ds_1", "not_a_type"), "choice")
   expect_error(newSapCohort("coh_1", "Diabetes", "ds_1", "concept_cohort", list(codelist_id = "cl_1")),
-               "Missing required parameter")
+               "missing_required_parameter")
   expect_error(newSapStudy(), "studyId")
   expect_error(newSapCodelist("cl_1", "x", "codelist"), "content")
   # description is optional in the schema, so a data source without one is valid.
