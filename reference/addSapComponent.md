@@ -5,7 +5,7 @@ Add a component to a SAP
 ## Usage
 
 ``` r
-addSapComponent(sap, component)
+addSapComponent(sap, component, validate = TRUE)
 ```
 
 ## Arguments
@@ -17,6 +17,11 @@ addSapComponent(sap, component)
 - component:
 
   A `sap_*` component object.
+
+- validate:
+
+  Whether to validate the whole SAP after the change. An id already in
+  use is refused either way.
 
 ## Value
 

@@ -5,7 +5,7 @@ Replace the study metadata of a SAP
 ## Usage
 
 ``` r
-updateStudy(sap, study)
+updateStudy(sap, study, validate = TRUE)
 ```
 
 ## Arguments
@@ -17,6 +17,11 @@ updateStudy(sap, study)
 - study:
 
   A `sap_study` object.
+
+- validate:
+
+  Whether to validate the whole SAP after the change. An id already in
+  use is refused either way.
 
 ## Value
 

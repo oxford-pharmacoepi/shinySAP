@@ -140,72 +140,81 @@
 <span><span class="fu"><a href="reference/checkSap.html">checkSap</a></span><span class="op">(</span><span class="va">sap</span><span class="op">)</span>             <span class="co"># list() -- no problems</span></span>
 <span><span class="fu"><a href="reference/writeSap.html">writeSap</a></span><span class="op">(</span><span class="va">sap</span>, <span class="st">"sap.json"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/readSap.html">readSap</a></span><span class="op">(</span><span class="st">"sap.json"</span><span class="op">)</span></span></code></pre></div>
-<p>The constructors validate each component as it is built; <code><a href="reference/createSap.html">createSap()</a></code> and every CRUD function (<code><a href="reference/addCohort.html">addCohort()</a></code>, <code><a href="reference/updateSapComponent.html">updateSapComponent()</a></code>, <code><a href="reference/removeSapComponent.html">removeSapComponent()</a></code>, …) re-validate the whole document, so a reference to an id nothing defines, or a removal of something still referenced, is refused. <code>newSap(x, validate = FALSE)</code> builds a work-in-progress SAP without aborting, and <code><a href="reference/checkSap.html">checkSap()</a></code> returns its problems as a list of <code>{path, code, message}</code> – which is how the app works: it keeps an unvalidated <code>sap</code> object and shows <code><a href="reference/checkSap.html">checkSap()</a></code>’s findings on Review.</p>
+<p>The constructors validate each component as it is built; <code><a href="reference/createSap.html">createSap()</a></code> and every CRUD function (<code><a href="reference/addSapComponent.html">addSapComponent()</a></code>, <code><a href="reference/updateSapComponent.html">updateSapComponent()</a></code>, <code><a href="reference/removeSapComponent.html">removeSapComponent()</a></code>, …) re-validate the whole document, so a reference to an id nothing defines, or a removal of something still referenced, is refused.</p>
+<p>Every constructor and CRUD function also takes <code>validate = FALSE</code>, which builds a <strong>draft</strong>: the classed component or document from whatever is given, with a blank name, no type yet or half the parameters, and nothing asserted beyond the id. <code><a href="reference/checkSap.html">checkSap()</a></code> then returns the problems as a list of <code>{path, code, message}</code>. That is exactly how the app works. It holds one <code>sap</code> object, created as <code>createSap(newSapStudy(validate = FALSE), validate = FALSE)</code>, mints every id with <code><a href="reference/newSapId.html">newSapId()</a></code>, and changes the object only through the package:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">sap</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/addSapComponent.html">addSapComponent</a></span><span class="op">(</span><span class="va">sap</span>, <span class="fu"><a href="reference/newSapCohort.html">newSapCohort</a></span><span class="op">(</span><span class="fu"><a href="reference/newSapId.html">newSapId</a></span><span class="op">(</span><span class="va">sap</span>, <span class="st">"cohorts"</span><span class="op">)</span>, validate <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>, validate <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">sap</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/updateSapComponent.html">updateSapComponent</a></span><span class="op">(</span><span class="va">sap</span>, <span class="fu"><a href="reference/newSapCohort.html">newSapCohort</a></span><span class="op">(</span><span class="st">"coh_1"</span>, <span class="st">"Diabetes"</span>, <span class="st">"ds_1"</span>, <span class="st">"concept_cohort"</span>,</span>
+<span>                                            <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>codelist_id <span class="op">=</span> <span class="st">"cl_1"</span><span class="op">)</span>, validate <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>,</span>
+<span>                          validate <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">sap</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/removeSapComponent.html">removeSapComponent</a></span><span class="op">(</span><span class="va">sap</span>, <span class="st">"cohorts"</span>, <span class="st">"coh_1"</span>, validate <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/checkSap.html">checkSap</a></span><span class="op">(</span><span class="va">sap</span><span class="op">)</span>   <span class="co"># what is still missing, shown on the Review tab</span></span></code></pre></div>
+<p>The app never assembles a list of its own; every card is a draft component from its constructor, written back with <code><a href="reference/updateSapComponent.html">updateSapComponent()</a></code> on each edit.</p>
 </div>
 <div class="section level2">
 <h2 id="the-file">The file<a class="anchor" aria-label="anchor" href="#the-file"></a>
 </h2>
 <p><code><a href="reference/writeSap.html">writeSap()</a></code> / <code><a href="reference/readSap.html">readSap()</a></code> (and <code><a href="reference/sapToJson.html">sapToJson()</a></code> / <code><a href="reference/sapFromJson.html">sapFromJson()</a></code> for strings) serialise the object by the schema: every key is a schema path and every value is encoded by its value type, so nothing app-specific ever reaches the file.</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="dt">"sap_schema_version"</span><span class="fu">:</span> <span class="st">"0.1.0"</span><span class="fu">,</span></span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="dt">"generated_at"</span><span class="fu">:</span> <span class="st">"2026-09-14T11:13:15+0100"</span><span class="fu">,</span></span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="dt">"study"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>    <span class="dt">"study_id"</span><span class="fu">:</span> <span class="st">"C1-001"</span><span class="fu">,</span></span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>    <span class="dt">"title"</span><span class="fu">:</span> <span class="st">"Prevalence of rare blood cancers"</span><span class="fu">,</span></span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>    <span class="dt">"authors"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Edward Burn"</span><span class="ot">,</span> <span class="st">"Marti Catala"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>    <span class="dt">"version"</span><span class="fu">:</span> <span class="st">"v1.0.0"</span></span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>  <span class="dt">"data_sources"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>    <span class="fu">{</span> <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"ds_1"</span><span class="fu">,</span> <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"CPRD GOLD"</span> <span class="fu">}</span><span class="ot">,</span></span>
-<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>    <span class="fu">{</span> <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"ds_2"</span><span class="fu">,</span> <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"SIDIAP"</span> <span class="fu">}</span></span>
-<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a>  <span class="dt">"data_source_modifications"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span></span>
-<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a>  <span class="dt">"codelists"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a>    <span class="fu">{</span></span>
-<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"cl_1"</span><span class="fu">,</span></span>
-<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Diabetes"</span><span class="fu">,</span></span>
-<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"codelist"</span><span class="fu">,</span></span>
-<span id="cb4-20"><a href="#cb4-20" tabindex="-1"></a>      <span class="dt">"content"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"diabetes"</span><span class="fu">:</span> <span class="ot">[</span><span class="dv">201826</span><span class="ot">,</span> <span class="dv">443238</span><span class="ot">]</span> <span class="fu">}</span></span>
-<span id="cb4-21"><a href="#cb4-21" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb4-22"><a href="#cb4-22" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb4-23"><a href="#cb4-23" tabindex="-1"></a>  <span class="dt">"cohorts"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb4-24"><a href="#cb4-24" tabindex="-1"></a>    <span class="fu">{</span></span>
-<span id="cb4-25"><a href="#cb4-25" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"coh_1"</span><span class="fu">,</span></span>
-<span id="cb4-26"><a href="#cb4-26" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Diabetes"</span><span class="fu">,</span></span>
-<span id="cb4-27"><a href="#cb4-27" tabindex="-1"></a>      <span class="dt">"data_source_id"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"ds_1"</span><span class="ot">,</span> <span class="st">"ds_2"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb4-28"><a href="#cb4-28" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"concept_cohort"</span><span class="fu">,</span></span>
-<span id="cb4-29"><a href="#cb4-29" tabindex="-1"></a>      <span class="dt">"parameters"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"codelist_id"</span><span class="fu">:</span> <span class="st">"cl_1"</span><span class="fu">,</span> <span class="dt">"exit"</span><span class="fu">:</span> <span class="st">"event_end_date"</span><span class="fu">,</span> <span class="dt">"overlap"</span><span class="fu">:</span> <span class="st">"merge"</span> <span class="fu">}</span></span>
-<span id="cb4-30"><a href="#cb4-30" tabindex="-1"></a>    <span class="fu">}</span><span class="ot">,</span></span>
-<span id="cb4-31"><a href="#cb4-31" tabindex="-1"></a>    <span class="fu">{</span></span>
-<span id="cb4-32"><a href="#cb4-32" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"coh_2"</span><span class="fu">,</span></span>
-<span id="cb4-33"><a href="#cb4-33" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"General population"</span><span class="fu">,</span></span>
-<span id="cb4-34"><a href="#cb4-34" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"denominator"</span><span class="fu">,</span></span>
-<span id="cb4-35"><a href="#cb4-35" tabindex="-1"></a>      <span class="dt">"parameters"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb4-36"><a href="#cb4-36" tabindex="-1"></a>        <span class="dt">"age_group"</span><span class="fu">:</span> <span class="ot">[[</span><span class="dv">0</span><span class="ot">,</span> <span class="dv">17</span><span class="ot">],</span> <span class="ot">[</span><span class="dv">18</span><span class="ot">,</span> <span class="dv">150</span><span class="ot">]]</span><span class="fu">,</span></span>
-<span id="cb4-37"><a href="#cb4-37" tabindex="-1"></a>        <span class="dt">"sex"</span><span class="fu">:</span> <span class="st">"Both"</span><span class="fu">,</span></span>
-<span id="cb4-38"><a href="#cb4-38" tabindex="-1"></a>        <span class="dt">"days_prior_observation"</span><span class="fu">:</span> <span class="dv">365</span><span class="fu">,</span></span>
-<span id="cb4-39"><a href="#cb4-39" tabindex="-1"></a>        <span class="dt">"requirement_interactions"</span><span class="fu">:</span> <span class="kw">true</span></span>
-<span id="cb4-40"><a href="#cb4-40" tabindex="-1"></a>      <span class="fu">}</span></span>
-<span id="cb4-41"><a href="#cb4-41" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb4-42"><a href="#cb4-42" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb4-43"><a href="#cb4-43" tabindex="-1"></a>  <span class="dt">"analyses"</span><span class="fu">:</span> <span class="ot">[</span></span>
-<span id="cb4-44"><a href="#cb4-44" tabindex="-1"></a>    <span class="fu">{</span></span>
-<span id="cb4-45"><a href="#cb4-45" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"an_1"</span><span class="fu">,</span></span>
-<span id="cb4-46"><a href="#cb4-46" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Incidence of diabetes"</span><span class="fu">,</span></span>
-<span id="cb4-47"><a href="#cb4-47" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"incidence"</span><span class="fu">,</span></span>
-<span id="cb4-48"><a href="#cb4-48" tabindex="-1"></a>      <span class="dt">"parameters"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb4-49"><a href="#cb4-49" tabindex="-1"></a>        <span class="dt">"denominator_cohort_id"</span><span class="fu">:</span> <span class="st">"coh_2"</span><span class="fu">,</span></span>
-<span id="cb4-50"><a href="#cb4-50" tabindex="-1"></a>        <span class="dt">"outcome_cohort_id"</span><span class="fu">:</span> <span class="st">"coh_1"</span><span class="fu">,</span></span>
-<span id="cb4-51"><a href="#cb4-51" tabindex="-1"></a>        <span class="dt">"interval"</span><span class="fu">:</span> <span class="st">"years"</span><span class="fu">,</span></span>
-<span id="cb4-52"><a href="#cb4-52" tabindex="-1"></a>        <span class="dt">"complete_database_intervals"</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
-<span id="cb4-53"><a href="#cb4-53" tabindex="-1"></a>        <span class="dt">"washout"</span><span class="fu">:</span> <span class="dv">365</span><span class="fu">,</span></span>
-<span id="cb4-54"><a href="#cb4-54" tabindex="-1"></a>        <span class="dt">"repeated_events"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span></span>
-<span id="cb4-55"><a href="#cb4-55" tabindex="-1"></a>        <span class="dt">"strata"</span><span class="fu">:</span> <span class="ot">[[</span><span class="st">"sex"</span><span class="ot">]]</span><span class="fu">,</span></span>
-<span id="cb4-56"><a href="#cb4-56" tabindex="-1"></a>        <span class="dt">"include_overall_strata"</span><span class="fu">:</span> <span class="kw">true</span></span>
-<span id="cb4-57"><a href="#cb4-57" tabindex="-1"></a>      <span class="fu">}</span></span>
-<span id="cb4-58"><a href="#cb4-58" tabindex="-1"></a>    <span class="fu">}</span></span>
-<span id="cb4-59"><a href="#cb4-59" tabindex="-1"></a>  <span class="ot">]</span></span>
-<span id="cb4-60"><a href="#cb4-60" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="dt">"sap_schema_version"</span><span class="fu">:</span> <span class="st">"0.1.0"</span><span class="fu">,</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="dt">"generated_at"</span><span class="fu">:</span> <span class="st">"2026-09-14T11:13:15+0100"</span><span class="fu">,</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>  <span class="dt">"study"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>    <span class="dt">"study_id"</span><span class="fu">:</span> <span class="st">"C1-001"</span><span class="fu">,</span></span>
+<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>    <span class="dt">"title"</span><span class="fu">:</span> <span class="st">"Prevalence of rare blood cancers"</span><span class="fu">,</span></span>
+<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>    <span class="dt">"authors"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Edward Burn"</span><span class="ot">,</span> <span class="st">"Marti Catala"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>    <span class="dt">"version"</span><span class="fu">:</span> <span class="st">"v1.0.0"</span></span>
+<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  <span class="dt">"data_sources"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>    <span class="fu">{</span> <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"ds_1"</span><span class="fu">,</span> <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"CPRD GOLD"</span> <span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>    <span class="fu">{</span> <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"ds_2"</span><span class="fu">,</span> <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"SIDIAP"</span> <span class="fu">}</span></span>
+<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>  <span class="dt">"data_source_modifications"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>  <span class="dt">"codelists"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"cl_1"</span><span class="fu">,</span></span>
+<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Diabetes"</span><span class="fu">,</span></span>
+<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"codelist"</span><span class="fu">,</span></span>
+<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a>      <span class="dt">"content"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"diabetes"</span><span class="fu">:</span> <span class="ot">[</span><span class="dv">201826</span><span class="ot">,</span> <span class="dv">443238</span><span class="ot">]</span> <span class="fu">}</span></span>
+<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a>  <span class="dt">"cohorts"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"coh_1"</span><span class="fu">,</span></span>
+<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Diabetes"</span><span class="fu">,</span></span>
+<span id="cb5-27"><a href="#cb5-27" tabindex="-1"></a>      <span class="dt">"data_source_id"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"ds_1"</span><span class="ot">,</span> <span class="st">"ds_2"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb5-28"><a href="#cb5-28" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"concept_cohort"</span><span class="fu">,</span></span>
+<span id="cb5-29"><a href="#cb5-29" tabindex="-1"></a>      <span class="dt">"parameters"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"codelist_id"</span><span class="fu">:</span> <span class="st">"cl_1"</span><span class="fu">,</span> <span class="dt">"exit"</span><span class="fu">:</span> <span class="st">"event_end_date"</span><span class="fu">,</span> <span class="dt">"overlap"</span><span class="fu">:</span> <span class="st">"merge"</span> <span class="fu">}</span></span>
+<span id="cb5-30"><a href="#cb5-30" tabindex="-1"></a>    <span class="fu">}</span><span class="ot">,</span></span>
+<span id="cb5-31"><a href="#cb5-31" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb5-32"><a href="#cb5-32" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"coh_2"</span><span class="fu">,</span></span>
+<span id="cb5-33"><a href="#cb5-33" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"General population"</span><span class="fu">,</span></span>
+<span id="cb5-34"><a href="#cb5-34" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"denominator"</span><span class="fu">,</span></span>
+<span id="cb5-35"><a href="#cb5-35" tabindex="-1"></a>      <span class="dt">"parameters"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb5-36"><a href="#cb5-36" tabindex="-1"></a>        <span class="dt">"age_group"</span><span class="fu">:</span> <span class="ot">[[</span><span class="dv">0</span><span class="ot">,</span> <span class="dv">17</span><span class="ot">],</span> <span class="ot">[</span><span class="dv">18</span><span class="ot">,</span> <span class="dv">150</span><span class="ot">]]</span><span class="fu">,</span></span>
+<span id="cb5-37"><a href="#cb5-37" tabindex="-1"></a>        <span class="dt">"sex"</span><span class="fu">:</span> <span class="st">"Both"</span><span class="fu">,</span></span>
+<span id="cb5-38"><a href="#cb5-38" tabindex="-1"></a>        <span class="dt">"days_prior_observation"</span><span class="fu">:</span> <span class="dv">365</span><span class="fu">,</span></span>
+<span id="cb5-39"><a href="#cb5-39" tabindex="-1"></a>        <span class="dt">"requirement_interactions"</span><span class="fu">:</span> <span class="kw">true</span></span>
+<span id="cb5-40"><a href="#cb5-40" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb5-41"><a href="#cb5-41" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb5-42"><a href="#cb5-42" tabindex="-1"></a>  <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb5-43"><a href="#cb5-43" tabindex="-1"></a>  <span class="dt">"analyses"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb5-44"><a href="#cb5-44" tabindex="-1"></a>    <span class="fu">{</span></span>
+<span id="cb5-45"><a href="#cb5-45" tabindex="-1"></a>      <span class="dt">"id"</span><span class="fu">:</span> <span class="st">"an_1"</span><span class="fu">,</span></span>
+<span id="cb5-46"><a href="#cb5-46" tabindex="-1"></a>      <span class="dt">"name"</span><span class="fu">:</span> <span class="st">"Incidence of diabetes"</span><span class="fu">,</span></span>
+<span id="cb5-47"><a href="#cb5-47" tabindex="-1"></a>      <span class="dt">"type"</span><span class="fu">:</span> <span class="st">"incidence"</span><span class="fu">,</span></span>
+<span id="cb5-48"><a href="#cb5-48" tabindex="-1"></a>      <span class="dt">"parameters"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb5-49"><a href="#cb5-49" tabindex="-1"></a>        <span class="dt">"denominator_cohort_id"</span><span class="fu">:</span> <span class="st">"coh_2"</span><span class="fu">,</span></span>
+<span id="cb5-50"><a href="#cb5-50" tabindex="-1"></a>        <span class="dt">"outcome_cohort_id"</span><span class="fu">:</span> <span class="st">"coh_1"</span><span class="fu">,</span></span>
+<span id="cb5-51"><a href="#cb5-51" tabindex="-1"></a>        <span class="dt">"interval"</span><span class="fu">:</span> <span class="st">"years"</span><span class="fu">,</span></span>
+<span id="cb5-52"><a href="#cb5-52" tabindex="-1"></a>        <span class="dt">"complete_database_intervals"</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb5-53"><a href="#cb5-53" tabindex="-1"></a>        <span class="dt">"washout"</span><span class="fu">:</span> <span class="dv">365</span><span class="fu">,</span></span>
+<span id="cb5-54"><a href="#cb5-54" tabindex="-1"></a>        <span class="dt">"repeated_events"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span></span>
+<span id="cb5-55"><a href="#cb5-55" tabindex="-1"></a>        <span class="dt">"strata"</span><span class="fu">:</span> <span class="ot">[[</span><span class="st">"sex"</span><span class="ot">]]</span><span class="fu">,</span></span>
+<span id="cb5-56"><a href="#cb5-56" tabindex="-1"></a>        <span class="dt">"include_overall_strata"</span><span class="fu">:</span> <span class="kw">true</span></span>
+<span id="cb5-57"><a href="#cb5-57" tabindex="-1"></a>      <span class="fu">}</span></span>
+<span id="cb5-58"><a href="#cb5-58" tabindex="-1"></a>    <span class="fu">}</span></span>
+<span id="cb5-59"><a href="#cb5-59" tabindex="-1"></a>  <span class="ot">]</span></span>
+<span id="cb5-60"><a href="#cb5-60" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <p>The conventions, all decided by the schema’s value types:</p>
 <ul>
 <li>Dates are ISO strings. A <code>date_range</code> with one open bound writes <code>null</code> for that bound (<code>["2010-01-01", null]</code>); a range with neither bound is omitted.</li>
@@ -301,41 +310,42 @@
 <h2 id="layout">Layout<a class="anchor" aria-label="anchor" href="#layout"></a>
 </h2>
 <p>One package. The Shiny app lives in <code>inst/app</code> as a plain Shiny app directory: <code><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">shiny::runApp()</a></code> sources its <code>R/</code> folder (alphabetically, non-recursively) and sets the working directory to it, and everything it needs from the package it calls as <code>shinySAP::&lt;fn&gt;()</code>.</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>DESCRIPTION                  package metadata; shiny and the OMOP packages are Suggests</span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>R<span class="sc">/</span>sap.R                      SAP constructors and CRUD</span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>R<span class="sc">/</span>sap_schema.R               schema accessors, <span class="fu">checkSap</span>(), <span class="fu">validateSap</span>()</span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>R<span class="sc">/</span>sap_json.R                 <span class="fu">sapToJson</span>(), <span class="fu">sapFromJson</span>(), <span class="fu">writeSap</span>(), <span class="fu">readSap</span>()</span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>R<span class="sc">/</span>shiny_app.R                <span class="fu">shinySap</span>()</span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>R<span class="sc">/</span>sysdata.rda                the built schema <span class="fu">tables</span> (see data<span class="sc">-</span>raw<span class="sc">/</span>)</span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>data<span class="sc">-</span>raw<span class="sc">/</span>v<span class="sc">&lt;</span>version<span class="sc">&gt;</span><span class="er">/</span>         schema.csv <span class="sc">+</span> types.csv, ground truth <span class="cf">for</span> what a SAP is</span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>data<span class="sc">-</span>raw<span class="sc">/</span>sysdata.R           builds R<span class="sc">/</span>sysdata.rda from them</span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a></span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>inst<span class="sc">/</span>app<span class="sc">/</span>app.R               the Shiny app<span class="sc">:</span> ui, server, <span class="fu">shinyApp</span>()</span>
-<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>inst<span class="sc">/</span>app<span class="sc">/</span>R<span class="sc">/</span>                  sourced by <span class="fu">loadSupport</span>(), alphabetically, before app.R</span>
-<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>  analysis_registry.R        analysis template registry and shared input blocks</span>
-<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>  analysis_type_<span class="sc">*</span>.R          one parameter template per analysis type</span>
-<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>  cohort_kinds.R             cohort type templates</span>
-<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>  dynamic_items.R            add<span class="sc">/</span>remove<span class="sc">/</span>duplicate machinery, id minting, pickers</span>
-<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>  mod_<span class="sc">*</span>.R                    one Shiny module per section</span>
-<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>  problems.R                 <span class="fu">checkSap</span>() problems regrouped by item, plus semantic checks</span>
-<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>  sap_code.R                 SAP <span class="ot">-&gt;</span> runnable R</span>
-<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a>  sap_study_export.R         SAP <span class="ot">-&gt;</span> a study <span class="fu">directory</span> (scripts and codelist files)</span>
-<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a>  utils.R                    small helpers</span>
-<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a>inst<span class="sc">/</span>app<span class="sc">/</span>sap_preview.Rmd     SAP <span class="ot">-&gt;</span> HTML<span class="sc">/</span>Word preview</span>
-<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a>inst<span class="sc">/</span>app<span class="sc">/</span>reference.docx      Word <span class="fu">styles</span> (regenerate with data<span class="sc">-</span>raw<span class="sc">/</span>make_reference_docx.R)</span>
-<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a></span>
-<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a>tests<span class="sc">/</span>testthat<span class="sc">/</span>              the package suite<span class="sc">:</span> test<span class="sc">-</span>sap<span class="sc">-</span><span class="er">*</span>.R <span class="cf">for</span> the package,</span>
-<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a>                             test<span class="sc">-</span>app<span class="sc">-</span><span class="er">*</span>.R <span class="cf">for</span> the <span class="fu">app</span> (helper<span class="sc">-</span>app.R sources inst<span class="sc">/</span>app<span class="sc">/</span>R)</span>
-<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a>tests<span class="sc">/</span>testthat<span class="sc">/</span>fixtures<span class="sc">/</span>     sample SAPs <span class="cf">in</span> the package schema</span>
-<span id="cb5-27"><a href="#cb5-27" tabindex="-1"></a>NEWS.md                      package news, then the retired app<span class="sc">-</span>private schema history</span>
-<span id="cb5-28"><a href="#cb5-28" tabindex="-1"></a>scripts<span class="sc">/</span>precheck.sh          every gate CI applies, runnable step by step</span></code></pre></div>
-<p>Each repeating item is a real Shiny module inserted with <code>insertUI</code>, not a re-rendered block, so adding or removing one never resets its siblings.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>DESCRIPTION                  package metadata; shiny and the OMOP packages are Suggests</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>R<span class="sc">/</span>sap.R                      SAP constructors and CRUD</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>R<span class="sc">/</span>sap_schema.R               schema accessors, <span class="fu">checkSap</span>(), <span class="fu">validateSap</span>()</span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>R<span class="sc">/</span>sap_json.R                 <span class="fu">sapToJson</span>(), <span class="fu">sapFromJson</span>(), <span class="fu">writeSap</span>(), <span class="fu">readSap</span>()</span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>R<span class="sc">/</span>shiny_app.R                <span class="fu">shinySap</span>()</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>R<span class="sc">/</span>sysdata.rda                the built schema <span class="fu">tables</span> (see data<span class="sc">-</span>raw<span class="sc">/</span>)</span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>data<span class="sc">-</span>raw<span class="sc">/</span>v<span class="sc">&lt;</span>version<span class="sc">&gt;</span><span class="er">/</span>         schema.csv <span class="sc">+</span> types.csv, ground truth <span class="cf">for</span> what a SAP is</span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>data<span class="sc">-</span>raw<span class="sc">/</span>sysdata.R           builds R<span class="sc">/</span>sysdata.rda from them</span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>inst<span class="sc">/</span>app<span class="sc">/</span>app.R               the Shiny app<span class="sc">:</span> ui, server, <span class="fu">shinyApp</span>()</span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>inst<span class="sc">/</span>app<span class="sc">/</span>R<span class="sc">/</span>                  sourced by <span class="fu">loadSupport</span>(), alphabetically, before app.R</span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>  analysis_registry.R        analysis template registry and shared input blocks</span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a>  analysis_type_<span class="sc">*</span>.R          one parameter template per analysis type</span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a>  cohort_kinds.R             cohort type templates</span>
+<span id="cb6-15"><a href="#cb6-15" tabindex="-1"></a>  dynamic_items.R            card <span class="fu">plumbing</span> (insert<span class="sc">/</span>remove<span class="sc">/</span>duplicate<span class="sc">/</span>undo<span class="sc">/</span>collapse), no SAP data</span>
+<span id="cb6-16"><a href="#cb6-16" tabindex="-1"></a>  mod_<span class="sc">*</span>.R                    one Shiny module per section</span>
+<span id="cb6-17"><a href="#cb6-17" tabindex="-1"></a>  problems.R                 <span class="fu">checkSap</span>() problems regrouped by item, plus semantic checks</span>
+<span id="cb6-18"><a href="#cb6-18" tabindex="-1"></a>  sap_code.R                 SAP <span class="ot">-&gt;</span> runnable R</span>
+<span id="cb6-19"><a href="#cb6-19" tabindex="-1"></a>  section_crud.R             the data half of a section<span class="sc">:</span> add<span class="sc">/</span>update<span class="sc">/</span>remove through the package</span>
+<span id="cb6-20"><a href="#cb6-20" tabindex="-1"></a>  sap_study_export.R         SAP <span class="ot">-&gt;</span> a study <span class="fu">directory</span> (scripts and codelist files)</span>
+<span id="cb6-21"><a href="#cb6-21" tabindex="-1"></a>  utils.R                    small helpers</span>
+<span id="cb6-22"><a href="#cb6-22" tabindex="-1"></a>inst<span class="sc">/</span>app<span class="sc">/</span>sap_preview.Rmd     SAP <span class="ot">-&gt;</span> HTML<span class="sc">/</span>Word preview</span>
+<span id="cb6-23"><a href="#cb6-23" tabindex="-1"></a>inst<span class="sc">/</span>app<span class="sc">/</span>reference.docx      Word <span class="fu">styles</span> (regenerate with data<span class="sc">-</span>raw<span class="sc">/</span>make_reference_docx.R)</span>
+<span id="cb6-24"><a href="#cb6-24" tabindex="-1"></a></span>
+<span id="cb6-25"><a href="#cb6-25" tabindex="-1"></a>tests<span class="sc">/</span>testthat<span class="sc">/</span>              the package suite<span class="sc">:</span> test<span class="sc">-</span>sap<span class="sc">-</span><span class="er">*</span>.R <span class="cf">for</span> the package,</span>
+<span id="cb6-26"><a href="#cb6-26" tabindex="-1"></a>                             test<span class="sc">-</span>app<span class="sc">-</span><span class="er">*</span>.R <span class="cf">for</span> the <span class="fu">app</span> (helper<span class="sc">-</span>app.R sources inst<span class="sc">/</span>app<span class="sc">/</span>R)</span>
+<span id="cb6-27"><a href="#cb6-27" tabindex="-1"></a>tests<span class="sc">/</span>testthat<span class="sc">/</span>fixtures<span class="sc">/</span>     sample SAPs <span class="cf">in</span> the package schema</span>
+<span id="cb6-28"><a href="#cb6-28" tabindex="-1"></a>NEWS.md                      package news, then the retired app<span class="sc">-</span>private schema history</span>
+<span id="cb6-29"><a href="#cb6-29" tabindex="-1"></a>scripts<span class="sc">/</span>precheck.sh          every gate CI applies, runnable step by step</span></code></pre></div>
+<p>The SAP is one <code>reactiveVal</code> in <code>app.R</code>, mutated only through the package’s CRUD; each section reconciles its cards with the ids the object holds. Each card is a real Shiny module inserted with <code>insertUI</code>, not a re-rendered block, so adding or removing one never resets its siblings.</p>
 </div>
 <div class="section level2">
 <h2 id="tests">Tests<a class="anchor" aria-label="anchor" href="#tests"></a>
 </h2>
 <p>One suite covers the package and the app. From the repo root:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu">test</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>or <code>scripts/precheck.sh</code>, which also lints, parses every file, installs the package into a scratch library, smoke-tests <code><a href="reference/shinySap.html">shinySap()</a></code> and renders the preview. The app tests skip where shiny is not installed, and <code>test-app-generated-runs.R</code> – which executes the generated denominator and incidence code against IncidencePrevalence’s mock database rather than grepping it – skips where <code>IncidencePrevalence</code>, <code>CDMConnector</code> or <code>duckdb</code> are absent.</p>
 </div>

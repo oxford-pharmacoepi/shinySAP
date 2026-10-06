@@ -6,11 +6,12 @@ Create the study metadata component of a SAP
 
 ``` r
 newSapStudy(
-  studyId,
-  title,
+  studyId = NULL,
+  title = NULL,
   authors = character(),
   version = "v1.0.0",
-  description = NULL
+  description = NULL,
+  validate = TRUE
 )
 ```
 
@@ -35,6 +36,13 @@ newSapStudy(
 - description:
 
   Optional study description.
+
+- validate:
+
+  Whether to require a complete study. With `FALSE` a draft is built
+  from whatever is given and
+  [`checkSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/checkSap.md)
+  reports what is missing.
 
 ## Value
 

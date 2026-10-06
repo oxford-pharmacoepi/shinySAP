@@ -11,7 +11,8 @@ createSap(
   dataSourceModifications = list(),
   codelists = list(),
   cohorts = list(),
-  analyses = list()
+  analyses = list(),
+  validate = TRUE
 )
 ```
 
@@ -40,6 +41,13 @@ createSap(
 - analyses:
 
   List of `sap_analysis` objects.
+
+- validate:
+
+  Whether to validate the complete SAP. With `FALSE` the document is
+  assembled from drafts and
+  [`checkSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/checkSap.md)
+  reports its problems.
 
 ## Value
 

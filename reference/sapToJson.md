@@ -5,7 +5,7 @@ Serialise a SAP to JSON
 ## Usage
 
 ``` r
-sapToJson(sap, pretty = TRUE)
+sapToJson(sap, pretty = TRUE, stamp = FALSE)
 ```
 
 ## Arguments
@@ -17,6 +17,11 @@ sapToJson(sap, pretty = TRUE)
 - pretty:
 
   Whether to indent the output.
+
+- stamp:
+
+  Whether to set `generated_at` to now in the output. `FALSE` keeps the
+  value the object carries.
 
 ## Value
 

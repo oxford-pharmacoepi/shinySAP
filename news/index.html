@@ -39,6 +39,12 @@
 <li>Exported read-only schema accessors: <code><a href="../reference/sapSchemaVersion.html">sapSchemaVersion()</a></code>, <code><a href="../reference/sapSchemaTypes.html">sapSchemaTypes()</a></code>, <code><a href="../reference/sapSchemaFields.html">sapSchemaFields()</a></code>, <code><a href="../reference/sapSchemaVocabulary.html">sapSchemaVocabulary()</a></code>.</li>
 <li>
 <code>constructSap()</code> passed the schema version in the <code>typeId</code> slot of <code>schemaFields()</code>; fixed.</li>
+<li>Draft mode: every component constructor and CRUD function takes <code>validate = FALSE</code>, building the classed object from incomplete input so <code><a href="../reference/checkSap.html">checkSap()</a></code> can report what is missing. The app populates its SAP only this way. <code><a href="../reference/newSapDataSource.html">newSapDataSource()</a></code> now accepts a missing <code>description</code>, as the schema always allowed.</li>
+<li>
+<code><a href="../reference/newSapId.html">newSapId()</a></code> mints the next <code>&lt;prefix&gt;_&lt;n&gt;</code> id for a collection.</li>
+<li>Components are classed (<code>sap_cohort</code>, …) on every read path, including <code><a href="../reference/readSap.html">readSap()</a></code>.</li>
+<li>
+<code><a href="../reference/writeSap.html">writeSap()</a></code> stamps <code>generated_at</code> at write time (<code>stamp = FALSE</code> keeps the object’s value).</li>
 </ul></div>
   </main></div>
 

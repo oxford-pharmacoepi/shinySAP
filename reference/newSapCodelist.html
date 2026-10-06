@@ -39,7 +39,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">newSapCodelist</span><span class="op">(</span><span class="va">id</span>, <span class="va">name</span>, <span class="va">type</span>, <span class="va">content</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">newSapCodelist</span><span class="op">(</span><span class="va">id</span>, name <span class="op">=</span> <span class="cn">NULL</span>, type <span class="op">=</span> <span class="cn">NULL</span>, content <span class="op">=</span> <span class="cn">NULL</span>, validate <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -60,6 +60,11 @@
 
 <dt id="arg-content">content<a class="anchor" aria-label="anchor" href="#arg-content"></a></dt>
 <dd><p>External codelist object matching <code>type</code>.</p></dd>
+
+
+<dt id="arg-validate">validate<a class="anchor" aria-label="anchor" href="#arg-validate"></a></dt>
+<dd><p>Whether to require a complete study. With <code>FALSE</code> a draft is
+built from whatever is given and <code><a href="checkSap.html">checkSap()</a></code> reports what is missing.</p></dd>
 
 </dl></div>
     <div class="section level2">

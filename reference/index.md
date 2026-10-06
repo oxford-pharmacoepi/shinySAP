@@ -2,16 +2,6 @@
 
 ## All functions
 
-- [`addAnalysis()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/addAnalysis.md)
-  : Add an analysis to a SAP
-- [`addCodelist()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/addCodelist.md)
-  : Add a codelist to a SAP
-- [`addCohort()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/addCohort.md)
-  : Add a cohort to a SAP
-- [`addDataSource()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/addDataSource.md)
-  : Add a data source to a SAP
-- [`addDataSourceModification()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/addDataSourceModification.md)
-  : Add a data-source modification to a SAP
 - [`addSapComponent()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/addSapComponent.md)
   : Add a component to a SAP
 - [`checkSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/checkSap.md)
@@ -32,6 +22,8 @@
   : Create a SAP data-source component
 - [`newSapDataSourceModification()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapDataSourceModification.md)
   : Create a data-source modification component
+- [`newSapId()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapId.md)
+  : Mint the next id for a SAP collection
 - [`newSapStudy()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapStudy.md)
   : Create the study metadata component of a SAP
 - [`readSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/readSap.md)

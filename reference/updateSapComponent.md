@@ -5,7 +5,7 @@ Replace a component in a SAP, matched by id
 ## Usage
 
 ``` r
-updateSapComponent(sap, component)
+updateSapComponent(sap, component, validate = TRUE)
 ```
 
 ## Arguments
@@ -17,6 +17,11 @@ updateSapComponent(sap, component)
 - component:
 
   A `sap_*` component whose id already exists in the SAP.
+
+- validate:
+
+  Whether to validate the whole SAP after the change. An id already in
+  use is refused either way.
 
 ## Value
 

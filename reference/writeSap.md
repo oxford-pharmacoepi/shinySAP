@@ -5,7 +5,7 @@ Write a SAP to a JSON file
 ## Usage
 
 ``` r
-writeSap(sap, path)
+writeSap(sap, path, stamp = TRUE)
 ```
 
 ## Arguments
@@ -17,6 +17,11 @@ writeSap(sap, path)
 - path:
 
   File to write; its directory is created if needed.
+
+- stamp:
+
+  Whether to set `generated_at` to now in the output. `FALSE` keeps the
+  value the object carries.
 
 ## Value
 

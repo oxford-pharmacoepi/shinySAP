@@ -5,7 +5,14 @@ Create a data-source modification component
 ## Usage
 
 ``` r
-newSapDataSourceModification(id, name, type, dataSourceId, parameters = list())
+newSapDataSourceModification(
+  id,
+  name = NULL,
+  type = NULL,
+  dataSourceId = character(),
+  parameters = list(),
+  validate = TRUE
+)
 ```
 
 ## Arguments
@@ -29,6 +36,13 @@ newSapDataSourceModification(id, name, type, dataSourceId, parameters = list())
 - parameters:
 
   Type-specific modification parameters.
+
+- validate:
+
+  Whether to require a complete study. With `FALSE` a draft is built
+  from whatever is given and
+  [`checkSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/checkSap.md)
+  reports what is missing.
 
 ## Value
 

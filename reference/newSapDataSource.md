@@ -5,7 +5,7 @@ Create a SAP data-source component
 ## Usage
 
 ``` r
-newSapDataSource(id, name, description)
+newSapDataSource(id, name = NULL, description = NULL, validate = TRUE)
 ```
 
 ## Arguments
@@ -20,7 +20,14 @@ newSapDataSource(id, name, description)
 
 - description:
 
-  A `data_source_description` object.
+  An optional `data_source_description` object.
+
+- validate:
+
+  Whether to require a complete study. With `FALSE` a draft is built
+  from whatever is given and
+  [`checkSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/checkSap.md)
+  reports what is missing.
 
 ## Value
 

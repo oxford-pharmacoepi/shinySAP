@@ -18,3 +18,17 @@
   [`sapSchemaVocabulary()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaVocabulary.md).
 - `constructSap()` passed the schema version in the `typeId` slot of
   `schemaFields()`; fixed.
+- Draft mode: every component constructor and CRUD function takes
+  `validate = FALSE`, building the classed object from incomplete input
+  so
+  [`checkSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/checkSap.md)
+  can report what is missing. The app populates its SAP only this way.
+  [`newSapDataSource()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapDataSource.md)
+  now accepts a missing `description`, as the schema always allowed.
+- [`newSapId()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapId.md)
+  mints the next `<prefix>_<n>` id for a collection.
+- Components are classed (`sap_cohort`, …) on every read path, including
+  [`readSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/readSap.md).
+- [`writeSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/writeSap.md)
+  stamps `generated_at` at write time (`stamp = FALSE` keeps the
+  object’s value).
