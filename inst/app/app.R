@@ -95,26 +95,31 @@ ui <- bslib::page_navbar(
 )
 
 server <- function(input, output, session) {
-  study     <- study_server("study")
-  sources   <- data_sources_server("sources")
-  mods      <- data_source_modifications_server("mods", source_choices = sources$choices)
-  codelists <- codelists_server("codelists")
-  cohorts   <- cohorts_server("cohorts", source_choices = sources$choices,
-                              codelist_choices = codelists$choices)
-  analyses  <- analyses_server("analyses", cohort_choices = cohorts$choices,
-                               cohort_index = cohorts$by_id, source_choices = sources$choices)
+  # The single source of truth: ONE shinySAP `sap` object, held here and changed
+  # only through the package's CRUD (see R/section_crud.R). It starts as a draft
+  # with an empty study and is never validated on the way in -- a plan is
+  # written incrementally -- so checkSap() below reports what is still missing.
+  sap <- shiny::reactiveVal(shinySAP::createSap(shinySAP::newSapStudy(validate = FALSE), validate = FALSE))
 
-  # The single source of truth: the package's own `sap` object, built from what
-  # the sections report. Unvalidated on purpose -- a SAP is written
-  # incrementally -- and checkSap() reports what is still missing below.
-  sap <- shiny::reactive(shinySAP::newSap(list(
-    study                     = study$data(),
-    data_sources              = sources$data(),
-    data_source_modifications = mods$data(),
-    codelists                 = codelists$data(),
-    cohorts                   = cohorts$data(),
-    analyses                  = analyses$data()
-  ), validate = FALSE))
+  # Change-only views the sections read: pickers and summaries wake when a name,
+  # type or id changes, not on every keystroke elsewhere in the plan.
+  source_choices   <- sap_view(sap, function(s) item_choices(s$data_sources))
+  codelist_choices <- sap_view(sap, function(s) item_choices(s$codelists))
+  cohort_light     <- sap_view(sap, function(s) stats::setNames(
+    lapply(s$cohorts, function(x) list(name = x$name, type = x$type)),
+    shinySAP::sapComponentIds(s, "cohorts")))
+  cohort_full      <- sap_view(sap, function(s) stats::setNames(
+    s$cohorts, shinySAP::sapComponentIds(s, "cohorts")))
+  cohort_choices   <- shiny::reactive(grouped_cohort_choices(cohort_light()))
+
+  study     <- study_server("study", sap)
+  sources   <- data_sources_server("sources", sap)
+  mods      <- data_source_modifications_server("mods", sap, source_choices = source_choices)
+  codelists <- codelists_server("codelists", sap)
+  cohorts   <- cohorts_server("cohorts", sap, source_choices = source_choices,
+                              codelist_choices = codelist_choices, cohort_index = cohort_light)
+  analyses  <- analyses_server("analyses", sap, cohort_choices = cohort_choices,
+                               cohort_index = cohort_full, source_choices = source_choices)
 
   # Structural problems from the schema, then the few semantic checks the schema
   # cannot express (problems.R). Warn-not-block: shown on Review and counted at
@@ -124,13 +129,13 @@ server <- function(input, output, session) {
     semantic_problems(sap())
   ))
 
+  # A loaded file replaces the object outright. The sections drop their cards
+  # first (a loaded plan may reuse ids already on screen) and rebuild them from
+  # the new object in the next flush; the study card re-reads its inputs.
   load_sap <- function(loaded) {
-    study$load(loaded$study %||% list())
-    sources$load(loaded$data_sources %||% list())
-    mods$load(loaded$data_source_modifications %||% list())
-    codelists$load(loaded$codelists %||% list())
-    cohorts$load(loaded$cohorts %||% list())
-    analyses$load(loaded$analyses %||% list())
+    for (section in list(sources, mods, codelists, cohorts, analyses)) section$reset()
+    sap(loaded)
+    study$refresh()
     bslib::nav_select("nav", selected = "Study", session = session)
   }
 
@@ -197,7 +202,7 @@ server <- function(input, output, session) {
     invisible(path)
   }
 
-  sap_settled <- shiny::debounce(sap, 2000)
+  sap_settled <- shiny::debounce(shiny::reactive(sap()), 2000)
   shiny::observeEvent(sap_settled(), {
     s <- sap_settled()
     if (sap_is_empty(s)) return()   # the app as it starts: nothing to keep yet

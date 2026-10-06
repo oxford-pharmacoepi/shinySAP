@@ -24,6 +24,24 @@ test_that("templates render unique input ids that avoid the common half", {
   }
 })
 
+test_that("the remembered input ids are each template's own", {
+  # Point/period prevalence and the two survival types come from one factory
+  # each: same source text, different fields.
+  display_only <- c(app("DISPLAY_ONLY_IDS"), app("COHORT_DISPLAY_ONLY_IDS"))
+  templates <- c(app("ANALYSIS_TEMPLATES"), app("COHORT_TEMPLATES"), app("MODIFICATION_TEMPLATES"))
+  for (pass in 1:2) {
+    for (type in names(templates)) {
+      expect_setequal(app("template_input_ids")(templates[[type]]),
+                      setdiff(app("template_field_ids")(templates[[type]]), display_only))
+    }
+  }
+  ids_of <- function(type) app("template_input_ids")(app("analysis_template")(type))
+  expect_true("level" %in% ids_of("period_prevalence"))
+  expect_false("level" %in% ids_of("point_prevalence"))
+  expect_true("competing_outcome_cohort_id" %in% ids_of("competing_risk_survival"))
+  expect_false("competing_outcome_cohort_id" %in% ids_of("single_event_survival"))
+})
+
 test_that("an unknown type falls back to an empty template that keeps nothing", {
   tmpl <- app("analysis_template")("not_a_type")
   expect_identical(tmpl$collect(list(a = 1)), list())

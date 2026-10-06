@@ -111,21 +111,6 @@ prefiller <- function(prefill) {
   }
 }
 
-# Ids ---------------------------------------------------------------------------
-#
-# Every SAP item carries an immutable id (the schema requires one, and every
-# reference -- a cohort's codelist, an analysis's denominator -- is by id, so a
-# rename can never dangle). Ids are minted here as <prefix>_<n>, one past the
-# highest in use -- NOT the lowest free one: a reused id would silently repoint
-# every reference to the deleted item at the new one.
-next_item_id <- function(prefix, taken) {
-  taken <- as.character(taken %||% character(0))
-  pattern <- sprintf("^%s_(\\d+)$", prefix)
-  used <- suppressWarnings(as.integer(sub(pattern, "\\1", grep(pattern, taken, value = TRUE))))
-  used <- used[!is.na(used)]
-  sprintf("%s_%d", prefix, if (length(used)) max(used) + 1L else 1L)
-}
-
 # Files -------------------------------------------------------------------------
 #
 # A SAP lives in ONE file, written by shinySAP::writeSap(): no timestamped
@@ -138,7 +123,7 @@ working_sap_path <- function(study, dir) {
 # One deliberate save, with its guards and its notifications. Returns the path,
 # or NULL when nothing was saved. Must run inside a Shiny session.
 save_working <- function(sap, path, n_problems = 0) {
-  missing <- setdiff(c("study_id", "title"), names(sap$study %||% list()))
+  missing <- Filter(function(key) is.null(chr_or_null(sap$study[[key]])), c("study_id", "title"))
   if (length(missing)) {
     shiny::showNotification(
       sprintf("Give the study a %s before saving.", paste(gsub("_", " ", missing), collapse = " and ")),
@@ -159,6 +144,7 @@ save_working <- function(sap, path, n_problems = 0) {
 
 # TRUE for the app exactly as it starts, which is not worth autosaving. The
 # version carries a default the author never typed, so it does not count.
+# Components are classed lists whose unset fields are NULL, so c() drops them.
 sap_is_empty <- function(sap) {
   s <- sap$study %||% list()
   authored <- c(s$study_id, s$title, unlist(s$authors), s$description)

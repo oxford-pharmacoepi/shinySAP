@@ -4,7 +4,7 @@
 \alias{newSapCodelist}
 \title{Create a SAP codelist component from an external codelist object}
 \usage{
-newSapCodelist(id, name, type, content)
+newSapCodelist(id, name = NULL, type = NULL, content = NULL, validate = TRUE)
 }
 \arguments{
 \item{id}{Immutable codelist identifier.}
@@ -14,6 +14,9 @@ newSapCodelist(id, name, type, content)
 \item{type}{Codelist object type.}
 
 \item{content}{External codelist object matching \code{type}.}
+
+\item{validate}{Whether to require a complete study. With \code{FALSE} a draft is
+built from whatever is given and \code{\link[=checkSap]{checkSap()}} reports what is missing.}
 }
 \value{
 An object of class \code{sap_codelist}.

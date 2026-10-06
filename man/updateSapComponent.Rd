@@ -4,12 +4,15 @@
 \alias{updateSapComponent}
 \title{Replace a component in a SAP, matched by id}
 \usage{
-updateSapComponent(sap, component)
+updateSapComponent(sap, component, validate = TRUE)
 }
 \arguments{
 \item{sap}{A \code{sap} object.}
 
 \item{component}{A \verb{sap_*} component whose id already exists in the SAP.}
+
+\item{validate}{Whether to validate the whole SAP after the change. An id
+already in use is refused either way.}
 }
 \value{
 The updated \code{sap} object.

@@ -1,63 +1,77 @@
-# Manages a growing, removable list of item modules inside a parent module.
+# Cards for a repeating section, kept in step with the SAP -----------------------
 #
-# Each item is a real Shiny module rather than a re-rendered block of UI, so
-# adding or removing one never resets the inputs of its siblings.
+# Pure UI. The section's SAP ids arrive as a change-only view (sap_collection()$ids)
+# and this reconciles the cards on the page with them: a card is inserted for an id
+# that appears and removed for an id that goes. Each card is a real Shiny module
+# inserted with insertUI, not a re-rendered block, so adding or removing one never
+# resets its siblings. No SAP data lives here -- Remove, Duplicate and Undo call
+# back into the section, which does the CRUD.
 #
-#   container   id of the <div> the items are appended to (unnamespaced)
-#   item_ui     function(id, prefill) -> UI whose root div has id paste0(id, "-box")
-#   item_server function(id, prefill, on_remove) -> shiny::reactive() giving the item's data
-#   to_prefill  function(handler result) -> the prefill add() rebuilds a card
-#               from; the same transform the section's load() applies to a saved
-#               item. Feeds Duplicate and the post-remove Undo.
-#   noun        what one item is called in notifications ("Cohort", "Data source")
-#   id_prefix   the SAP id prefix minted for a new item ("coh" -> coh_1, coh_2, ...)
-#
-# Every item carries an immutable SAP `id`. A card built from a saved item keeps
-# the id it was saved with; a card the user adds is minted the next one (see
-# next_item_id()). Duplicate clears the id before re-adding, so the copy gets its
-# own; Undo restores the original card, id included.
-dynamic_items <- function(prefix, container, item_ui, item_server,
-                          to_prefill = function(x) x, noun = "Item",
-                          id_prefix = prefix,
+#   container    id of the <div> the cards are appended to (unnamespaced)
+#   item_ui      function(id, prefill) -> UI whose root div has id paste0(id, "-box")
+#   item_server  function(iid, sap_id, prefill, on_remove) -> starts the card's module
+#   ids          reactive of the SAP ids to show, in order
+#   prefill_of   function(sap_id) -> the prefill a card is built from
+#   noun         what one item is called in notifications ("Cohort", "Data source")
+#   on_remove    function(sap_id)   the section removes the component
+#   on_duplicate function(sap_id)   the section adds a copy
+#   on_undo      function()         the section re-adds the last removed; returns its id
+#   on_reset     function()         the section drops what it kept for undo
+dynamic_items <- function(prefix, container, item_ui, item_server, ids, prefill_of,
+                          noun = "Item",
+                          on_remove = function(id) {},
+                          on_duplicate = function(id) {},
+                          on_undo = function() NULL,
+                          on_reset = function() {},
                           session = shiny::getDefaultReactiveDomain()) {
-  # Pin the owning module's session. add()/remove() are also called from other
-  # modules (loading a saved SAP is driven from the Review tab), and both
-  # shiny::moduleServer() and shiny::insertUI() would otherwise namespace against the
-  # *caller's* domain -- inserting UI under this module's id while binding the
-  # item's inputs under the caller's, so every input$* would read NULL.
+  # Pin the owning module's session: add/remove are also driven from outside
+  # (a load), and insertUI/moduleServer would otherwise namespace against the
+  # caller's domain.
   parent <- session
   ns <- parent$ns
-  ids <- shiny::reactiveVal(character(0))
-  handlers <- new.env(parent = emptyenv())
-  observers <- new.env(parent = emptyenv())
   state <- new.env(parent = emptyenv())
-  state$counter <- 0
-  # Every id this session has seen, so a deleted item's id is never reissued
-  # while the app is open, even after the item that held it is gone.
-  state$issued <- character(0)
+  state$counter <- 0          # Shiny module ids are prefix_<n>, distinct from SAP ids
+  state$by_id   <- list()     # SAP id -> Shiny module id
+  state$owner   <- list()     # Shiny module id -> SAP id
+  state$pending_reveal <- character(0)
+  generation <- shiny::reactiveVal(0)   # bumped by reset(), so a load rebuilds every card
+  observers <- new.env(parent = emptyenv())
   undo_input <- paste0(prefix, "_undo")
   undo_note  <- ns(paste0(prefix, "_undo_note"))
 
-  # The item's current data as the prefill a fresh card rebuilds it from.
-  # NULL when the item cannot report (mid-teardown, a template error): both
-  # callers then simply do nothing rather than add a broken card.
-  item_prefill <- function(iid) {
-    tryCatch(to_prefill(shiny::isolate(handlers[[iid]]())), error = function(e) NULL)
+  insert_card <- function(id) {
+    # An id the SAP no longer holds (a view one flush behind) gets no card; the
+    # next reconciliation settles it.
+    prefill <- tryCatch(prefill_of(id), error = function(e) NULL)
+    if (is.null(prefill)) return(invisible(NULL))
+    state$counter <- state$counter + 1
+    iid <- sprintf("%s_%d", prefix, state$counter)
+    state$by_id[[id]] <- iid
+    state$owner[[iid]] <- id
+    shiny::withReactiveDomain(parent, {
+      shiny::insertUI(
+        selector = paste0("#", ns(container)), where = "beforeEnd",
+        ui = item_ui(ns(iid), prefill), immediate = TRUE, session = parent
+      )
+      item_server(iid, id, prefill, function() request_remove(id))
+      # Duplicate lives here, not in the card: the card knows nothing about the
+      # list it sits in, and the observer must die with the card.
+      observers[[iid]] <- shiny::observeEvent(parent$input[[paste0(iid, "-duplicate")]],
+                                              on_duplicate(id), ignoreInit = TRUE)
+      # `reveal` scrolls a card the user caused (Add, Duplicate, Undo) into view;
+      # cards a load rebuilds must not fight over the viewport.
+      if (id %in% state$pending_reveal) {
+        state$pending_reveal <- setdiff(state$pending_reveal, id)
+        shiny::insertUI(selector = paste0("#", ns(container)), where = "beforeEnd",
+                        ui = reveal_item_script(paste0(ns(iid), "-box")),
+                        immediate = TRUE, session = parent)
+      }
+    })
   }
 
-  # `undoable` is TRUE only for the card's own Remove button. clear() must not
-  # offer to undo the removals that make room for a loaded SAP.
-  remove_item <- function(iid, undoable = FALSE) {
-    if (undoable) {
-      state$undo <- item_prefill(iid)
-      if (!is.null(state$undo)) {
-        shiny::showNotification(
-          sprintf("%s removed.", noun),
-          action = shiny::actionLink(ns(undo_input), "Undo"),
-          duration = 10, id = undo_note, session = parent
-        )
-      }
-    }
+  remove_card <- function(id) {
+    iid <- state$by_id[[id]]
+    if (is.null(iid)) return(invisible(NULL))
     shiny::withReactiveDomain(parent, {
       shiny::removeUI(selector = paste0("#", ns(iid), "-box"), immediate = TRUE, session = parent)
     })
@@ -65,77 +79,55 @@ dynamic_items <- function(prefix, container, item_ui, item_server,
       observers[[iid]]$destroy()
       rm(list = iid, envir = observers)
     }
-    if (!is.null(handlers[[iid]])) rm(list = iid, envir = handlers)
-    ids(setdiff(shiny::isolate(ids()), iid))
+    state$by_id[[id]] <- NULL
+    state$owner[[iid]] <- NULL
   }
 
-  # A single-slot undo: the notification lasts 10 seconds and a second removal
-  # replaces the slot, so only the LAST removal can come back. The restored card
-  # is appended at the end -- position is not part of what is saved.
+  # The card's own Remove button: offer an undo, then let the section remove it.
+  request_remove <- function(id) {
+    shiny::showNotification(
+      sprintf("%s removed.", noun),
+      action = shiny::actionLink(ns(undo_input), "Undo"),
+      duration = 10, id = undo_note, session = parent
+    )
+    on_remove(id)
+  }
+
   shiny::withReactiveDomain(parent, {
     shiny::observeEvent(parent$input[[undo_input]], {
-      if (is.null(state$undo)) return()
-      add_item(state$undo, reveal = TRUE)
-      state$undo <- NULL
+      id <- on_undo()
+      if (!is.null(id)) state$pending_reveal <- c(state$pending_reveal, id)
       shiny::removeNotification(undo_note, session = parent)
     }, ignoreInit = TRUE)
+
+    # The reconciler: the page shows exactly the ids the SAP holds.
+    shiny::observe({
+      generation()
+      wanted <- as.character(ids() %||% character(0))
+      shown  <- names(state$by_id) %||% character(0)
+      for (id in setdiff(shown, wanted)) remove_card(id)
+      for (id in setdiff(wanted, shown)) insert_card(id)
+    })
   })
 
-  # `reveal` scrolls the new card into view and focuses its first field: TRUE
-  # for anything the user caused (Add, Duplicate, Undo), FALSE for load(), which
-  # adds a dozen cards at once and must not fight over the viewport.
-  add_item <- function(prefill = NULL, reveal = FALSE) {
-    state$counter <- state$counter + 1
-    iid <- sprintf("%s_%d", prefix, state$counter)
-    if (!is.list(prefill)) prefill <- list()
-    current_id <- as.character(prefill$id %||% "")
-    if (!nzchar(current_id)) {
-      live_ids <- vapply(shiny::isolate(ids()), function(i) {
-        as.character(item_prefill(i)$id %||% "")
-      }, character(1))
-      prefill$id <- next_item_id(id_prefix, c(state$issued, live_ids))
-    }
-    state$issued <- unique(c(state$issued, prefill$id))
-    shiny::withReactiveDomain(parent, {
-      shiny::insertUI(
-        selector = paste0("#", ns(container)),
-        where = "beforeEnd",
-        ui = item_ui(ns(iid), prefill),
-        immediate = TRUE,
-        session = parent
-      )
-      handlers[[iid]] <- item_server(iid, prefill, function() remove_item(iid, undoable = TRUE))
-      # Duplicate lives here, not in the item servers: the card knows nothing
-      # about the list it sits in, and the observer must die with the card or it
-      # would fire on the input value Shiny keeps after the node is gone.
-      observers[[iid]] <- shiny::observeEvent(parent$input[[paste0(iid, "-duplicate")]], {
-        copy <- item_prefill(iid)
-        if (is.null(copy)) return()
-        # A copy is a NEW item: it is minted its own id on the way in.
-        copy$id <- NULL
-        nm <- copy$name
-        if (is.character(nm) && length(nm) == 1 && !is.na(nm) && nzchar(nm)) {
-          copy$name <- paste(nm, "(copy)")
-        }
-        add_item(copy, reveal = TRUE)
-      }, ignoreInit = TRUE)
-      if (reveal) {
-        shiny::insertUI(selector = paste0("#", ns(container)), where = "beforeEnd",
-                 ui = reveal_item_script(paste0(ns(iid), "-box")),
-                 immediate = TRUE, session = parent)
-      }
-    })
-    ids(c(shiny::isolate(ids()), iid))
-    invisible(iid)
-  }
-
-  clear <- function() for (iid in shiny::isolate(ids())) remove_item(iid)
-
   list(
-    add = add_item,
-    clear = clear,
-    count = shiny::reactive(length(ids())),
-    data = shiny::reactive(lapply(ids(), function(iid) handlers[[iid]]()))
+    # Mark an id whose card, when it appears, is scrolled into view.
+    reveal = function(id) {
+      if (!is.null(id)) state$pending_reveal <- c(state$pending_reveal, id)
+      invisible(id)
+    },
+    # Drop every card without touching the SAP; the next flush rebuilds them
+    # from the ids -- even ids a loaded plan reuses.
+    reset = function() {
+      # A pending Undo offers a component of the plan being replaced.
+      shiny::removeNotification(undo_note, session = parent)
+      on_reset()
+      for (id in names(state$by_id)) remove_card(id)
+      generation(shiny::isolate(generation()) + 1)
+    },
+    count = shiny::reactive(length(ids() %||% character(0))),
+    # Whether a card still owns its id (a removed card's inputs can still emit).
+    is_live = function(iid, id) identical(state$owner[[iid]], id)
   )
 }
 

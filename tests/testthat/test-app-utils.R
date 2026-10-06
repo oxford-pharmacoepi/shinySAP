@@ -12,13 +12,6 @@ test_that("blank inputs become absent values", {
   expect_identical(app("compact")(list(a = 1, b = NULL, c = "x")), list(a = 1, c = "x"))
 })
 
-test_that("ids are minted one past the highest in use", {
-  next_id <- app("next_item_id")
-  expect_identical(next_id("coh", character(0)), "coh_1")
-  expect_identical(next_id("coh", c("coh_1", "coh_7", "cl_9", "coh_x")), "coh_8")
-  expect_identical(next_id("ds", c("coh_3")), "ds_1")
-})
-
 test_that("date ranges pair two inputs and split back", {
   dr <- app("date_range_value")("2010-01-01", "")
   expect_s3_class(dr, "Date")

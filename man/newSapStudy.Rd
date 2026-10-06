@@ -5,11 +5,12 @@
 \title{Create the study metadata component of a SAP}
 \usage{
 newSapStudy(
-  studyId,
-  title,
+  studyId = NULL,
+  title = NULL,
   authors = character(),
   version = "v1.0.0",
-  description = NULL
+  description = NULL,
+  validate = TRUE
 )
 }
 \arguments{
@@ -22,6 +23,9 @@ newSapStudy(
 \item{version}{Study version label.}
 
 \item{description}{Optional study description.}
+
+\item{validate}{Whether to require a complete study. With \code{FALSE} a draft is
+built from whatever is given and \code{\link[=checkSap]{checkSap()}} reports what is missing.}
 }
 \value{
 An object of class \code{sap_study}.

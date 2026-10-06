@@ -10,7 +10,8 @@ createSap(
   dataSourceModifications = list(),
   codelists = list(),
   cohorts = list(),
-  analyses = list()
+  analyses = list(),
+  validate = TRUE
 )
 }
 \arguments{
@@ -25,6 +26,9 @@ createSap(
 \item{cohorts}{List of \code{sap_cohort} objects.}
 
 \item{analyses}{List of \code{sap_analysis} objects.}
+
+\item{validate}{Whether to validate the complete SAP. With \code{FALSE} the
+document is assembled from drafts and \code{\link[=checkSap]{checkSap()}} reports its problems.}
 }
 \value{
 An object of class \code{sap}.

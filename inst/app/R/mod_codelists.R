@@ -3,8 +3,8 @@
 # The schema's codelist is {id, name, type, content}: the content is a real
 # omopgenerics object -- a codelist, a codelist with details or a concept set
 # expression -- and it travels INSIDE the SAP. The card takes the object from a
-# file (the csv/json layouts omopgenerics itself exports) and shows what it
-# holds; the JSON layer in the package writes and reads it back.
+# file (the csv/json layouts omopgenerics itself exports) and writes a draft
+# shinySAP::newSapCodelist() back through the section's CRUD.
 
 # The class the schema wants for each codelist type.
 codelist_content_class <- function(type) {
@@ -54,10 +54,11 @@ codelist_item_ui <- function(id, prefill = NULL) {
   )
 }
 
-codelist_item_server <- function(id, prefill = NULL, on_remove = function() {}) {
+codelist_item_server <- function(id, sap_id, prefill = NULL, on_remove = function() {},
+                                 write = function(component) {}) {
   shiny::moduleServer(id, function(input, output, session) {
     shiny::observeEvent(input$remove, on_remove(), ignoreInit = TRUE)
-    sap_id <- prefill$id
+    read <- card_reader(input, prefill)
     content <- shiny::reactiveVal(prefill$content)
 
     item_card_label(output, shiny::reactive({
@@ -87,7 +88,7 @@ codelist_item_server <- function(id, prefill = NULL, on_remove = function() {}) 
     })
 
     # Content parsed under one type does not fit another; switching drops it
-    # rather than saving an object the schema will reject.
+    # rather than keeping an object the schema will reject.
     shiny::observeEvent(input$type, {
       cls <- codelist_content_class(input$type)
       cur <- content()
@@ -101,11 +102,12 @@ codelist_item_server <- function(id, prefill = NULL, on_remove = function() {}) 
     output$summary <- shiny::renderText(codelist_content_summary(content()))
     shiny::outputOptions(output, "summary", suspendWhenHidden = FALSE)
 
-    shiny::reactive(compact(list(
-      id      = sap_id,
-      name    = chr_or_null(input$name),
-      type    = chr_or_null(input$type),
-      content = content()
+    shiny::observe(write(shinySAP::newSapCodelist(
+      sap_id,
+      name     = chr_or_null(read("name")),
+      type     = chr_or_null(read("type")),
+      content  = content(),
+      validate = FALSE
     )))
   })
 }
@@ -134,21 +136,30 @@ codelists_ui <- function(id) {
   )
 }
 
-codelists_server <- function(id) {
+codelists_server <- function(id, sap) {
   shiny::moduleServer(id, function(input, output, session) {
-    items <- dynamic_items("codelist", "items", codelist_item_ui, codelist_item_server,
-                           noun = "Codelist", id_prefix = "cl")
+    coll <- sap_collection(
+      sap, "codelists",
+      new_component = function(id) shinySAP::newSapCodelist(id, validate = FALSE),
+      copy = function(source, id) shinySAP::newSapCodelist(
+        id, name = copy_name(source$name), type = source$type, content = source$content, validate = FALSE)
+    )
+    item_server <- function(iid, sap_id, prefill, on_remove) {
+      codelist_item_server(iid, sap_id, prefill, on_remove,
+                           write = function(component) if (items$is_live(iid, sap_id)) coll$write(component))
+    }
+    items <- dynamic_items("codelist", "items", codelist_item_ui, item_server,
+                           ids = coll$ids, prefill_of = coll$prefill_of, noun = "Codelist",
+                           on_remove = coll$remove,
+                           on_duplicate = function(id) items$reveal(coll$duplicate(id)),
+                           on_undo = coll$undo,
+                           on_reset = coll$forget)
 
-    shiny::observeEvent(input$add, items$add(reveal = TRUE))
+    shiny::observeEvent(input$add, items$reveal(coll$add()))
 
     output$n <- shiny::renderText(items$count())
     shiny::outputOptions(output, "n", suspendWhenHidden = FALSE)
 
-    load <- function(codelists) {
-      items$clear()
-      for (cl in codelists) items$add(cl)
-    }
-
-    list(data = items$data, load = load, choices = shiny::reactive(item_choices(items$data())))
+    list(reset = items$reset)
   })
 }

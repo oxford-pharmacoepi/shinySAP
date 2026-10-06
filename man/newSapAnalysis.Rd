@@ -4,7 +4,14 @@
 \alias{newSapAnalysis}
 \title{Create a SAP analysis component}
 \usage{
-newSapAnalysis(id, name, dataSourceId, type, parameters = list())
+newSapAnalysis(
+  id,
+  name = NULL,
+  dataSourceId = character(),
+  type = NULL,
+  parameters = list(),
+  validate = TRUE
+)
 }
 \arguments{
 \item{id}{Immutable analysis identifier.}
@@ -16,6 +23,9 @@ newSapAnalysis(id, name, dataSourceId, type, parameters = list())
 \item{type}{Analysis type.}
 
 \item{parameters}{Type-specific analysis parameters.}
+
+\item{validate}{Whether to require a complete study. With \code{FALSE} a draft is
+built from whatever is given and \code{\link[=checkSap]{checkSap()}} reports what is missing.}
 }
 \value{
 An object of class \code{sap_analysis}.

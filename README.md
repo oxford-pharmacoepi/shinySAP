@@ -100,14 +100,33 @@ readSap("sap.json")
 ```
 
 The constructors validate each component as it is built; `createSap()`
-and every CRUD function (`addCohort()`, `updateSapComponent()`,
+and every CRUD function (`addSapComponent()`, `updateSapComponent()`,
 `removeSapComponent()`, …) re-validate the whole document, so a
 reference to an id nothing defines, or a removal of something still
-referenced, is refused. `newSap(x, validate = FALSE)` builds a
-work-in-progress SAP without aborting, and `checkSap()` returns its
-problems as a list of `{path, code, message}` – which is how the app
-works: it keeps an unvalidated `sap` object and shows `checkSap()`’s
-findings on Review.
+referenced, is refused.
+
+Every constructor and CRUD function also takes `validate = FALSE`, which
+builds a **draft**: the classed component or document from whatever is
+given, with a blank name, no type yet or half the parameters, and
+nothing asserted beyond the id. `checkSap()` then returns the problems
+as a list of `{path, code, message}`. That is exactly how the app works.
+It holds one `sap` object, created as
+`createSap(newSapStudy(validate = FALSE), validate = FALSE)`, mints
+every id with `newSapId()`, and changes the object only through the
+package:
+
+``` r
+sap <- addSapComponent(sap, newSapCohort(newSapId(sap, "cohorts"), validate = FALSE), validate = FALSE)
+sap <- updateSapComponent(sap, newSapCohort("coh_1", "Diabetes", "ds_1", "concept_cohort",
+                                            list(codelist_id = "cl_1"), validate = FALSE),
+                          validate = FALSE)
+sap <- removeSapComponent(sap, "cohorts", "coh_1", validate = FALSE)
+checkSap(sap)   # what is still missing, shown on the Review tab
+```
+
+The app never assembles a list of its own; every card is a draft
+component from its constructor, written back with `updateSapComponent()`
+on each edit.
 
 ## The file
 
@@ -294,10 +313,11 @@ needs from the package it calls as `shinySAP::<fn>()`.
       analysis_registry.R        analysis template registry and shared input blocks
       analysis_type_*.R          one parameter template per analysis type
       cohort_kinds.R             cohort type templates
-      dynamic_items.R            add/remove/duplicate machinery, id minting, pickers
+      dynamic_items.R            card plumbing (insert/remove/duplicate/undo/collapse), no SAP data
       mod_*.R                    one Shiny module per section
       problems.R                 checkSap() problems regrouped by item, plus semantic checks
       sap_code.R                 SAP -> runnable R
+      section_crud.R             the data half of a section: add/update/remove through the package
       sap_study_export.R         SAP -> a study directory (scripts and codelist files)
       utils.R                    small helpers
     inst/app/sap_preview.Rmd     SAP -> HTML/Word preview
@@ -309,8 +329,10 @@ needs from the package it calls as `shinySAP::<fn>()`.
     NEWS.md                      package news, then the retired app-private schema history
     scripts/precheck.sh          every gate CI applies, runnable step by step
 
-Each repeating item is a real Shiny module inserted with `insertUI`, not
-a re-rendered block, so adding or removing one never resets its
+The SAP is one `reactiveVal` in `app.R`, mutated only through the
+package’s CRUD; each section reconciles its cards with the ids the
+object holds. Each card is a real Shiny module inserted with `insertUI`,
+not a re-rendered block, so adding or removing one never resets its
 siblings.
 
 ## Tests

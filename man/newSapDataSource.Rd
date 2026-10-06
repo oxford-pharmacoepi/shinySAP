@@ -4,14 +4,17 @@
 \alias{newSapDataSource}
 \title{Create a SAP data-source component}
 \usage{
-newSapDataSource(id, name, description)
+newSapDataSource(id, name = NULL, description = NULL, validate = TRUE)
 }
 \arguments{
 \item{id}{Immutable data-source identifier.}
 
 \item{name}{Display name of the data source.}
 
-\item{description}{A \code{data_source_description} object.}
+\item{description}{An optional \code{data_source_description} object.}
+
+\item{validate}{Whether to require a complete study. With \code{FALSE} a draft is
+built from whatever is given and \code{\link[=checkSap]{checkSap()}} reports what is missing.}
 }
 \value{
 An object of class \code{sap_data_source}.

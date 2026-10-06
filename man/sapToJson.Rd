@@ -4,12 +4,15 @@
 \alias{sapToJson}
 \title{Serialise a SAP to JSON}
 \usage{
-sapToJson(sap, pretty = TRUE)
+sapToJson(sap, pretty = TRUE, stamp = FALSE)
 }
 \arguments{
 \item{sap}{A \code{sap} object or a named list in SAP shape.}
 
 \item{pretty}{Whether to indent the output.}
+
+\item{stamp}{Whether to set \code{generated_at} to now in the output. \code{FALSE}
+keeps the value the object carries.}
 }
 \value{
 A JSON string (class \code{json}).

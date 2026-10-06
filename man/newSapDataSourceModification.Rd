@@ -4,7 +4,14 @@
 \alias{newSapDataSourceModification}
 \title{Create a data-source modification component}
 \usage{
-newSapDataSourceModification(id, name, type, dataSourceId, parameters = list())
+newSapDataSourceModification(
+  id,
+  name = NULL,
+  type = NULL,
+  dataSourceId = character(),
+  parameters = list(),
+  validate = TRUE
+)
 }
 \arguments{
 \item{id}{Immutable modification identifier.}
@@ -16,6 +23,9 @@ newSapDataSourceModification(id, name, type, dataSourceId, parameters = list())
 \item{dataSourceId}{Identifier of the affected data source(s).}
 
 \item{parameters}{Type-specific modification parameters.}
+
+\item{validate}{Whether to require a complete study. With \code{FALSE} a draft is
+built from whatever is given and \code{\link[=checkSap]{checkSap()}} reports what is missing.}
 }
 \value{
 An object of class \code{sap_data_source_modification}.
