@@ -65,7 +65,31 @@ test_that("data sources are minted by newSapId() and added through addSapCompone
     session$setInputs(add = 4)
     expect_identical(ids_of(rv, "data_sources"), c("ds_7", "ds_8"))
     expect_identical(shinySAP::getSapComponent(rv(), "data_sources", "ds_7")$name, "SIDIAP")
+
+    # A component removed from one plan cannot be undone into the next.
+    session$setInputs(`source_7-remove` = 1)
+    expect_identical(ids_of(rv, "data_sources"), "ds_7")
+    session$returned$reset()
+    rv(draft_sap())
+    session$flushReact()
+    session$setInputs(source_undo = 2)
+    expect_identical(ids_of(rv, "data_sources"), character(0))
   })
+})
+
+test_that("drawing the cards of a loaded plan leaves the plan untouched", {
+  loaded <- fixture_sap()
+  sections <- list(
+    data_sources_server = list(), data_source_modifications_server = list(),
+    codelists_server = list(), cohorts_server = list(), analyses_server = list()
+  )
+  for (server in names(sections)) {
+    rv <- shiny::reactiveVal(loaded)
+    shiny::testServer(app(server), args = list(id = "x", sap = rv), {
+      session$flushReact()
+    })
+    expect_identical(shiny::isolate(rv()), loaded, info = server)
+  }
 })
 
 test_that("a codelist card writes a draft sap_codelist and imports uploads by name", {

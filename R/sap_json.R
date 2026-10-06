@@ -236,7 +236,9 @@ decodeObject <- function(value, object, version) {
 }
 
 decodeParameters <- function(parameters, fields, typeId) {
-  if (!is.list(parameters)) return(list())
+  # `{}` parses to a NAMED empty list; the constructors build list(). One form,
+  # so a component read from a file is identical to the same one rebuilt.
+  if (!is.list(parameters) || !length(parameters)) return(list())
   for (name in names(parameters)) {
     v <- parameters[[name]]
     if (is.null(v)) next

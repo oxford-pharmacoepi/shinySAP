@@ -106,6 +106,13 @@ test_that("JSON conventions: {} parameters, arrays, omitted nulls", {
   expect_false(grepl(":null,", gsub('"date_range":\\["2010-01-01",null\\]', "", json)))
 })
 
+test_that("empty parameters read back as the constructors build them", {
+  built <- newSapAnalysis("an_3", "Something else", "ds_1", "other")
+  read <- sapFromJson(sapToJson(fullSap()))
+  expect_identical(getSapComponent(read, "analyses", "an_3")$parameters, built$parameters)
+  expect_identical(built$parameters, list())
+})
+
 test_that("unknown fields survive a read so checkSap can report them", {
   json <- sapToJson(fullSap())
   x <- jsonlite::fromJSON(json, simplifyVector = FALSE)

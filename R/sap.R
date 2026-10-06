@@ -451,66 +451,6 @@ addSapComponent <- function(sap, component, validate = TRUE) {
   newSap(sap, validate = validate)
 }
 
-#' Add a data source to a SAP
-#'
-#' @param sap A `sap` object.
-#' @param dataSource A `sap_data_source` object.
-#' @inheritParams addSapComponent
-#'
-#' @return The updated `sap` object.
-#' @export
-addDataSource <- function(sap, dataSource, validate = TRUE) {
-  addSapComponent(sap, dataSource, validate = validate)
-}
-
-#' Add a data-source modification to a SAP
-#'
-#' @param sap A `sap` object.
-#' @param dataSourceModification A `sap_data_source_modification` object.
-#' @inheritParams addSapComponent
-#'
-#' @return The updated `sap` object.
-#' @export
-addDataSourceModification <- function(sap, dataSourceModification, validate = TRUE) {
-  addSapComponent(sap, dataSourceModification, validate = validate)
-}
-
-#' Add a codelist to a SAP
-#'
-#' @param sap A `sap` object.
-#' @param codelist A `sap_codelist` object.
-#' @inheritParams addSapComponent
-#'
-#' @return The updated `sap` object.
-#' @export
-addCodelist <- function(sap, codelist, validate = TRUE) {
-  addSapComponent(sap, codelist, validate = validate)
-}
-
-#' Add a cohort to a SAP
-#'
-#' @param sap A `sap` object.
-#' @param cohort A `sap_cohort` object.
-#' @inheritParams addSapComponent
-#'
-#' @return The updated `sap` object.
-#' @export
-addCohort <- function(sap, cohort, validate = TRUE) {
-  addSapComponent(sap, cohort, validate = validate)
-}
-
-#' Add an analysis to a SAP
-#'
-#' @param sap A `sap` object.
-#' @param analysis A `sap_analysis` object.
-#' @inheritParams addSapComponent
-#'
-#' @return The updated `sap` object.
-#' @export
-addAnalysis <- function(sap, analysis, validate = TRUE) {
-  addSapComponent(sap, analysis, validate = validate)
-}
-
 #' Get a component from a SAP by id
 #'
 #' @param sap A `sap` object.

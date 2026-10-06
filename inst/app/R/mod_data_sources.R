@@ -82,7 +82,8 @@ data_sources_server <- function(id, sap) {
                            ids = coll$ids, prefill_of = coll$prefill_of, noun = "Data source",
                            on_remove = coll$remove,
                            on_duplicate = function(id) items$reveal(coll$duplicate(id)),
-                           on_undo = coll$undo)
+                           on_undo = coll$undo,
+                           on_reset = coll$forget)
 
     shiny::observeEvent(input$add, items$reveal(coll$add()))
 

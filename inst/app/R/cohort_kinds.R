@@ -75,11 +75,6 @@ format_bound_list <- function(pairs, open = "Inf") {
   }, character(1))
 }
 
-bound_upper <- function(pair) {
-  pair <- as.numeric(unlist(pair))
-  if (length(pair) >= 2) pair[[2]] else Inf
-}
-
 # The registry ----------------------------------------------------------------
 
 COHORT_TEMPLATES <- list()

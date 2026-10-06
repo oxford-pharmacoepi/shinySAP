@@ -100,7 +100,7 @@ readSap("sap.json")
 ```
 
 The constructors validate each component as it is built; `createSap()`
-and every CRUD function (`addCohort()`, `updateSapComponent()`,
+and every CRUD function (`addSapComponent()`, `updateSapComponent()`,
 `removeSapComponent()`, …) re-validate the whole document, so a
 reference to an id nothing defines, or a removal of something still
 referenced, is refused.
@@ -116,7 +116,7 @@ every id with `newSapId()`, and changes the object only through the
 package:
 
 ``` r
-sap <- addCohort(sap, newSapCohort(newSapId(sap, "cohorts"), validate = FALSE), validate = FALSE)
+sap <- addSapComponent(sap, newSapCohort(newSapId(sap, "cohorts"), validate = FALSE), validate = FALSE)
 sap <- updateSapComponent(sap, newSapCohort("coh_1", "Diabetes", "ds_1", "concept_cohort",
                                             list(codelist_id = "cl_1"), validate = FALSE),
                           validate = FALSE)

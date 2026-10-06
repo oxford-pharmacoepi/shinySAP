@@ -45,13 +45,13 @@ test_that("validate = TRUE still enforces the contract", {
 test_that("draft parameters are shape-checked, not content-checked", {
   expect_error(newSapCohort("coh_1", parameters = "nope", validate = FALSE), "parameters")
   co <- newSapCohort("coh_1", type = "concept_cohort", parameters = list(bogus = 1), validate = FALSE)
-  sap <- addCohort(draftSap(), co, validate = FALSE)
+  sap <- addSapComponent(draftSap(), co, validate = FALSE)
   codes <- vapply(checkSap(sap), function(p) p$code, character(1))
   expect_true("unknown_parameter" %in% codes)
 })
 
 test_that("drafts enter a document through the CRUD and checkSap reports the gaps", {
-  sap <- addCohort(draftSap(), newSapCohort("coh_1", validate = FALSE), validate = FALSE)
+  sap <- addSapComponent(draftSap(), newSapCohort("coh_1", validate = FALSE), validate = FALSE)
   expect_s3_class(sap, "sap")
   expect_identical(sapComponentIds(sap, "cohorts"), "coh_1")
   problems <- checkSap(sap)
@@ -59,25 +59,25 @@ test_that("drafts enter a document through the CRUD and checkSap reports the gap
   expect_true(all(c("study.study_id", "study.title", "cohorts[1].name", "cohorts[1].type") %in% paths))
 
   # The same call without validate = FALSE aborts on the first gap.
-  expect_error(addCohort(draftSap(), newSapCohort("coh_1", validate = FALSE)), "Invalid SAP")
+  expect_error(addSapComponent(draftSap(), newSapCohort("coh_1", validate = FALSE)), "Invalid SAP")
 
   # Filling the draft in through updateSapComponent() clears its problems.
   sap <- updateStudy(sap, newSapStudy("S1", "A study", validate = FALSE), validate = FALSE)
-  sap <- addCodelist(sap, newSapCodelist("cl_1", "Diabetes", "codelist",
+  sap <- addSapComponent(sap, newSapCodelist("cl_1", "Diabetes", "codelist",
                                          omopgenerics::newCodelist(list(a = 1L))), validate = FALSE)
   sap <- updateSapComponent(sap, newSapCohort("coh_1", "Diabetes", "ds_1", "concept_cohort",
                                               list(codelist_id = "cl_1", exit = "event_end_date",
                                                    overlap = "merge")), validate = FALSE)
   codes <- vapply(checkSap(sap), function(p) p$code, character(1))
   expect_identical(codes, "missing_reference")   # ds_1 is not a data source yet
-  sap <- addDataSource(sap, newSapDataSource("ds_1", "CPRD"), validate = FALSE)
+  sap <- addSapComponent(sap, newSapDataSource("ds_1", "CPRD"), validate = FALSE)
   expect_length(checkSap(sap), 0)
   expect_s3_class(validateSap(sap), "sap")
 })
 
 test_that("removing a referenced component is refused when validating, allowed as a draft", {
-  sap <- addDataSource(draftSap(), newSapDataSource("ds_1", "CPRD"), validate = FALSE)
-  sap <- addCohort(sap, newSapCohort("coh_1", "Target", "ds_1", "target", list()), validate = FALSE)
+  sap <- addSapComponent(draftSap(), newSapDataSource("ds_1", "CPRD"), validate = FALSE)
+  sap <- addSapComponent(sap, newSapCohort("coh_1", "Target", "ds_1", "target", list()), validate = FALSE)
   expect_error(removeSapComponent(sap, "data_sources", "ds_1"), "missing_reference")
   draft <- removeSapComponent(sap, "data_sources", "ds_1", validate = FALSE)
   expect_length(draft$data_sources, 0)
@@ -86,20 +86,20 @@ test_that("removing a referenced component is refused when validating, allowed a
 })
 
 test_that("a duplicate id is refused even for a draft", {
-  sap <- addCohort(draftSap(), newSapCohort("coh_1", validate = FALSE), validate = FALSE)
-  expect_error(addCohort(sap, newSapCohort("coh_1", validate = FALSE), validate = FALSE), "already exists")
-  expect_error(addAnalysis(sap, newSapAnalysis("coh_1", validate = FALSE), validate = FALSE), "already exists")
+  sap <- addSapComponent(draftSap(), newSapCohort("coh_1", validate = FALSE), validate = FALSE)
+  expect_error(addSapComponent(sap, newSapCohort("coh_1", validate = FALSE), validate = FALSE), "already exists")
+  expect_error(addSapComponent(sap, newSapAnalysis("coh_1", validate = FALSE), validate = FALSE), "already exists")
 })
 
 test_that("newSapId mints one past the highest id in use anywhere", {
   sap <- draftSap()
   expect_identical(newSapId(sap, "cohorts"), "coh_1")
   expect_identical(newSapId(sap, "data_sources"), "ds_1")
-  sap <- addCohort(sap, newSapCohort("coh_001", validate = FALSE), validate = FALSE)
+  sap <- addSapComponent(sap, newSapCohort("coh_001", validate = FALSE), validate = FALSE)
   expect_identical(newSapId(sap, "cohorts"), "coh_2")
   expect_identical(newSapId(sap, "cohorts", taken = c("coh_7", "coh_x", "cl_9")), "coh_8")
   # Ids are unique across collections: a data source called coh_5 blocks coh_5.
-  sap <- addDataSource(sap, newSapDataSource("coh_5", validate = FALSE), validate = FALSE)
+  sap <- addSapComponent(sap, newSapDataSource("coh_5", validate = FALSE), validate = FALSE)
   expect_identical(newSapId(sap, "cohorts"), "coh_6")
   expect_identical(newSapId(sap, "analyses"), "an_1")
   expect_error(newSapId(sap, "nope"), "collection")

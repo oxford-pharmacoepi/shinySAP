@@ -16,11 +16,13 @@
 #   on_remove    function(sap_id)   the section removes the component
 #   on_duplicate function(sap_id)   the section adds a copy
 #   on_undo      function()         the section re-adds the last removed; returns its id
+#   on_reset     function()         the section drops what it kept for undo
 dynamic_items <- function(prefix, container, item_ui, item_server, ids, prefill_of,
                           noun = "Item",
                           on_remove = function(id) {},
                           on_duplicate = function(id) {},
                           on_undo = function() NULL,
+                          on_reset = function() {},
                           session = shiny::getDefaultReactiveDomain()) {
   # Pin the owning module's session: add/remove are also driven from outside
   # (a load), and insertUI/moduleServer would otherwise namespace against the
@@ -117,6 +119,9 @@ dynamic_items <- function(prefix, container, item_ui, item_server, ids, prefill_
     # Drop every card without touching the SAP; the next flush rebuilds them
     # from the ids -- even ids a loaded plan reuses.
     reset = function() {
+      # A pending Undo offers a component of the plan being replaced.
+      shiny::removeNotification(undo_note, session = parent)
+      on_reset()
       for (id in names(state$by_id)) remove_card(id)
       generation(shiny::isolate(generation()) + 1)
     },

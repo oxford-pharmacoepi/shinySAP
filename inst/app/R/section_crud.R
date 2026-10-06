@@ -85,6 +85,13 @@ sap_collection <- function(sap, collection, new_component, copy, to_prefill = id
       component$id
     },
 
+    # A removed component belongs to the plan it was removed from: once another
+    # plan is loaded, undo must not carry it across.
+    forget = function() {
+      state$undo <- NULL
+      invisible(NULL)
+    },
+
     duplicate = function(id) {
       source <- shinySAP::getSapComponent(current(), collection, id)
       new_id <- mint()
@@ -132,21 +139,16 @@ card_parameters <- function(input, type, template, prefill) {
 }
 
 # template_field_ids() renders the template's UI to discover its ids, so the
-# answer is remembered per template.
+# answer is remembered per template. Matched on the ui FUNCTION, not its source
+# text: templates built by one factory (point and period prevalence, the two
+# survival types) share their text and differ only in what the closure captured.
 template_ids_cache <- new.env(parent = emptyenv())
+template_ids_cache$entries <- list()
 template_input_ids <- function(template) {
-  key <- paste(deparse(template$ui), collapse = "")
-  key <- substr(digest_string(key), 1, 40)
-  if (is.null(template_ids_cache[[key]])) {
-    template_ids_cache[[key]] <- setdiff(template_field_ids(template),
-                                         c(DISPLAY_ONLY_IDS, COHORT_DISPLAY_ONLY_IDS))
+  for (entry in template_ids_cache$entries) {
+    if (identical(entry$ui, template$ui)) return(entry$ids)
   }
-  template_ids_cache[[key]]
-}
-
-# A cheap stable key for a string (no digest dependency): its length and a
-# rolling sum of its bytes.
-digest_string <- function(x) {
-  bytes <- as.integer(charToRaw(x))
-  sprintf("%d_%.0f", length(bytes), sum(bytes * seq_along(bytes)) %% 1e12)
+  ids <- setdiff(template_field_ids(template), c(DISPLAY_ONLY_IDS, COHORT_DISPLAY_ONLY_IDS))
+  template_ids_cache$entries <- c(template_ids_cache$entries, list(list(ui = template$ui, ids = ids)))
+  ids
 }

@@ -89,21 +89,21 @@ test_that("classless components are rejected", {
   expect_error(updateSapComponent(sap, list(id = "coh_001")), "sap_\\*")
 })
 
-test_that("the add* wrappers still work after re-signing", {
+test_that("a SAP built one component at a time validates", {
   description <- structure(list(), class = "data_source_description")
   sap <- createSap(newSapStudy("study_001", "My study"))
-  sap <- addDataSource(sap, newSapDataSource("ds_001", "CPRD", description))
-  sap <- addDataSourceModification(sap, newSapDataSourceModification(
+  sap <- addSapComponent(sap, newSapDataSource("ds_001", "CPRD", description))
+  sap <- addSapComponent(sap, newSapDataSourceModification(
     "mod_001", "Trim", "trim_observation_period", "ds_001"
   ))
-  sap <- addCodelist(sap, newSapCodelist(
+  sap <- addSapComponent(sap, newSapCodelist(
     "cl_001", "Codes", "codelist", structure(list(), class = "codelist")
   ))
-  sap <- addCohort(sap, newSapCohort(
+  sap <- addSapComponent(sap, newSapCohort(
     "coh_001", "Cohort", "ds_001", "concept_cohort",
     list(codelist_id = "cl_001", exit = "e", overlap = "o")
   ))
-  sap <- addAnalysis(sap, newSapAnalysis(
+  sap <- addSapComponent(sap, newSapAnalysis(
     "an_001", "Incidence", "ds_001", "incidence",
     list(denominator_cohort_id = "coh_001")
   ))
