@@ -12,14 +12,15 @@
 #' the package schema. The app saves each SAP as one JSON file (see
 #' [writeSap()]) in `outputDir`.
 #'
-#' @param outputDir Folder the app saves SAPs into. Defaults to the current
-#'   working directory. Also settable beforehand with
-#'   `options(shinySAP.output_dir = )`.
+#' @param outputDir Folder the app saves SAPs into. Defaults to a per-user data
+#'   directory (`tools::R_user_dir("shinySAP", "data")`), so SAP files never
+#'   land in the working directory or the package source tree. Also settable
+#'   beforehand with `options(shinySAP.output_dir = )`.
 #' @param launch.browser Passed to [shiny::runApp()].
 #' @param ... Further arguments to [shiny::runApp()], e.g. `port`.
 #' @return Whatever [shiny::runApp()] returns, invisibly.
 #' @export
-shinySap <- function(outputDir = getOption("shinySAP.output_dir", getwd()),
+shinySap <- function(outputDir = getOption("shinySAP.output_dir", tools::R_user_dir("shinySAP", "data")),
                      launch.browser = interactive(), # nolint: object_name_linter. (shiny::runApp's own name)
                      ...) {
   for (pkg in c("shiny", "bslib", "htmltools")) {
