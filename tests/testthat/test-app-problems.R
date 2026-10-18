@@ -7,7 +7,7 @@ test_that("checkSap problems are regrouped by item with the field as prefix", {
   x$analyses[[1]]$parameters$denominator_cohort_id <- "coh_99"
   x$study$title <- NULL
   x$study$bogus <- "x"
-  found <- app("format_check_problems")(checkSap(x), x)
+  found <- shinySAP:::format_check_problems(checkSap(x), x)
   names <- vapply(found, function(p) p$name, character(1))
   expect_true("Untitled cohort (coh_1)" %in% names)
   expect_true("Study" %in% names)
@@ -17,19 +17,19 @@ test_that("checkSap problems are regrouped by item with the field as prefix", {
   expect_true(any(grepl("^bogus: ", study)))
   an <- found[[which(grepl("Point prevalence", names))]]$messages
   expect_match(an, "parameters.denominator_cohort_id: .*coh_99")
-  expect_identical(app("format_check_problems")(list(), x), list())
+  expect_identical(shinySAP:::format_check_problems(list(), x), list())
 })
 
 test_that("a complete fixture raises no problems at all", {
   sap <- fixture_sap()
   expect_length(checkSap(sap), 0)
-  expect_length(app("semantic_problems")(sap), 0)
+  expect_length(shinySAP:::semantic_problems(sap), 0)
 })
 
 semantic <- function(edit) {
   sap <- fixture_sap()
   x <- edit(unclass(sap))
-  app("semantic_problems")(x)
+  shinySAP:::semantic_problems(x)
 }
 messages_for <- function(found, name) {
   hit <- Filter(function(p) identical(p$name, name), found)

@@ -22,8 +22,7 @@
 # generateDenominatorCohortSet(sex =): one of Male, Female or Both.
 COHORT_SEXES <- c("Both", "Male", "Female")
 
-# Delegate to the package so the validation logic and the UI share one constant.
-AGE_MAX <- shinySAP:::AGE_MAX
+AGE_MAX <- 150L
 
 # The half of the card every cohort shares; everything else is `parameters`.
 COHORT_COMMON_FIELDS <- c("id", "name", "data_source_id", "type")

@@ -46,7 +46,11 @@ source_app <- function(file) {
   }
   source(path, local = knitr::knit_global())
 }
-for (f in c("cohort_kinds.R", "problems.R", "utils.R")) source_app(f)
+for (f in c("cohort_kinds.R", "utils.R")) source_app(f)
+
+sap_item_by_id    <- shinySAP::sapItemById
+item_label        <- shinySAP::sapItemLabel
+is_denominator_type <- shinySAP::sapIsDenominatorType
 
 is_word <- isTRUE(knitr::opts_knit$get("rmarkdown.pandoc.to") == "docx")
 
