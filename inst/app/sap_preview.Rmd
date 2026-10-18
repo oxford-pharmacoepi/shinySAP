@@ -39,10 +39,6 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
   x
 }
 
-# The document renders the calls the SAP describes, so it needs the generator
-# (R/sap_code.R) and the helpers it stands on. Sourced rather than copied: the SAP
-# and the code it generates must never drift apart. knitr runs with the working
-# directory set to this file's own, where R/ sits beside it.
 source_app <- function(file) {
   path <- file.path("R", file)
   if (!file.exists(path)) {
@@ -50,14 +46,9 @@ source_app <- function(file) {
   }
   source(path, local = knitr::knit_global())
 }
-for (f in c("cohort_kinds.R", "problems.R", "sap_code.R", "utils.R")) source_app(f)
+for (f in c("cohort_kinds.R", "problems.R", "utils.R")) source_app(f)
 
 is_word <- isTRUE(knitr::opts_knit$get("rmarkdown.pandoc.to") == "docx")
-
-code_block <- function(code) {
-  if (is.null(code) || !nzchar(code)) return(invisible(NULL))
-  cat("\n``` r\n", code, "\n```\n\n", sep = "")
-}
 
 sap   <- params$sap
 study <- sap$study %||% list()
@@ -118,9 +109,9 @@ codelist_name <- function(id) {
 
 # When an item runs on every data source -- the usual case -- its cell says so
 # in two words instead of repeating the same five names on every row.
-all_sources <- sap_source_names(sap)
+all_sources <- shinySAP:::sap_source_names(sap)
 sources_cell <- function(x) {
-  ds <- data_source_names(sap, x$data_source_id)
+  ds <- shinySAP:::data_source_names(sap, x$data_source_id)
   if (!length(ds)) return("—")
   if (length(all_sources) && setequal(ds, all_sources)) return("All data sources")
   paste(ds, collapse = ", ")
@@ -236,7 +227,7 @@ if (!length(codelists)) {
   df <- data.frame(
     `Codelist` = vapply(codelists, function(cl) item_label(cl, "codelist"), character(1)),
     `Type`     = vapply(codelists, function(cl) type_label("codelist", cl$type), character(1)),
-    `Content`  = vapply(codelists, function(cl) codelist_content_summary(cl$content), character(1)),
+    `Content`  = vapply(codelists, function(cl) shinySAP:::codelist_content_summary(cl$content), character(1)),
     check.names = FALSE, stringsAsFactors = FALSE
   )
   flextable::flextable_to_rmd(items_table(df))
@@ -299,36 +290,6 @@ if (!length(analyses)) {
   cat("\n\n")
 }
 ```
-
-`r if (is_word) "\\newpage"`
-
----
-
-# Appendix: analysis code
-
-```{r script, results='asis'}
-# The whole plan as code, in the order it has to run. `cdm` is the live database
-# connection the study opens; every other argument comes from this SAP. An
-# argument the plan does not decide is absent, and the package's default applies.
-secs <- sap_script_sections(sap)
-if (!length(secs)) {
-  cat("_No cohorts or analyses generate code yet._\n")
-} else {
-  cat("Target cohorts are instantiated outside this script and are referred to by",
-      "table name only. The blocks below run in the order they appear.\n\n")
-  group <- NULL
-  for (s in secs) {
-    if (!identical(s$group, group)) {
-      group <- s$group
-      cat("\n\n## ", group, "\n\n", sep = "")
-    }
-    if (!is.na(s$title)) cat("### ", s$title, "\n\n", sep = "")
-    if (is.null(s$code)) cat("_", s$note, "_\n\n", sep = "") else code_block(s$code)
-  }
-}
-```
-
-`r if (is_word) "\\newpage"`
 
 ---
 

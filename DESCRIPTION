@@ -37,7 +37,8 @@ Suggests:
     rmarkdown,
     shiny,
     testthat (>= 3.0.0),
-    withr
+    withr,
+    zip
 Config/testthat/edition: 3
 Config/roxygen2/version: 8.1.0
 Depends: 
