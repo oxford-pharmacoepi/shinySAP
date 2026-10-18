@@ -90,7 +90,8 @@ analysis_item_server <- function(id, sap_id, prefill = NULL, on_remove = functio
       if (is.null(field)) return()
       current <- chr_vec(shiny::isolate(input[[field]]) %||% base_pf(field, character(0)))
       shiny::updateSelectizeInput(session, field,
-                                  choices = unique(c(shinySAP:::cohort_strata_variables(denominator_cohort()), current)),
+                                  choices = unique(c(shinySAP:::cohort_strata_variables(denominator_cohort()),
+                                                    current)),
                                   selected = current)
     })
 
