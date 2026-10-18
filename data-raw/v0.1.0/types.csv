@@ -1,15 +1,15 @@
-object,type_id,label
-data_source_modification,trim_observation_period,Trim observation period
-codelist,codelist,Codelist
-codelist,codelist_with_details,Codelist with details
-codelist,concept_set_expression,Concept set expression
-cohort,concept_cohort,Concept cohort
-cohort,target,Target
-cohort,denominator,Denominator
-cohort,target_denominator,Target denominator
-analysis,incidence,Incidence
-analysis,point_prevalence,Point Prevalence
-analysis,period_prevalence,Period Prevalence
-analysis,other,Other
-analysis,single_event_survival,Single event survival
-analysis,competing_risk_survival,Competing risk survival
+object,type_id,label,package,fn
+data_source_modification,trim_observation_period,Trim observation period,NA,NA
+codelist,codelist,Codelist,NA,NA
+codelist,codelist_with_details,Codelist with details,NA,NA
+codelist,concept_set_expression,Concept set expression,NA,NA
+cohort,concept_cohort,Concept cohort,CohortConstructor,conceptCohort
+cohort,target,Target,NA,NA
+cohort,denominator,Denominator,IncidencePrevalence,generateDenominatorCohortSet
+cohort,target_denominator,Target denominator,IncidencePrevalence,generateTargetDenominatorCohortSet
+analysis,incidence,Incidence,IncidencePrevalence,estimateIncidence
+analysis,point_prevalence,Point Prevalence,IncidencePrevalence,estimatePointPrevalence
+analysis,period_prevalence,Period Prevalence,IncidencePrevalence,estimatePeriodPrevalence
+analysis,other,Other,NA,NA
+analysis,single_event_survival,Single event survival,CohortSurvival,estimateSingleEventSurvival
+analysis,competing_risk_survival,Competing risk survival,CohortSurvival,estimateCompetingRiskSurvival
