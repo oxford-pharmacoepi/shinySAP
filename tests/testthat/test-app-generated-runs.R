@@ -1,4 +1,3 @@
-skip_without_app()
 skip_if_not_installed("IncidencePrevalence")
 skip_if_not_installed("duckdb")
 skip_if_not_installed("CDMConnector")
@@ -20,7 +19,7 @@ test_that("generated denominator and incidence code run on the mock cdm", {
                      list(denominator_cohort_id = "coh_2", outcome_cohort_id = "coh_1",
                           interval = "years", washout = 0, repeated_events = FALSE)))
   )
-  secs <- app("sap_script_sections")(sap)
+  secs <- shinySAP::sapScriptSections(sap)
   code <- vapply(Filter(function(s) !is.null(s$code) && s$group != "Libraries", secs),
                  function(s) s$code, character(1))
   env <- new.env(parent = globalenv())

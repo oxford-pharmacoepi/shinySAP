@@ -45,23 +45,11 @@ format_check_problems <- function(problems, sap) {
   lapply(names(grouped), function(nm) list(name = nm, messages = unique(grouped[[nm]])))
 }
 
-# Lookups ------------------------------------------------------------------------
-
-sap_item_by_id <- function(items, id) {
-  id <- as.character(id %||% "")[1]
-  if (is.na(id) || !nzchar(id)) return(NULL)
-  for (item in items %||% list()) if (identical(as.character(item$id %||% ""), id)) return(item)
-  NULL
-}
-
-item_label <- function(item, noun) {
-  nm <- as.character(item$name %||% "")
-  if (nzchar(nm)) nm else sprintf("Untitled %s", noun)
-}
-
-is_denominator_type <- function(type) {
-  as.character(type %||% "") %in% c("denominator", "target_denominator")
-}
+# Lookups delegated to the package.
+sap_item_by_id      <- shinySAP::sapItemById
+item_label          <- shinySAP::sapItemLabel
+is_denominator_type <- shinySAP::sapIsDenominatorType
+table_name_collisions <- shinySAP::sapTableNameCollisions
 
 # Semantic checks ---------------------------------------------------------------
 
@@ -232,7 +220,7 @@ source_coverage_problems <- function(analysis, sap) {
       missing <- setdiff(own, theirs)
       if (length(missing)) {
         errs <- c(errs, sprintf("Runs on %s, where cohort '%s' is not built.",
-                                paste(data_source_names(sap, missing), collapse = ", "),
+                                paste(shinySAP:::data_source_names(sap, missing), collapse = ", "),
                                 item_label(co, "cohort")))
       }
     }

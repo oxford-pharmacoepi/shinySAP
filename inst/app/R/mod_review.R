@@ -21,9 +21,12 @@ review_ui <- function(id) {
       class = "d-flex gap-2 my-3 align-items-center flex-wrap",
       shiny::downloadButton(ns("download"), "Download JSON",   class = "btn btn-outline-secondary"),
       shiny::downloadButton(ns("dl_word"),  "Download Word",   class = "btn btn-outline-secondary"),
-      shiny::actionButton(ns("refresh"),    "Refresh preview",  class = "btn btn-primary",         icon = shiny::icon("rotate")),
-      shiny::actionButton(ns("gen_code"),   "Generate code",    class = "btn btn-outline-primary", icon = shiny::icon("code")),
-      shiny::downloadButton(ns("dl_study"), "Download study",   class = "btn btn-outline-secondary", icon = shiny::icon("download"))
+      shiny::actionButton(ns("refresh"),    "Refresh preview", class = "btn btn-primary",
+                          icon = shiny::icon("rotate")),
+      shiny::actionButton(ns("gen_code"),   "Generate code",   class = "btn btn-outline-primary",
+                          icon = shiny::icon("code")),
+      shiny::downloadButton(ns("dl_study"), "Download study",  class = "btn btn-outline-secondary",
+                            icon = shiny::icon("download"))
     ),
     shiny::uiOutput(ns("problems")),
     bslib::navset_tab(
