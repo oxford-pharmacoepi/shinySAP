@@ -32,7 +32,7 @@ newSap <- function(x,
   sapSchemaVersion <- validateSapSchemaVersion(sapSchemaVersion)
   omopgenerics::assertLogical(validate, length = 1)
 
-  sap <- constructSap(x)
+  sap <- constructSap(x, version = sapSchemaVersion)
 
   if (validate) {
     validateSap(sap)
@@ -42,8 +42,7 @@ newSap <- function(x,
 }
 
 constructSap <- function(x,
-                         version = currentSapSchemaVersion(),
-                         generatedAt = NULL) {
+                         version) {
 
   if (is.null(x$sap_schema_version)) {
     x$sap_schema_version <- version
@@ -52,9 +51,7 @@ constructSap <- function(x,
     cli::cli_abort(c(x = paste0("sap_schema_version must be ", version, ".")))
   }
   if (is.null(x$generated_at)) {
-    x$generated_at <- generatedAt %||% format(
-      Sys.time(), "%Y-%m-%dT%H:%M:%S%z"
-    )
+    x$generated_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
   }
 
   sapFields <- schemaFields("sap", version = version)
