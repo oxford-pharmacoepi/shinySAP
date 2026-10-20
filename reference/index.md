@@ -6,6 +6,8 @@
   : Add a component to a SAP
 - [`checkSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/checkSap.md)
   : Check a SAP and return structured problems
+- [`cohortTableName()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/cohortTableName.md)
+  : Convert a cohort display name to its generated table identifier
 - [`createSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/createSap.md)
   : Create a complete SAP from its components
 - [`getSapComponent()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/getSapComponent.md)
@@ -34,6 +36,14 @@
   : List the ids in a SAP collection
 - [`sapFromJson()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapFromJson.md)
   : Read a SAP from JSON
+- [`sapIsDenominatorType()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapIsDenominatorType.md)
+  : Test whether a cohort type is denominator-like
+- [`sapItemById()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapItemById.md)
+  : Find an item in a SAP collection by its id
+- [`sapItemLabel()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapItemLabel.md)
+  : Display label for a SAP item
+- [`sapProblems()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapProblems.md)
+  : Check a SAP for structural and semantic problems
 - [`sapSchemaFields()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaFields.md)
   : Schema fields for a SAP object
 - [`sapSchemaTypes()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaTypes.md)
@@ -42,8 +52,17 @@
   : The current SAP schema version
 - [`sapSchemaVocabulary()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaVocabulary.md)
   : Controlled vocabularies used by SAP fields
+- [`sapScriptSections()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapScriptSections.md)
+  : Generate the labelled code blocks for a SAP
+- [`sapStudyExportNotes()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapStudyExportNotes.md)
+  : Notes about what the SAP decides that lives outside the generated
+  files
+- [`sapTableNameCollisions()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapTableNameCollisions.md)
+  : Detect cohorts whose names collide on the same table identifier
 - [`sapToJson()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapToJson.md)
   : Serialise a SAP to JSON
+- [`sapToScript()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapToScript.md)
+  : Render a SAP as a single runnable R script
 - [`shinySap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/shinySap.md)
   : Launch the SAP authoring app
 - [`updateSapComponent()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/updateSapComponent.md)
@@ -54,3 +73,5 @@
   : Validate a SAP, throwing an error when problems are found
 - [`writeSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/writeSap.md)
   : Write a SAP to a JSON file
+- [`writeSapStudy()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/writeSapStudy.md)
+  : Write an OmopStudyBuilder study directory from a SAP

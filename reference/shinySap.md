@@ -9,7 +9,7 @@ in `outputDir`.
 
 ``` r
 shinySap(
-  outputDir = getOption("shinySAP.output_dir", getwd()),
+  outputDir = getOption("shinySAP.output_dir", tools::R_user_dir("shinySAP", "data")),
   launch.browser = interactive(),
   ...
 )
@@ -19,9 +19,10 @@ shinySap(
 
 - outputDir:
 
-  Folder the app saves SAPs into. Defaults to the current working
-  directory. Also settable beforehand with
-  `options(shinySAP.output_dir = )`.
+  Folder the app saves SAPs into. Defaults to a per-user data directory
+  (`tools::R_user_dir("shinySAP", "data")`), so SAP files never land in
+  the working directory or the package source tree. Also settable
+  beforehand with `options(shinySAP.output_dir = )`.
 
 - launch.browser:
 
