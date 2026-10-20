@@ -5,15 +5,16 @@
 \title{Launch the SAP authoring app}
 \usage{
 shinySap(
-  outputDir = getOption("shinySAP.output_dir", getwd()),
+  outputDir = getOption("shinySAP.output_dir", tools::R_user_dir("shinySAP", "data")),
   launch.browser = interactive(),
   ...
 )
 }
 \arguments{
-\item{outputDir}{Folder the app saves SAPs into. Defaults to the current
-working directory. Also settable beforehand with
-\code{options(shinySAP.output_dir = )}.}
+\item{outputDir}{Folder the app saves SAPs into. Defaults to a per-user data
+directory (\code{tools::R_user_dir("shinySAP", "data")}), so SAP files never
+land in the working directory or the package source tree. Also settable
+beforehand with \code{options(shinySAP.output_dir = )}.}
 
 \item{launch.browser}{Passed to \code{\link[shiny:runApp]{shiny::runApp()}}.}
 

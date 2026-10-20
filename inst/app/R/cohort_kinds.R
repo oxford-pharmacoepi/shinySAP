@@ -22,8 +22,7 @@
 # generateDenominatorCohortSet(sex =): one of Male, Female or Both.
 COHORT_SEXES <- c("Both", "Male", "Female")
 
-# ageGroup defaults to list(c(0, 150)); 150 is the package's open-ended upper age.
-AGE_MAX <- 150
+AGE_MAX <- 150L
 
 # The half of the card every cohort shares; everything else is `parameters`.
 COHORT_COMMON_FIELDS <- c("id", "name", "data_source_id", "type")
@@ -64,16 +63,8 @@ parse_bound_list <- function(x) {
   if (length(pairs)) pairs else NULL
 }
 
-# A list of pairs -> textarea lines, for pf() on the way back in. `open` is what
-# an unbounded upper bound reads as.
-format_bound_list <- function(pairs, open = "Inf") {
-  if (!length(pairs)) return(character(0))
-  vapply(pairs, function(p) {
-    p <- as.numeric(unlist(p))
-    hi <- if (length(p) >= 2 && is.finite(p[[2]])) format(p[[2]]) else as.character(open)
-    paste0(format(p[[1]]), ", ", hi)
-  }, character(1))
-}
+# Delegate to the package so the validation logic and the UI share one implementation.
+format_bound_list <- shinySAP:::format_bound_list
 
 # The registry ----------------------------------------------------------------
 

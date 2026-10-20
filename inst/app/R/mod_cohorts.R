@@ -85,7 +85,7 @@ cohort_item_server <- function(id, sap_id, prefill = NULL, on_remove = function(
     # so recomputing on every keystroke steals no focus.
     output$cohort_set_preview <- shiny::renderUI({
       type <- type_r()
-      if (!is_denominator_type(type)) return(NULL)
+      if (!shinySAP::sapIsDenominatorType(type)) return(NULL)
       cohort <- list(type = type, parameters = cohort_template(type)$collect(input))
       denominator_panel(
         cohort,

@@ -20,7 +20,7 @@ sapTypes <- purrr::map(
   \(schemaDir) {
     readr::read_csv(
       file = file.path(schemaDir, "types.csv"),
-      col_types = c(object = "c", type_id = "c", label = "c")
+      col_types = c(object = "c", type_id = "c", label = "c", package = "c", fn = "c")
     )
   }
 )
@@ -34,7 +34,7 @@ sapSchema <- purrr::map(
       col_types = c(
         object = "c", type_id = "c", path = "c", node_type = "c",
         value_type = "c", json_type = "c", required = "l",
-        default_json = "c", order = "i", ref = "c"
+        default_json = "c", order = "i", ref = "c", arg = "c"
       )
     )
   }

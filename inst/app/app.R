@@ -125,8 +125,8 @@ server <- function(input, output, session) {
   # cannot express (problems.R). Warn-not-block: shown on Review and counted at
   # save time, never a barrier to saving.
   problems <- shiny::reactive(c(
-    format_check_problems(shinySAP::checkSap(sap()), sap()),
-    semantic_problems(sap())
+    shinySAP:::format_check_problems(shinySAP::checkSap(sap()), sap()),
+    shinySAP:::semantic_problems(sap())
   ))
 
   # A loaded file replaces the object outright. The sections drop their cards

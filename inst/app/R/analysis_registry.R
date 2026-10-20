@@ -212,7 +212,7 @@ denominator_summary <- function(cohort, picked = NULL) {
     return(shiny::div(class = "alert alert-warning py-2 small mb-3",
                       sprintf("'%s' is not defined on the Cohorts tab, so nothing can be inherited from it.", picked)))
   }
-  if (!is_denominator_type(cohort$type)) {
+  if (!shinySAP::sapIsDenominatorType(cohort$type)) {
     return(shiny::div(
       class = "alert alert-warning py-2 small mb-3",
       sprintf(paste("'%s' is not a denominator cohort, so it fixes no age groups, sex or time at risk.",

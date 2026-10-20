@@ -12,10 +12,10 @@ test_that("the preview template knits against the fixture", {
                                        envir = list2env(list(params = list(sap = sap)), parent = globalenv())))
   txt <- paste(readLines(out), collapse = "\n")
   for (heading in c("# Study information", "# Data sources", "# Codelists", "# Description of cohorts",
-                    "# Analyses", "# Appendix: analysis code", "# Appendix: codelist contents")) {
+                    "# Analyses", "# Appendix: codelist contents")) {
     expect_match(txt, heading, fixed = TRUE)
   }
-  expect_match(txt, "estimateSingleEventSurvival(", fixed = TRUE)
+  expect_false(grepl("# Appendix: analysis code", txt, fixed = TRUE))
   expect_match(txt, "Follicular lymphoma denominator", fixed = TRUE)
   expect_match(txt, "schema 0.1.0", fixed = TRUE)
 })

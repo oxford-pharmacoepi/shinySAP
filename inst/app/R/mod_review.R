@@ -21,7 +21,12 @@ review_ui <- function(id) {
       class = "d-flex gap-2 my-3 align-items-center flex-wrap",
       shiny::downloadButton(ns("download"), "Download JSON",   class = "btn btn-outline-secondary"),
       shiny::downloadButton(ns("dl_word"),  "Download Word",   class = "btn btn-outline-secondary"),
-      shiny::actionButton(ns("refresh"),    "Refresh preview", class = "btn btn-primary", icon = shiny::icon("rotate"))
+      shiny::actionButton(ns("refresh"),    "Refresh preview", class = "btn btn-primary",
+                          icon = shiny::icon("rotate")),
+      shiny::actionButton(ns("gen_code"),   "Generate code",   class = "btn btn-outline-primary",
+                          icon = shiny::icon("code")),
+      shiny::downloadButton(ns("dl_study"), "Download study",  class = "btn btn-outline-secondary",
+                            icon = shiny::icon("download"))
     ),
     shiny::uiOutput(ns("problems")),
     bslib::navset_tab(
@@ -39,6 +44,10 @@ review_ui <- function(id) {
             style = "max-height: 60vh; overflow: auto;"
           )
         )
+      ),
+      bslib::nav_panel(
+        "Generated code",
+        shiny::div(class = "pt-3", shiny::uiOutput(ns("code_area")))
       )
     )
   )
@@ -118,7 +127,62 @@ review_server <- function(id, sap, problems = shiny::reactive(list()), app_dir =
       out
     }
 
-    html_path <- shiny::reactiveVal(NULL)
+    html_path  <- shiny::reactiveVal(NULL)
+    study_dir  <- tempfile("shinysap_study_")  # session-scoped; one per module instance
+    study_files <- shiny::reactiveVal(NULL)    # named list: relative path -> content string
+
+    shiny::observeEvent(input$gen_code, {
+      tryCatch({
+        unlink(study_dir, recursive = TRUE)
+        shinySAP::writeSapStudy(sap(), study_dir)
+        paths <- list(
+          "codelist/codelistCreation.R" = file.path(study_dir, "codelist", "codelistCreation.R"),
+          "cohorts/instantiateCohorts.R" = file.path(study_dir, "cohorts", "instantiateCohorts.R"),
+          "analyses/estimates.R"         = file.path(study_dir, "analyses", "estimates.R")
+        )
+        contents <- lapply(paths, function(p) {
+          if (file.exists(p)) paste(readLines(p, warn = FALSE), collapse = "\n") else ""
+        })
+        study_files(contents)
+      }, error = function(e) {
+        shiny::showNotification(paste("Code generation failed:", conditionMessage(e)), type = "error")
+      })
+    })
+
+    output$code_area <- shiny::renderUI({
+      files <- study_files()
+      if (is.null(files)) {
+        return(shiny::div(class = "text-muted p-4 border rounded",
+            "Click \"Generate code\" to produce the analysis script."))
+      }
+      code_panel <- function(label, content) {
+        bslib::nav_panel(label,
+          shiny::tags$pre(
+            class = "border rounded p-3 bg-body-tertiary mt-3",
+            style = "max-height: 65vh; overflow: auto; white-space: pre; font-size: 0.82em;",
+            if (nzchar(content)) content else "# (nothing generated for this section)"
+          )
+        )
+      }
+      bslib::navset_tab(
+        code_panel("codelist/codelistCreation.R",    files[["codelist/codelistCreation.R"]]),
+        code_panel("cohorts/instantiateCohorts.R",   files[["cohorts/instantiateCohorts.R"]]),
+        code_panel("analyses/estimates.R",           files[["analyses/estimates.R"]])
+      )
+    })
+
+    output$dl_study <- shiny::downloadHandler(
+      filename = function() sprintf("%s-study.zip", sap_file_base(sap()$study)),
+      content  = function(file) {
+        if (is.null(study_files())) {
+          shiny::showNotification("Click \"Generate code\" first.", type = "warning")
+          return(invisible(NULL))
+        }
+        zip::zip(zipfile = file,
+                 files   = list.files(study_dir, recursive = TRUE),
+                 root    = study_dir)
+      }
+    )
 
     shiny::observeEvent(input$refresh, {
       sap_val <- sap()
