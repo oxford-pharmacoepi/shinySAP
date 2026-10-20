@@ -4,10 +4,14 @@
 \alias{newSap}
 \title{Create a structured Statistical Analysis Plan}
 \usage{
-newSap(x, validate = TRUE)
+newSap(x, sapSchemaVersion = currentSapSchemaVersion(), validate = TRUE)
 }
 \arguments{
 \item{x}{A named R list containing the SAP fields.}
+
+\item{sapSchemaVersion}{A valid SAP schema version, it must be a choice of
+\code{supportedSapSchemaVersions()}. Current recommended version:
+"0.1.0".}
 
 \item{validate}{Whether to validate the complete SAP before returning it.}
 }

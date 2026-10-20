@@ -19,20 +19,30 @@
 #' Create a structured Statistical Analysis Plan
 #'
 #' @param x A named R list containing the SAP fields.
+#' @inheritParams sapSchemaVersionDoc
 #' @param validate Whether to validate the complete SAP before returning it.
 #'
 #' @return An object of class `sap`.
 #' @export
-newSap <- function(x, validate = TRUE) {
-  sap <- constructSap(x)
-  if (isTRUE(validate)) validateSap(sap)
-  sap
+newSap <- function(x,
+                   sapSchemaVersion = currentSapSchemaVersion(),
+                   validate = TRUE) {
+  # input validation
+  omopgenerics::assertList(x, named = TRUE)
+  sapSchemaVersion <- validateSapSchemaVersion(sapSchemaVersion)
+  omopgenerics::assertLogical(validate, length = 1)
+
+  sap <- constructSap(x, version = sapSchemaVersion)
+
+  if (validate) {
+    validateSap(sap)
+  }
+
+  return(sap)
 }
 
 constructSap <- function(x,
-                         version = currentSapSchemaVersion(),
-                         generatedAt = NULL) {
-  omopgenerics::assertList(x, named = TRUE)
+                         version) {
 
   if (is.null(x$sap_schema_version)) {
     x$sap_schema_version <- version
@@ -41,9 +51,7 @@ constructSap <- function(x,
     cli::cli_abort(c(x = paste0("sap_schema_version must be ", version, ".")))
   }
   if (is.null(x$generated_at)) {
-    x$generated_at <- generatedAt %||% format(
-      Sys.time(), "%Y-%m-%dT%H:%M:%S%z"
-    )
+    x$generated_at <- format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z")
   }
 
   sapFields <- schemaFields("sap", version = version)

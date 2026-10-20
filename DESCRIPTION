@@ -20,8 +20,7 @@ Imports:
     jsonlite,
     omopgenerics,
     purrr,
-    stats,
-    utils
+    stats
 Suggests:
     bslib,
     CDMConnector,
@@ -37,6 +36,7 @@ Suggests:
     rmarkdown,
     shiny,
     testthat (>= 3.0.0),
+    utils,
     withr,
     zip
 Config/testthat/edition: 3
