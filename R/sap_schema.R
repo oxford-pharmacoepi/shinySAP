@@ -17,23 +17,6 @@ SAP_COLLECTIONS <- c(
   analyses                  = "analysis"
 )
 
-
-currentSapSchemaVersion <- function() {
-  versions <- names(sapSchema)
-  if (!length(versions)) {
-    cli::cli_abort(c(x = "No SAP schemas are installed."))
-  }
-  currentVersion <- versions[[1]]
-  if (length(versions) > 1L) {
-    for (candidateVersion in versions[-1]) {
-      if (utils::compareVersion(candidateVersion, currentVersion) > 0) {
-        currentVersion <- candidateVersion
-      }
-    }
-  }
-  currentVersion
-}
-
 schemaFields <- function(object,
                          typeId = NULL,
                          version = currentSapSchemaVersion()) {
@@ -79,14 +62,6 @@ schemaObjectNames <- function(object,
 # Exported, read-only views of the schema. The Shiny app in inst/app builds its
 # dropdowns and parameter blocks from these rather than restating the schema, so
 # a row added to schema.csv / types.csv reaches the UI without an app change.
-
-#' The current SAP schema version
-#'
-#' @return A single string, e.g. `"0.1.0"`.
-#' @export
-sapSchemaVersion <- function() {
-  currentSapSchemaVersion()
-}
 
 #' Types defined for a SAP object
 #'

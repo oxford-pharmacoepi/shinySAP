@@ -19,20 +19,31 @@
 #' Create a structured Statistical Analysis Plan
 #'
 #' @param x A named R list containing the SAP fields.
+#' @inheritParams sapSchemaVersionDoc
 #' @param validate Whether to validate the complete SAP before returning it.
 #'
 #' @return An object of class `sap`.
 #' @export
-newSap <- function(x, validate = TRUE) {
+newSap <- function(x,
+                   sapSchemaVersion = currentSapSchemaVersion(),
+                   validate = TRUE) {
+  # input validation
+  omopgenerics::assertList(x, named = TRUE)
+  sapSchemaVersion <- validateSapSchemaVersion(sapSchemaVersion)
+  omopgenerics::assertLogical(validate, length = 1)
+
   sap <- constructSap(x)
-  if (isTRUE(validate)) validateSap(sap)
-  sap
+
+  if (validate) {
+    validateSap(sap)
+  }
+
+  return(sap)
 }
 
 constructSap <- function(x,
                          version = currentSapSchemaVersion(),
                          generatedAt = NULL) {
-  omopgenerics::assertList(x, named = TRUE)
 
   if (is.null(x$sap_schema_version)) {
     x$sap_schema_version <- version

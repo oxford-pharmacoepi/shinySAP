@@ -210,7 +210,7 @@ test_that("every schema reference names a collection that exists", {
 })
 
 test_that("exported schema accessors mirror the internal tables", {
-  expect_identical(sapSchemaVersion(), currentSapSchemaVersion())
+  expect_identical(supportedSapSchemaVersions()[1], currentSapSchemaVersion())
 
   types <- sapSchemaTypes("analysis")
   expect_identical(unname(types), schemaTypes("analysis"))
