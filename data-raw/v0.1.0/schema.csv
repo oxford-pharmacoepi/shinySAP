@@ -7,6 +7,7 @@ sap,NA,data_source_modifications,collection,object,array,TRUE,[],5,NA,NA
 sap,NA,codelists,collection,object,array,TRUE,[],6,NA,NA
 sap,NA,cohorts,collection,object,array,TRUE,[],7,NA,NA
 sap,NA,analyses,collection,object,array,TRUE,[],8,NA,NA
+sap,NA,diagnostics,collection,object,array,TRUE,[],9,NA,NA
 study,NA,study_id,field,id,string,TRUE,NA,1,NA,NA
 study,NA,title,field,character,string,TRUE,NA,2,NA,NA
 study,NA,authors,field,character_vector,array,FALSE,[],3,NA,NA
@@ -110,3 +111,12 @@ analysis,competing_risk_survival,parameters.event_gap,field,integer,number,FALSE
 analysis,competing_risk_survival,parameters.estimate_gap,field,integer,number,FALSE,1,15,NA,estimateGap
 analysis,competing_risk_survival,parameters.restricted_mean_follow_up,field,integer,number,FALSE,null,16,NA,restrictedMeanFollowUp
 analysis,competing_risk_survival,parameters.minimum_survival_days,field,integer,number,FALSE,1,17,NA,minimumSurvivalDays
+diagnostic,NA,id,field,id,string,TRUE,NA,1,NA,NA
+diagnostic,NA,name,field,character,string,TRUE,NA,2,NA,NA
+diagnostic,NA,data_source_id,field,id_vector,array,FALSE,[],3,data_sources,NA
+diagnostic,NA,type,field,type_id,string,TRUE,NA,4,NA,NA
+diagnostic,NA,parameters,object,object,object,TRUE,{},5,NA,NA
+diagnostic,database_diagnostics,parameters.snapshot,field,logic,boolean,FALSE,TRUE,1,NA,snapshot
+diagnostic,database_diagnostics,parameters.person_table_summary,field,logic,boolean,FALSE,TRUE,2,NA,personTableSummary
+diagnostic,database_diagnostics,parameters.observation_periods_summary,field,logic,boolean,FALSE,TRUE,3,NA,observationPeriodsSummary
+diagnostic,database_diagnostics,parameters.clinical_records_summary,field,logic,boolean,FALSE,FALSE,4,NA,clinicalRecordsSummary

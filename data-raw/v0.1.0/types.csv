@@ -13,3 +13,7 @@ analysis,period_prevalence,Period Prevalence,IncidencePrevalence,estimatePeriodP
 analysis,other,Other,NA,NA
 analysis,single_event_survival,Single event survival,CohortSurvival,estimateSingleEventSurvival
 analysis,competing_risk_survival,Competing risk survival,CohortSurvival,estimateCompetingRiskSurvival
+diagnostics,database_diagnostics,Database diagnostics,PhenotypeR,databaseDiagnostics
+diagnostics,codelist_diagnostics,Codelist diagnostics,PhenotypeR,codelistDiagnostics
+diagnostics,cohort_diagnostics,Cohort diagnostics,PhenotypeR,cohortDiagnostics
+diagnostics,population_diagnostics,Population diagnostics,PhenotypeR,populationDiagnostics
