@@ -30,7 +30,8 @@ currentSapSchemaVersion <- function() {
 #' supportedSapSchemaVersions()
 #'
 supportedSapSchemaVersions <- function() {
-  names(sapTypes)
+  versions <- names(sapTypes)
+  versions[order(numeric_version(versions), decreasing = TRUE)]
 }
 
 #' Change the SAP schema version of a sap obejct
