@@ -5,9 +5,11 @@
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/index.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/news/index.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/addSapComponent.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/changeSapSchemaVersion.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/checkSap.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/cohortTableName.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/createSap.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/currentSapSchemaVersion.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/getSapComponent.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/index.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/newSap.html</loc></url>
@@ -21,6 +23,7 @@
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/readSap.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/removeSapComponent.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapComponentIds.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapDoc.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapFromJson.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapIsDenominatorType.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapItemById.html</loc></url>
@@ -29,6 +32,7 @@
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaFields.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaTypes.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaVersion.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaVersionDoc.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaVocabulary.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapScriptSections.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapStudyExportNotes.html</loc></url>
@@ -36,6 +40,7 @@
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapToJson.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapToScript.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/shinySap.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/supportedSapSchemaVersions.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/updateSapComponent.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/updateStudy.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/validateSap.html</loc></url>

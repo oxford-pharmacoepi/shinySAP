@@ -1,13 +1,19 @@
-# The current SAP schema version
+# Get the SAP schema version of a given `sap` object
 
-The current SAP schema version
+Get the SAP schema version of a given `sap` object
 
 ## Usage
 
 ``` r
-sapSchemaVersion()
+sapSchemaVersion(sap)
 ```
+
+## Arguments
+
+- sap:
+
+  An `omop_sap` object.
 
 ## Value
 
-A single string, e.g. `"0.1.0"`.
+The SAP schema version of the `sap` obejct.
