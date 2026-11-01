@@ -113,11 +113,18 @@ prefiller <- function(prefill) {
 
 # Files -------------------------------------------------------------------------
 #
-# A SAP lives in ONE file, written by shinySAP::writeSap(): no timestamped
+# A SAP lives in ONE file, written by shinySAP::exportSap(): no timestamped
 # copies and no separate autosave file. The working file is created the first
 # time there is anything to keep, and every write after that rewrites it.
 working_sap_path <- function(study, dir) {
   file.path(dir, sprintf("%s.json", sap_file_base(study)))
+}
+
+# exportSap() refuses a missing folder; the output dir may not exist before the
+# first save.
+export_working <- function(sap, path) {
+  dir.create(dirname(path), showWarnings = FALSE, recursive = TRUE)
+  shinySAP::exportSap(sap, fileName = path)
 }
 
 # One deliberate save, with its guards and its notifications. Returns the path,
@@ -130,7 +137,7 @@ save_working <- function(sap, path, n_problems = 0) {
       type = "warning")
     return(invisible(NULL))
   }
-  path <- shinySAP::writeSap(sap, path)
+  path <- export_working(sap, path)
   if (n_problems > 0) {
     shiny::showNotification(
       sprintf("Saved %s, but %d item(s) still need attention.", basename(path), n_problems),

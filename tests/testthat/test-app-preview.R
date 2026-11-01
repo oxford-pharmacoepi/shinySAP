@@ -21,7 +21,7 @@ test_that("the preview template knits against the fixture", {
 })
 
 test_that("an empty SAP knits too", {
-  sap <- readSap(test_path("fixtures", "sap-minimal.json"))
+  sap <- importSap(test_path("fixtures", "sap-minimal.json"))
   out <- withr::local_tempfile(fileext = ".md")
   expect_no_error(withr::with_dir(app_dir, knitr::knit(
     "sap_preview.Rmd", output = out, quiet = TRUE,

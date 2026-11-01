@@ -51,7 +51,7 @@ changeSapSchemaVersion <- function(sap,
   # TODO implement version change when multiple SAP versions are supported
   # currently there is just one version supported
 
-  return(sap)
+  sap
 }
 
 #' Get the SAP schema version of a given `sap` object
@@ -65,5 +65,5 @@ sapSchemaVersion <- function(sap) {
   # input validation
   sap <- .validateSap(sap)
 
-  return(sap$sap_schema_version)
+  sap$sap_schema_version
 }

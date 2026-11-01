@@ -44,28 +44,60 @@ sapToJson <- function(sap, pretty = TRUE, stamp = FALSE) {
   )
 }
 
-#' Write a SAP to a JSON file
+#' Export a SAP to a JSON file
 #'
 #' @inheritParams sapToJson
-#' @param path File to write; its directory is created if needed.
-#' @return The path, invisibly.
+#' @param path Existing directory to write into.
+#' @param fileName Name of the file. `{study_id}` and `{version}` are replaced
+#'   by the study's values (`unknown` when not yet set). A directory in
+#'   `fileName` overrides `path`; a missing extension becomes `.json` and any
+#'   other extension is replaced with a warning.
+#' @return The path of the written file, invisibly.
 #' @export
-writeSap <- function(sap, path, stamp = TRUE) {
-  omopgenerics::assertCharacter(path, length = 1, na = FALSE, nm = "path")
-  dir.create(dirname(path), showWarnings = FALSE, recursive = TRUE)
-  writeLines(sapToJson(sap, stamp = stamp), path, useBytes = TRUE)
-  invisible(path)
+exportSap <- function(sap,
+                      path = getwd(),
+                      fileName = "sap_{study_id}_{version}.json",
+                      stamp = TRUE) {
+  omopgenerics::assertList(sap, named = TRUE, nm = "sap")
+  omopgenerics::assertCharacter(path, length = 1, na = FALSE, minNumCharacter = 1, nm = "path")
+  omopgenerics::assertCharacter(fileName, length = 1, na = FALSE, minNumCharacter = 1, nm = "fileName")
+  if (dirname(fileName) != ".") {
+    path <- dirname(fileName)
+    fileName <- basename(fileName)
+  }
+  if (!dir.exists(path)) {
+    cli::cli_abort(c(x = "Directory {.path {path}} does not exist."))
+  }
+  ext <- tools::file_ext(fileName)
+  if (ext == "") {
+    fileName <- paste0(fileName, ".json")
+  } else if (ext != "json") {
+    cli::cli_warn("Only the .json extension is allowed (.{ext} -> .json).")
+    fileName <- paste0(tools::file_path_sans_ext(fileName), ".json")
+  }
+  file <- file.path(path, fillFileName(fileName, sap$study))
+  writeLines(sapToJson(sap, stamp = stamp), file, useBytes = TRUE)
+  invisible(file)
+}
+
+fillFileName <- function(fileName, study) {
+  for (key in c("study_id", "version")) {
+    value <- as.character(study[[key]] %||% "")
+    if (length(value) != 1L || !nzchar(value)) value <- "unknown"
+    value <- gsub("[^A-Za-z0-9._-]+", "_", value)
+    fileName <- gsub(paste0("{", key, "}"), value, fileName, fixed = TRUE)
+  }
+  fileName
 }
 
 #' Read a SAP from JSON
 #'
 #' @param json A JSON string.
-#' @param validate Whether to run [validateSap()] on the result. The default is
-#'   `FALSE` so that a work-in-progress SAP can be loaded and its problems
-#'   reported with [checkSap()].
+#' @param validate Whether to run [validateSap()] on the result. `FALSE` loads
+#'   a work-in-progress SAP so its problems can be reported with [checkSap()].
 #' @return A `sap` object.
 #' @export
-sapFromJson <- function(json, validate = FALSE) {
+sapFromJson <- function(json, validate = TRUE) {
   x <- jsonlite::fromJSON(json, simplifyVector = FALSE)
   if (!is.list(x) || is.null(names(x))) {
     cli::cli_abort(c(x = "A SAP file must hold a JSON object."))
@@ -79,19 +111,22 @@ sapFromJson <- function(json, validate = FALSE) {
   newSap(x, validate = validate)
 }
 
-#' Read a SAP from a JSON file
+#' Import a SAP from a JSON file
 #'
 #' @inheritParams sapFromJson
 #' @param path File to read.
 #' @return A `sap` object.
 #' @export
-readSap <- function(path, validate = FALSE) {
+importSap <- function(path, validate = TRUE) {
   omopgenerics::assertCharacter(path, length = 1, na = FALSE, nm = "path")
-  if (!file.exists(path)) {
-    cli::cli_abort(c(x = paste0("File not found: ", path)))
+  if (!file.exists(path) || dir.exists(path)) {
+    cli::cli_abort(c(x = "File not found: {.path {path}}."))
   }
   json <- paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  sapFromJson(json, validate = validate)
+  sap <- sapFromJson(json, validate = validate)
+  id <- sap$study$study_id %||% "untitled"
+  cli::cli_inform("SAP {.pkg {id}} imported from {.path {path}}.")
+  sap
 }
 
 # Encoding ---------------------------------------------------------------------

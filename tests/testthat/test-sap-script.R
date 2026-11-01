@@ -23,7 +23,7 @@ test_that("long list arguments wrap under their opening paren", {
 })
 
 test_that("the fixture generates a script that parses and names every estimator", {
-  sap <- readSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
+  sap <- importSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
   script <- shinySAP::sapToScript(sap)
   expect_no_error(parse(text = script))
   expect_match(script, "library(IncidencePrevalence)", fixed = TRUE)
@@ -49,14 +49,14 @@ test_that("the fixture generates a script that parses and names every estimator"
 })
 
 test_that("an unbounded washout held in R renders as Inf", {
-  sap <- readSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
+  sap <- importSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
   a <- sap$analyses[[3]]
   a$parameters$washout <- Inf
   expect_match(shinySAP:::analysis_r_code(sap, a)$code, "outcomeWashout += Inf")
 })
 
 test_that("an argument the author never decided is omitted", {
-  sap <- readSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
+  sap <- importSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
   a <- sap$analyses[[1]]
   a$parameters$time_point <- NULL
   a$parameters$strata <- NULL
@@ -67,7 +67,7 @@ test_that("an argument the author never decided is omitted", {
 })
 
 test_that("cohort references resolve by id and dangling ids are dropped, not invented", {
-  sap <- readSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
+  sap <- importSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
   a <- sap$analyses[[3]]
   a$parameters$outcome_cohort_id <- "coh_99"
   code <- shinySAP:::analysis_r_code(sap, a)$code
@@ -76,7 +76,7 @@ test_that("cohort references resolve by id and dangling ids are dropped, not inv
 })
 
 test_that("a restricted analysis is guarded on the data source names, an unrestricted one is not", {
-  sap <- readSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
+  sap <- importSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
   secs <- shinySAP::sapScriptSections(sap)
   est <- Filter(function(s) identical(s$group, "Estimates"), secs)
   survival <- Filter(function(s) identical(s$title, "Survival after follicular lymphoma"), est)[[1]]
@@ -90,11 +90,11 @@ test_that("a restricted analysis is guarded on the data source names, an unrestr
 })
 
 test_that("sections run in dependency order and libraries are derived", {
-  sap <- readSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
+  sap <- importSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
   groups <- unique(vapply(shinySAP::sapScriptSections(sap), function(s) s$group, character(1)))
   expect_identical(groups, c("Libraries", "Codelists", "Cohorts", "Denominator cohort sets",
                              "Estimates", "Result suppression"))
-  minimal <- readSap(test_path("fixtures", "sap-minimal.json"))
+  minimal <- importSap(test_path("fixtures", "sap-minimal.json"))
   expect_identical(shinySAP::sapToScript(minimal), "")
 })
 

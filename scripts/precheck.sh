@@ -154,7 +154,7 @@ for s in "${STEPS[@]}"; do
       ensure_lib || continue
       out=$(R_LIBS="$LIB:${R_LIBS:-}" Rscript -e '
         library(shinySAP)
-        sap <- readSap("tests/testthat/fixtures/sap-c1-001-v1.0.0.json")
+        sap <- importSap("tests/testthat/fixtures/sap-c1-001-v1.0.0.json")
         rmd <- file.path(system.file("app", package = "shinySAP"), "sap_preview.Rmd")
         out <- rmarkdown::render(rmd, output_format = "html_document", output_file = tempfile(fileext = ".html"),
                                  params = list(sap = sap), envir = new.env(), quiet = TRUE)

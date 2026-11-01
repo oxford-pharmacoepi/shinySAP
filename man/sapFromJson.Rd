@@ -4,14 +4,13 @@
 \alias{sapFromJson}
 \title{Read a SAP from JSON}
 \usage{
-sapFromJson(json, validate = FALSE)
+sapFromJson(json, validate = TRUE)
 }
 \arguments{
 \item{json}{A JSON string.}
 
-\item{validate}{Whether to run \code{\link[=validateSap]{validateSap()}} on the result. The default is
-\code{FALSE} so that a work-in-progress SAP can be loaded and its problems
-reported with \code{\link[=checkSap]{checkSap()}}.}
+\item{validate}{Whether to run \code{\link[=validateSap]{validateSap()}} on the result. \code{FALSE} loads
+a work-in-progress SAP so its problems can be reported with \code{\link[=checkSap]{checkSap()}}.}
 }
 \value{
 A \code{sap} object.

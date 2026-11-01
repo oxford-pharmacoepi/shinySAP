@@ -1,5 +1,5 @@
 test_that("the study directory holds the three scripts the SAP owns", {
-  sap <- readSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
+  sap <- importSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
   files <- shinySAP:::study_files_list(sap)
   expect_setequal(names(files), unlist(shinySAP:::STUDY_PATHS))
   for (f in files) expect_match(f, "Study:   C1-001", fixed = TRUE)
@@ -18,7 +18,7 @@ test_that("the study directory holds the three scripts the SAP owns", {
 })
 
 test_that("writeSapStudy writes the scripts and the codelist files the scripts read", {
-  sap <- readSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
+  sap <- importSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
   dir <- withr::local_tempdir()
   paths <- shinySAP::writeSapStudy(sap, dir)
   expect_true(file.exists(file.path(dir, "codelist", "codelistCreation.R")))
@@ -31,8 +31,8 @@ test_that("writeSapStudy writes the scripts and the codelist files the scripts r
 })
 
 test_that("sapStudyExportNotes warns about guards only when something is restricted", {
-  sap <- readSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
+  sap <- importSap(test_path("fixtures", "sap-c1-001-v1.0.0.json"))
   expect_match(shinySAP::sapStudyExportNotes(sap), "restricted to named databases")
-  minimal <- readSap(test_path("fixtures", "sap-minimal.json"))
+  minimal <- importSap(test_path("fixtures", "sap-minimal.json"))
   expect_false(grepl("restricted", shinySAP::sapStudyExportNotes(minimal)))
 })

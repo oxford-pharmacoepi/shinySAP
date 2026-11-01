@@ -118,7 +118,7 @@ test_that("unknown fields survive a read so checkSap can report them", {
   x <- jsonlite::fromJSON(json, simplifyVector = FALSE)
   x$study$objectives <- list("an objective")
   x$cohorts[[1]]$parameters$bogus <- 1
-  back <- sapFromJson(jsonlite::toJSON(x, auto_unbox = TRUE, null = "null"))
+  back <- sapFromJson(jsonlite::toJSON(x, auto_unbox = TRUE, null = "null"), validate = FALSE)
   codes <- vapply(checkSap(back), function(p) p$code, character(1))
   expect_true("unknown_field" %in% codes)
   expect_true("unknown_parameter" %in% codes)
@@ -130,24 +130,48 @@ test_that("a file from the retired app schema is refused by version", {
   expect_error(sapFromJson("[1,2]"), "JSON object")
 })
 
-test_that("writeSap and readSap round-trip through a file", {
-  path <- file.path(withr::local_tempdir(), "nested", "sap.json")
+test_that("exportSap and importSap round-trip through a file", {
+  dir <- withr::local_tempdir()
+  path <- file.path(dir, "sap.json")
   sap <- fullSap()
   sap$generated_at <- "2020-01-01T00:00:00+0000"
-  expect_identical(writeSap(sap, path), path)
+  expect_identical(exportSap(sap, fileName = path), path)
   expect_true(file.exists(path))
-  back <- readSap(path)
-  expect_false(identical(back$generated_at, sap$generated_at))   # writeSap() stamps the file
+  back <- importSap(path)
+  expect_false(identical(back$generated_at, sap$generated_at))   # exportSap() stamps the file
   back$generated_at <- sap$generated_at
   expect_identical(as.character(sapToJson(back)), as.character(sapToJson(sap)))
-  expect_identical(readSap(writeSap(sap, path, stamp = FALSE))$generated_at, sap$generated_at)
-  expect_error(readSap(file.path(tempdir(), "nope.json")), "not found")
+  expect_identical(importSap(exportSap(sap, fileName = path, stamp = FALSE))$generated_at, sap$generated_at)
+  expect_error(importSap(file.path(dir, "nope.json")), "not found")
+  expect_error(importSap(dir), "not found")
+})
+
+test_that("exportSap names the file from the study and enforces .json", {
+  dir <- withr::local_tempdir()
+  sap <- fullSap()
+  study <- sap$study
+  expect_identical(
+    exportSap(sap, path = dir),
+    file.path(dir, sprintf("sap_%s_%s.json", study$study_id, study$version))
+  )
+  expect_identical(exportSap(sap, path = dir, fileName = "plan"), file.path(dir, "plan.json"))
+  expect_warning(out <- exportSap(sap, path = dir, fileName = "plan.txt"), "json")
+  expect_identical(out, file.path(dir, "plan.json"))
+  expect_error(exportSap(sap, path = file.path(dir, "missing")), "does not exist")
+  # A directory in fileName wins over path.
+  expect_identical(exportSap(sap, path = file.path(dir, "missing"), fileName = file.path(dir, "x.json")),
+                   file.path(dir, "x.json"))
+  # Placeholders of a draft study, and characters a file name cannot hold.
+  draft <- createSap(newSapStudy(validate = FALSE), validate = FALSE)
+  expect_identical(exportSap(draft, path = dir), file.path(dir, "sap_unknown_v1.0.0.json"))
+  draft$study$study_id <- "a b/c"
+  expect_identical(exportSap(draft, path = dir), file.path(dir, "sap_a_b_c_v1.0.0.json"))
 })
 
 test_that("validate = TRUE aborts on an invalid document", {
   x <- jsonlite::fromJSON(sapToJson(fullSap()), simplifyVector = FALSE)
   x$analyses[[1]]$parameters$denominator_cohort_id <- "missing"
   json <- jsonlite::toJSON(x, auto_unbox = TRUE, null = "null")
-  expect_s3_class(sapFromJson(json), "sap")
+  expect_s3_class(sapFromJson(json, validate = FALSE), "sap")
   expect_error(sapFromJson(json, validate = TRUE), "missing_reference")
 })

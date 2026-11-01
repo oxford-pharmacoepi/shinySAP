@@ -2,7 +2,7 @@
 # TODO update the name when validateSap have been deprecated
 .validateSap <- function(sap, call = parent.frame()) {
   # TODO add validation
-  return(sap)
+  sap
 }
 
 validateSapSchemaVersion <- function(sapSchemaVersion, call = parent.frame()) {

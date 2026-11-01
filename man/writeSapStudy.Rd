@@ -7,7 +7,7 @@
 writeSapStudy(sap, dir)
 }
 \arguments{
-\item{sap}{A SAP object from \code{\link[=readSap]{readSap()}} or the CRUD constructors.}
+\item{sap}{A SAP object from \code{\link[=importSap]{importSap()}} or the CRUD constructors.}
 
 \item{dir}{The study root directory (must exist).}
 }

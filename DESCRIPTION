@@ -20,7 +20,8 @@ Imports:
     jsonlite,
     omopgenerics,
     purrr,
-    stats
+    stats,
+    tools
 Suggests:
     bslib,
     CDMConnector,
