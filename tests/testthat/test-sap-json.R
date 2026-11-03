@@ -131,7 +131,7 @@ test_that("a file from the retired app schema is refused by version", {
 })
 
 test_that("exportSap and importSap round-trip through a file", {
-  dir <- withr::local_tempdir()
+  dir <- normalizePath(withr::local_tempdir(), winslash = "/")
   path <- file.path(dir, "sap.json")
   sap <- fullSap()
   sap$generated_at <- "2020-01-01T00:00:00+0000"
@@ -147,7 +147,7 @@ test_that("exportSap and importSap round-trip through a file", {
 })
 
 test_that("exportSap names the file from the study and enforces .json", {
-  dir <- withr::local_tempdir()
+  dir <- normalizePath(withr::local_tempdir(), winslash = "/")
   sap <- fullSap()
   study <- sap$study
   expect_identical(
