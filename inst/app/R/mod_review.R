@@ -83,7 +83,9 @@ review_server <- function(id, sap, problems = shiny::reactive(list()), app_dir =
 
     output$download <- shiny::downloadHandler(
       filename = function() sprintf("%s.json", sap_file_base(sap()$study)),
-      content  = function(file) shinySAP::writeSap(sap(), file)
+      # shiny hands over an extension-less temp file, which exportSap() would
+      # rename to .json; write the JSON straight into it instead.
+      content  = function(file) writeLines(shinySAP::sapToJson(sap(), stamp = TRUE), file, useBytes = TRUE)
     )
 
     # -- Preview --------------------------------------------------------------

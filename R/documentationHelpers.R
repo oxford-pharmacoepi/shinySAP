@@ -16,4 +16,3 @@ NULL
 #' @name sapSchemaVersionDoc
 #' @keywords internal
 NULL
-

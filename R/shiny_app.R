@@ -10,7 +10,7 @@
 #'
 #' Opens the Shiny application for writing a Statistical Analysis Plan against
 #' the package schema. The app saves each SAP as one JSON file (see
-#' [writeSap()]) in `outputDir`.
+#' [exportSap()]) in `outputDir`.
 #'
 #' @param outputDir Folder the app saves SAPs into. Defaults to a per-user data
 #'   directory (`tools::R_user_dir("shinySAP", "data")`), so SAP files never

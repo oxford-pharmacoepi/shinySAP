@@ -38,7 +38,7 @@ newSap <- function(x,
     validateSap(sap)
   }
 
-  return(sap)
+  sap
 }
 
 constructSap <- function(x,
@@ -59,7 +59,7 @@ constructSap <- function(x,
   for (collectionName in collectionNames) {
     if (is.null(x[[collectionName]])) x[[collectionName]] <- list()
     # Every item is a classed component whatever the entry point -- a
-    # constructor, readSap() or a hand-built list -- so the CRUD can dispatch
+    # constructor, importSap() or a hand-built list -- so the CRUD can dispatch
     # on the class and the app never has to re-wrap what it reads.
     object <- SAP_COLLECTIONS[collectionName]
     if (is.list(x[[collectionName]]) && !is.na(object)) {

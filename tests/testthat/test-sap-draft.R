@@ -110,7 +110,7 @@ test_that("components are classed on every read path", {
   sap <- newSap(x, validate = FALSE)
   expect_s3_class(sap$study, "sap_study")
   expect_s3_class(sap$cohorts[[1]], "sap_cohort")
-  back <- sapFromJson(sapToJson(sap))
+  back <- sapFromJson(sapToJson(sap), validate = FALSE)
   expect_s3_class(back$cohorts[[1]], "sap_cohort")
   expect_s3_class(back$study, "sap_study")
   # Unknown keys survive the classing, and non-lists are left for checkSap().

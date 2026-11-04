@@ -95,8 +95,8 @@ sap <- createSap(study, dataSources = list(source), codelists = list(codelist),
                  cohorts = list(cohort, denom), analyses = list(analysis))
 
 checkSap(sap)             # list() -- no problems
-writeSap(sap, "sap.json")
-readSap("sap.json")
+exportSap(sap, path = tempdir())   # sap_C1-001_v1.0.0.json
+importSap(file.path(tempdir(), "sap_C1-001_v1.0.0.json"))
 ```
 
 The constructors validate each component as it is built; `createSap()`
@@ -130,7 +130,7 @@ on each edit.
 
 ## The file
 
-`writeSap()` / `readSap()` (and `sapToJson()` / `sapFromJson()` for
+`exportSap()` / `importSap()` (and `sapToJson()` / `sapFromJson()` for
 strings) serialise the object by the schema: every key is a schema path
 and every value is encoded by its value type, so nothing app-specific
 ever reaches the file.
@@ -302,7 +302,7 @@ needs from the package it calls as `shinySAP::<fn>()`.
     DESCRIPTION                  package metadata; shiny and the OMOP packages are Suggests
     R/sap.R                      SAP constructors and CRUD
     R/sap_schema.R               schema accessors, checkSap(), validateSap()
-    R/sap_json.R                 sapToJson(), sapFromJson(), writeSap(), readSap()
+    R/sap_json.R                 sapToJson(), sapFromJson(), exportSap(), importSap()
     R/shiny_app.R                shinySap()
     R/sysdata.rda                the built schema tables (see data-raw/)
     data-raw/v<version>/         schema.csv + types.csv, ground truth for what a SAP is

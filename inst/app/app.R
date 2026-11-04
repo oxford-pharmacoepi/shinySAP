@@ -140,7 +140,7 @@ server <- function(input, output, session) {
   }
 
   shiny::observeEvent(input$load, {
-    loaded <- tryCatch(shinySAP::readSap(input$load$datapath), error = function(e) e)
+    loaded <- tryCatch(shinySAP::importSap(input$load$datapath, validate = FALSE), error = function(e) e)
     if (inherits(loaded, "error")) {
       shiny::showNotification(paste("Could not read that file:", conditionMessage(loaded)),
                               type = "error", duration = 10)
@@ -196,7 +196,7 @@ server <- function(input, output, session) {
   }
 
   persist <- function(s) {
-    path <- tryCatch(shinySAP::writeSap(s, next_path(s)), error = function(e) NULL)
+    path <- tryCatch(export_working(s, next_path(s)), error = function(e) NULL)
     if (is.null(path)) return(invisible(NULL))
     adopt(path)
     invisible(path)

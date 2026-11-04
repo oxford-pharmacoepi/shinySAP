@@ -7,7 +7,7 @@
 sapProblems(sap)
 }
 \arguments{
-\item{sap}{A SAP object from \code{\link[=readSap]{readSap()}} or \code{\link[=createSap]{createSap()}}.}
+\item{sap}{A SAP object from \code{\link[=importSap]{importSap()}} or \code{\link[=createSap]{createSap()}}.}
 }
 \value{
 A list of problems. Each element is a list with:

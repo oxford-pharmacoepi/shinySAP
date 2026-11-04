@@ -7,7 +7,7 @@
 sapScriptSections(sap)
 }
 \arguments{
-\item{sap}{A SAP object from \code{\link[=readSap]{readSap()}} or the CRUD constructors.}
+\item{sap}{A SAP object from \code{\link[=importSap]{importSap()}} or the CRUD constructors.}
 }
 \value{
 A list of block entries.

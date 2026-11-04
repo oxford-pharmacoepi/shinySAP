@@ -29,7 +29,7 @@ app <- function(name) get(name, envir = app_env, inherits = FALSE)
 
 # A complete, valid SAP exercising every type, for the code generator, the
 # preview and the problem checks. Mirrors tests/testthat/fixtures/sap-c1-001-v1.0.0.json.
-fixture_sap <- function() readSap(testthat::test_path("fixtures", "sap-c1-001-v1.0.0.json"))
+fixture_sap <- function() importSap(testthat::test_path("fixtures", "sap-c1-001-v1.0.0.json"))
 
 # A shiny input-like list with `$` access, for template collect() functions.
 fake_input <- function(...) list(...)

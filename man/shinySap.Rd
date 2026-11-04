@@ -26,5 +26,5 @@ Whatever \code{\link[shiny:runApp]{shiny::runApp()}} returns, invisibly.
 \description{
 Opens the Shiny application for writing a Statistical Analysis Plan against
 the package schema. The app saves each SAP as one JSON file (see
-\code{\link[=writeSap]{writeSap()}}) in \code{outputDir}.
+\code{\link[=exportSap]{exportSap()}}) in \code{outputDir}.
 }

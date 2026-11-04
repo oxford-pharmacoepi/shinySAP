@@ -237,7 +237,7 @@ semantic_problems <- function(sap) {
 #' for programmatic SAP construction — for example by an LLM — where the
 #' Shiny UI is not available to surface warnings.
 #'
-#' @param sap A SAP object from [readSap()] or [createSap()].
+#' @param sap A SAP object from [importSap()] or [createSap()].
 #' @return A list of problems. Each element is a list with:
 #'   \describe{
 #'     \item{`name`}{The item or section the problem belongs to.}

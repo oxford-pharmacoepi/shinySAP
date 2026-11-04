@@ -498,7 +498,7 @@ script_packages <- function(secs) {
 #' sets, Estimates, Result suppression. Each entry is a list with fields
 #' `group`, `title`, `code`, `note`, and `pkgs`.
 #'
-#' @param sap A SAP object from [readSap()] or the CRUD constructors.
+#' @param sap A SAP object from [importSap()] or the CRUD constructors.
 #' @return A list of block entries.
 #' @export
 sapScriptSections <- function(sap) {
@@ -557,7 +557,7 @@ sapScriptSections <- function(sap) {
 
 #' Render a SAP as a single runnable R script
 #'
-#' @param sap A SAP object from [readSap()] or the CRUD constructors.
+#' @param sap A SAP object from [importSap()] or the CRUD constructors.
 #' @return A single character string containing a runnable R script, or `""`
 #'   when the SAP has no codable content.
 #' @export
@@ -732,7 +732,7 @@ study_files_list <- function(sap) {
 #' Never removes or overwrites files the study harness owns (`codeToRun.R`,
 #' `runStudy.R`).
 #'
-#' @param sap A SAP object from [readSap()] or the CRUD constructors.
+#' @param sap A SAP object from [importSap()] or the CRUD constructors.
 #' @param dir The study root directory (must exist).
 #' @return The paths written, invisibly.
 #' @export
