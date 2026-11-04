@@ -9,8 +9,8 @@
 - New JSON layer:
   [`sapToJson()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapToJson.md),
   [`sapFromJson()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapFromJson.md),
-  [`writeSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/writeSap.md),
-  [`readSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/readSap.md).
+  [`exportSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/exportSap.md),
+  [`importSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/importSap.md).
 - Exported read-only schema accessors:
   [`sapSchemaVersion()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaVersion.md),
   [`sapSchemaTypes()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapSchemaTypes.md),
@@ -28,7 +28,7 @@
 - [`newSapId()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapId.md)
   mints the next `<prefix>_<n>` id for a collection.
 - Components are classed (`sap_cohort`, …) on every read path, including
-  [`readSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/readSap.md).
-- [`writeSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/writeSap.md)
+  [`importSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/importSap.md).
+- [`exportSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/exportSap.md)
   stamps `generated_at` at write time (`stamp = FALSE` keeps the
   object’s value).

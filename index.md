@@ -101,8 +101,8 @@ sap <- createSap(study, dataSources = list(source), codelists = list(codelist),
                  cohorts = list(cohort, denom), analyses = list(analysis))
 
 checkSap(sap)             # list() -- no problems
-writeSap(sap, "sap.json")
-readSap("sap.json")
+exportSap(sap, path = tempdir())   # sap_C1-001_v1.0.0.json
+importSap(file.path(tempdir(), "sap_C1-001_v1.0.0.json"))
 ```
 
 The constructors validate each component as it is built;
@@ -143,9 +143,9 @@ on each edit.
 
 ## The file
 
-[`writeSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/writeSap.md)
+[`exportSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/exportSap.md)
 /
-[`readSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/readSap.md)
+[`importSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/importSap.md)
 (and
 [`sapToJson()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapToJson.md)
 /
@@ -329,7 +329,7 @@ directory to it, and everything it needs from the package it calls as
 DESCRIPTION                  package metadata; shiny and the OMOP packages are Suggests
 R/sap.R                      SAP constructors and CRUD
 R/sap_schema.R               schema accessors, checkSap(), validateSap()
-R/sap_json.R                 sapToJson(), sapFromJson(), writeSap(), readSap()
+R/sap_json.R                 sapToJson(), sapFromJson(), exportSap(), importSap()
 R/shiny_app.R                shinySap()
 R/sysdata.rda                the built schema tables (see data-raw/)
 data-raw/v<version>/         schema.csv + types.csv, ground truth for what a SAP is

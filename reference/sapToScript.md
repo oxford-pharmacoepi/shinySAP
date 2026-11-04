@@ -13,7 +13,7 @@ sapToScript(sap)
 - sap:
 
   A SAP object from
-  [`readSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/readSap.md)
+  [`importSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/importSap.md)
   or the CRUD constructors.
 
 ## Value

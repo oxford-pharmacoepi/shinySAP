@@ -2,7 +2,7 @@
 
 Opens the Shiny application for writing a Statistical Analysis Plan
 against the package schema. The app saves each SAP as one JSON file (see
-[`writeSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/writeSap.md))
+[`exportSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/exportSap.md))
 in `outputDir`.
 
 ## Usage

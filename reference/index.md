@@ -20,8 +20,14 @@
 - [`currentSapSchemaVersion()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/currentSapSchemaVersion.md)
   : Current SAP schema version
 
+- [`exportSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/exportSap.md)
+  : Export a SAP to a JSON file
+
 - [`getSapComponent()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/getSapComponent.md)
   : Get a component from a SAP by id
+
+- [`importSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/importSap.md)
+  : Import a SAP from a JSON file
 
 - [`newSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/newSap.md)
   : Create a structured Statistical Analysis Plan
@@ -46,9 +52,6 @@
 
 - [`newSapStudy()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapStudy.md)
   : Create the study metadata component of a SAP
-
-- [`readSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/readSap.md)
-  : Read a SAP from a JSON file
 
 - [`removeSapComponent()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/removeSapComponent.md)
   : Remove a component from a SAP by id
@@ -115,9 +118,6 @@
 
 - [`validateSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/validateSap.md)
   : Validate a SAP, throwing an error when problems are found
-
-- [`writeSap()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/writeSap.md)
-  : Write a SAP to a JSON file
 
 - [`writeSapStudy()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/writeSapStudy.md)
   : Write an OmopStudyBuilder study directory from a SAP

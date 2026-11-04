@@ -10,7 +10,9 @@
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/cohortTableName.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/createSap.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/currentSapSchemaVersion.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/exportSap.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/getSapComponent.html</loc></url>
+<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/importSap.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/index.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/newSap.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapAnalysis.html</loc></url>
@@ -20,7 +22,6 @@
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapDataSourceModification.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapId.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/newSapStudy.html</loc></url>
-<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/readSap.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/removeSapComponent.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapComponentIds.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/sapDoc.html</loc></url>
@@ -44,7 +45,6 @@
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/updateSapComponent.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/updateStudy.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/validateSap.html</loc></url>
-<url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/writeSap.html</loc></url>
 <url><loc>https://oxford-pharmacoepi.github.io/shinySAP/reference/writeSapStudy.html</loc></url>
 </urlset>
 
