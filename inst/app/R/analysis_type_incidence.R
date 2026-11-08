@@ -42,7 +42,7 @@ register_analysis_template(
     bslib::layout_columns(
       col_widths = c(6, 6),
       shiny::selectInput(ns("interval"), "Interval",
-                         c("Not stated" = "", shinySAP::sapSchemaVocabulary()$time_intervals("incidence")),
+                         c("Not stated" = "", sapSchemaVocabulary()$time_intervals("incidence")),
                          selected = pf("interval"), width = "100%"),
       shiny::checkboxInput(ns("complete_database_intervals"), "Require complete intervals",
                            value = isTRUE(pf("complete_database_intervals", TRUE)))

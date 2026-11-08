@@ -12,13 +12,16 @@
 # The upper age bound IncidencePrevalence generators accept.
 AGE_MAX <- 150L
 
-#' Format a list of numeric bound pairs as human-readable labels
+#' Format numeric bound pairs as labels
 #'
-#' @param pairs A list of length-2 numeric vectors, e.g. `list(c(0, 17), c(18, 150))`.
-#' @param open The label for an open upper bound (default `"Inf"`).
-#' @return A character vector, one element per pair.
-#' @noRd
-format_bound_list <- function(pairs, open = "Inf") {
+#' Turns the `[lower, upper]` pairs a SAP stores for age groups and time at
+#' risk into `"lower, upper"` strings, with an open upper bound shown as `open`.
+#'
+#' @param pairs A list of length-2 numeric vectors, e.g. `list(c(0, 17), c(18, Inf))`.
+#' @param open The label for an open (infinite or missing) upper bound.
+#' @return A character vector, one element per pair; empty for no pairs.
+#' @export
+sapFormatBounds <- function(pairs, open = "Inf") {
   if (!length(pairs)) return(character(0))
   vapply(pairs, function(p) {
     p <- as.numeric(unlist(p))
@@ -78,13 +81,21 @@ age_group_problems <- function(groups) {
     g <- as.numeric(unlist(g))
     if (length(g) == 2 && !anyNA(g) && g[[2]] > AGE_MAX) {
       errs <- c(errs, sprintf("Age group '%s' must lie within 0 and %d.",
-                              format_bound_list(list(g), open = AGE_MAX), AGE_MAX))
+                              sapFormatBounds(list(g), open = AGE_MAX), AGE_MAX))
     }
   }
   errs
 }
 
-cohort_strata_variables <- function(cohort) {
+#' Strata variables a cohort can be stratified by
+#'
+#' Only denominator-type cohorts carry the columns the strata estimators need.
+#'
+#' @param cohort A cohort object from a SAP's `$cohorts`, or `NULL`.
+#' @return A character vector of column names; empty when the cohort is not a
+#'   denominator.
+#' @export
+sapStrataVariables <- function(cohort) {
   if (is.null(cohort) || !sapIsDenominatorType(cohort$type)) return(character(0))
   STRATA_VARIABLES
 }
@@ -92,7 +103,7 @@ cohort_strata_variables <- function(cohort) {
 validate_strata_against <- function(groups, cohort) {
   if (!length(groups) || is.null(cohort)) return(character(0))
   errs <- character(0)
-  declared <- cohort_strata_variables(cohort)
+  declared <- sapStrataVariables(cohort)
   p <- cohort$parameters %||% list()
   sex <- as.character(p$sex %||% "Both")
   n_ages <- length(p$age_group %||% list())
@@ -130,7 +141,7 @@ source_coverage_problems <- function(analysis, sap) {
       missing <- setdiff(own, theirs)
       if (length(missing)) {
         errs <- c(errs, sprintf("Runs on %s, where cohort '%s' is not built.",
-                                paste(data_source_names(sap, missing), collapse = ", "),
+                                paste(sapDataSourceNames(sap, missing), collapse = ", "),
                                 sapItemLabel(co, "cohort")))
       }
     }
@@ -174,7 +185,7 @@ semantic_problems <- function(sap) {
       for (w in p$time_at_risk %||% list()) {
         if (as.numeric(w[[1]]) < 0) {
           errs <- c(errs, sprintf("Time at risk '%s' must start at day 0 or later.",
-                                  format_bound_list(list(w))))
+                                  sapFormatBounds(list(w))))
         }
       }
     }

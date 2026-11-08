@@ -48,9 +48,10 @@ source_app <- function(file) {
 }
 for (f in c("cohort_kinds.R", "utils.R")) source_app(f)
 
-sap_item_by_id    <- shinySAP::sapItemById
-item_label        <- shinySAP::sapItemLabel
-is_denominator_type <- shinySAP::sapIsDenominatorType
+library(shinySAP)
+sap_item_by_id    <- sapItemById
+item_label        <- sapItemLabel
+is_denominator_type <- sapIsDenominatorType
 
 is_word <- isTRUE(knitr::opts_knit$get("rmarkdown.pandoc.to") == "docx")
 
@@ -96,7 +97,7 @@ chr <- function(x) {
 dash <- function(x) if (nzchar(trimws(x))) x else "—"
 
 type_label <- function(object, type) {
-  types <- shinySAP::sapSchemaTypes(object)
+  types <- sapSchemaTypes(object)
   hit <- names(types)[match(chr(type), types)]
   if (is.na(hit)) dash(chr(type)) else hit
 }
@@ -113,9 +114,9 @@ codelist_name <- function(id) {
 
 # When an item runs on every data source -- the usual case -- its cell says so
 # in two words instead of repeating the same five names on every row.
-all_sources <- shinySAP:::sap_source_names(sap)
+all_sources <- sapDataSourceNames(sap)
 sources_cell <- function(x) {
-  ds <- shinySAP:::data_source_names(sap, x$data_source_id)
+  ds <- sapDataSourceNames(sap, x$data_source_id)
   if (!length(ds)) return("—")
   if (length(all_sources) && setequal(ds, all_sources)) return("All data sources")
   paste(ds, collapse = ", ")
@@ -136,8 +137,8 @@ parameter_text <- function(key, value, value_type) {
               if (is.na(dr[[1]])) "start of available data" else format(dr[[1]]),
               if (is.na(dr[[2]])) "end of available data" else format(dr[[2]]))
     },
-    age_group = paste(format_bound_list(value, open = AGE_MAX), collapse = "; "),
-    time_at_risk = paste(format_bound_list(value, open = "∞"), collapse = "; "),
+    age_group = paste(sapFormatBounds(value, open = AGE_MAX), collapse = "; "),
+    time_at_risk = paste(sapFormatBounds(value, open = "∞"), collapse = "; "),
     strata = paste(vapply(value, function(g) paste(as.character(unlist(g)), collapse = " × "),
                           character(1)), collapse = "\n"),
     paste(as.character(unlist(value)), collapse = ", ")
@@ -148,7 +149,7 @@ parameter_text <- function(key, value, value_type) {
 parameters_text <- function(object, item) {
   p <- item$parameters %||% list()
   if (!length(p)) return("")
-  fields <- shinySAP::sapSchemaFields(object, item$type)
+  fields <- sapSchemaFields(object, item$type)
   fields <- fields[grepl("^parameters\\.", fields$path), , drop = FALSE]
   keys <- sub("^parameters\\.", "", fields$path)
   lines <- character(0)
@@ -231,7 +232,7 @@ if (!length(codelists)) {
   df <- data.frame(
     `Codelist` = vapply(codelists, function(cl) item_label(cl, "codelist"), character(1)),
     `Type`     = vapply(codelists, function(cl) type_label("codelist", cl$type), character(1)),
-    `Content`  = vapply(codelists, function(cl) shinySAP:::codelist_content_summary(cl$content), character(1)),
+    `Content`  = vapply(codelists, function(cl) sapCodelistSummary(cl$content), character(1)),
     check.names = FALSE, stringsAsFactors = FALSE
   )
   flextable::flextable_to_rmd(items_table(df))

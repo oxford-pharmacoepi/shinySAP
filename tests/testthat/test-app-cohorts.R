@@ -11,8 +11,8 @@ test_that("bounds parse and format both ways", {
   lines <- "0, 17\n18, 64\n\n65+"
   pairs <- app("parse_bound_list")(lines)
   expect_identical(pairs, list(c(0, 17), c(18, 64), c(65, Inf)))
-  expect_identical(app("format_bound_list")(pairs), c("0, 17", "18, 64", "65, Inf"))
-  expect_identical(app("format_bound_list")(pairs, open = 150), c("0, 17", "18, 64", "65, 150"))
+  expect_identical(sapFormatBounds(pairs), c("0, 17", "18, 64", "65, Inf"))
+  expect_identical(sapFormatBounds(pairs, open = 150), c("0, 17", "18, 64", "65, 150"))
   expect_null(app("parse_bound_list")(""))
 })
 

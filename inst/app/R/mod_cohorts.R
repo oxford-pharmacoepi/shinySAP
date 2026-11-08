@@ -3,7 +3,7 @@
 # A cohort card is in two halves: the common fields (id, name, data sources,
 # type) and a parameter block that depends on the type -- see cohort_kinds.R for
 # the registry and what each type carries. Every edit writes a draft
-# shinySAP::newSapCohort() back into the SAP through the section's CRUD.
+# newSapCohort() back into the SAP through the section's CRUD.
 # References between cards are by id, so renaming a cohort changes only its
 # label in every picker.
 
@@ -21,7 +21,7 @@ cohort_item_ui <- function(id, prefill = NULL) {
       # A new card starts with NO type: the type decides everything else on the
       # card, so it is the author's first decision, not a default.
       shiny::selectInput(ns("type"), "Type",
-                         c("Choose a type..." = "", shinySAP::sapSchemaTypes("cohort")),
+                         c("Choose a type..." = "", sapSchemaTypes("cohort")),
                          selected = pf("type"), width = "100%")
     ),
     shiny::tags$hr(class = "my-3"),
@@ -85,7 +85,7 @@ cohort_item_server <- function(id, sap_id, prefill = NULL, on_remove = function(
     # so recomputing on every keystroke steals no focus.
     output$cohort_set_preview <- shiny::renderUI({
       type <- type_r()
-      if (!shinySAP::sapIsDenominatorType(type)) return(NULL)
+      if (!sapIsDenominatorType(type)) return(NULL)
       cohort <- list(type = type, parameters = cohort_template(type)$collect(input))
       denominator_panel(
         cohort,
@@ -108,7 +108,7 @@ cohort_item_server <- function(id, sap_id, prefill = NULL, on_remove = function(
     # never reach the SAP.
     shiny::observe({
       type <- type_r()
-      write(shinySAP::newSapCohort(
+      write(newSapCohort(
         sap_id,
         name         = chr_or_null(read("name")),
         dataSourceId = chr_vec(read("data_source_id")),
@@ -156,8 +156,8 @@ cohorts_server <- function(id, sap,
 
     coll <- sap_collection(
       sap, "cohorts",
-      new_component = function(id) shinySAP::newSapCohort(id, validate = FALSE),
-      copy = function(source, id) shinySAP::newSapCohort(
+      new_component = function(id) newSapCohort(id, validate = FALSE),
+      copy = function(source, id) newSapCohort(
         id, name = copy_name(source$name), dataSourceId = source$data_source_id,
         type = source$type, parameters = source$parameters, validate = FALSE),
       to_prefill = cohort_to_prefill

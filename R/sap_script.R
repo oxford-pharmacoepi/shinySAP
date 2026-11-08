@@ -242,7 +242,18 @@ sapIsDenominatorType <- function(type) {
 # fires only when an item names a PROPER SUBSET of the study's sources.
 
 # Data source ids -> names.
-data_source_names <- function(sap, ids) {
+#' Display names of a SAP's data sources
+#'
+#' @param sap A SAP object.
+#' @param ids Data source ids to look up; `NULL` (the default) means every
+#'   data source in the SAP, in order.
+#' @return A character vector of names. An id with no name, or one the SAP does
+#'   not know, is returned as the id itself.
+#' @export
+sapDataSourceNames <- function(sap, ids = NULL) {
+  if (is.null(ids)) {
+    ids <- vapply(sap$data_sources %||% list(), function(ds) as.character(ds$id), character(1))
+  }
   vapply(chr_vec(ids), function(id) {
     ds <- sapItemById(sap$data_sources, id)
     nm <- as.character(ds$name %||% "")
@@ -250,14 +261,9 @@ data_source_names <- function(sap, ids) {
   }, character(1), USE.NAMES = FALSE)
 }
 
-sap_source_names <- function(sap) {
-  data_source_names(sap, vapply(
-    sap$data_sources %||% list(), function(ds) as.character(ds$id), character(1)))
-}
-
 is_source_restricted <- function(sap, item) {
-  own <- data_source_names(sap, item$data_source_id)
-  all <- sap_source_names(sap)
+  own <- sapDataSourceNames(sap, item$data_source_id)
+  all <- sapDataSourceNames(sap)
   length(own) > 0 && length(all) > 0 && !setequal(own, all)
 }
 
@@ -267,7 +273,7 @@ r_chr_c <- function(x) sprintf("c(%s)", paste(vapply(
 source_guard <- function(sap, code, item) {
   if (is.null(code) || !is_source_restricted(sap, item)) return(code)
   sprintf("if (omopgenerics::cdmName(cdm) %%in%% %s) {\n%s\n}",
-          r_chr_c(data_source_names(sap, item$data_source_id)), indent_block(code))
+          r_chr_c(sapDataSourceNames(sap, item$data_source_id)), indent_block(code))
 }
 
 source_guard_estimate <- function(sap, var, code, item) {
@@ -275,7 +281,7 @@ source_guard_estimate <- function(sap, var, code, item) {
   sprintf(paste0("%s <- if (omopgenerics::cdmName(cdm) %%in%% %s) {\n%s\n} else {\n",
                  "  # Not run here: this SAP restricts the analysis to the databases above.\n",
                  "  omopgenerics::emptySummarisedResult()\n}"),
-          var, r_chr_c(data_source_names(sap, item$data_source_id)), indent_block(code))
+          var, r_chr_c(sapDataSourceNames(sap, item$data_source_id)), indent_block(code))
 }
 
 # chr_vec from utils.R may not be loaded when R/ functions run (package context);
@@ -475,8 +481,13 @@ estimate_var_names <- function(analyses) {
   }, character(1))
 }
 
-# A one-line description of a codelist's content.
-codelist_content_summary <- function(content) {
+#' Summarise a codelist's content in one line
+#'
+#' @param content The `$content` of a codelist object: a named list of concept
+#'   sets, or `NULL` when nothing has been uploaded.
+#' @return A single string, e.g. `"2 concept sets, 14 concepts: asthma (9), copd (5)"`.
+#' @export
+sapCodelistSummary <- function(content) {
   if (is.null(content)) return("No codes uploaded yet.")
   sets <- names(content)
   n <- vapply(unclass(content), function(x) if (is.data.frame(x)) nrow(x) else length(x), integer(1))
@@ -707,7 +718,7 @@ sapStudyExportNotes <- function(sap) {
       "guards them with omopgenerics::cdmName(cdm). Check that codeToRun.R",
       "creates the cdm reference with the same names this SAP uses (%s),",
       "or the guard will never be true and those steps will silently not run."),
-      length(restricted), paste(sap_source_names(sap), collapse = ", ")))
+      length(restricted), paste(sapDataSourceNames(sap), collapse = ", ")))
   }
   paste(notes, collapse = " ")
 }

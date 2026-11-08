@@ -2,7 +2,7 @@
 #
 # The databases the study runs against: the schema's `data_source` is an id and
 # a name (its optional `description` is an external object this app does not
-# author). Every card is a draft shinySAP::newSapDataSource() written back
+# author). Every card is a draft newSapDataSource() written back
 # through the section's CRUD.
 
 source_item_ui <- function(id, prefill = NULL) {
@@ -33,7 +33,7 @@ source_item_server <- function(id, sap_id, prefill = NULL, on_remove = function(
       paste0(if (nzchar(nm)) nm else "Untitled", " -- ", sap_id)
     }))
 
-    shiny::observe(write(shinySAP::newSapDataSource(
+    shiny::observe(write(newSapDataSource(
       sap_id,
       name        = chr_or_null(read("name")),
       description = prefill$.component$description,
@@ -70,8 +70,8 @@ data_sources_server <- function(id, sap) {
   shiny::moduleServer(id, function(input, output, session) {
     coll <- sap_collection(
       sap, "data_sources",
-      new_component = function(id) shinySAP::newSapDataSource(id, validate = FALSE),
-      copy = function(source, id) shinySAP::newSapDataSource(
+      new_component = function(id) newSapDataSource(id, validate = FALSE),
+      copy = function(source, id) newSapDataSource(
         id, name = copy_name(source$name), description = source$description, validate = FALSE)
     )
     item_server <- function(iid, sap_id, prefill, on_remove) {

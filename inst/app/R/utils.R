@@ -22,7 +22,7 @@ join_lines <- function(x) {
 }
 
 # The SAP records what was authored and nothing else: a blank field is ABSENT,
-# not "" and not NA. shinySAP::checkSap() then reports a missing required
+# not "" and not NA. checkSap() then reports a missing required
 # field, and an optional one is simply not written.
 chr_or_null <- function(x) {
   x <- trimws(as.character(x %||% "")[1])
@@ -113,7 +113,7 @@ prefiller <- function(prefill) {
 
 # Files -------------------------------------------------------------------------
 #
-# A SAP lives in ONE file, written by shinySAP::exportSap(): no timestamped
+# A SAP lives in ONE file, written by exportSap(): no timestamped
 # copies and no separate autosave file. The working file is created the first
 # time there is anything to keep, and every write after that rewrites it.
 working_sap_path <- function(study, dir) {
@@ -124,7 +124,7 @@ working_sap_path <- function(study, dir) {
 # first save.
 export_working <- function(sap, path) {
   dir.create(dirname(path), showWarnings = FALSE, recursive = TRUE)
-  shinySAP::exportSap(sap, fileName = path)
+  exportSap(sap, fileName = path)
 }
 
 # One deliberate save, with its guards and its notifications. Returns the path,

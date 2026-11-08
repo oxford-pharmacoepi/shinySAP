@@ -2,7 +2,7 @@
 #
 # The card is in two halves: the common fields (id, name, data sources, type)
 # and a parameter block rendered from the registry in analysis_registry.R. Every
-# edit writes a draft shinySAP::newSapAnalysis() back through the section's CRUD.
+# edit writes a draft newSapAnalysis() back through the section's CRUD.
 
 analysis_item_ui <- function(id, prefill = NULL) {
   ns <- shiny::NS(id)
@@ -15,7 +15,7 @@ analysis_item_ui <- function(id, prefill = NULL) {
       # A new card starts with NO type: the type decides everything else on the
       # card, so it is the author's first decision, not a default.
       shiny::selectInput(ns("type"), "Analysis type",
-                         c("Choose a type..." = "", shinySAP::sapSchemaTypes("analysis")),
+                         c("Choose a type..." = "", sapSchemaTypes("analysis")),
                          selected = pf("type"), width = "100%"),
       entity_picker(ns("data_source_id"), "Data sources this analysis runs on",
                     pf("data_source_id", character(0)), multiple = TRUE,
@@ -90,7 +90,7 @@ analysis_item_server <- function(id, sap_id, prefill = NULL, on_remove = functio
       if (is.null(field)) return()
       current <- chr_vec(shiny::isolate(input[[field]]) %||% base_pf(field, character(0)))
       shiny::updateSelectizeInput(session, field,
-                                  choices = unique(c(shinySAP:::cohort_strata_variables(denominator_cohort()),
+                                  choices = unique(c(sapStrataVariables(denominator_cohort()),
                                                     current)),
                                   selected = current)
     })
@@ -101,7 +101,7 @@ analysis_item_server <- function(id, sap_id, prefill = NULL, on_remove = functio
 
     shiny::observe({
       type <- type_r()
-      write(shinySAP::newSapAnalysis(
+      write(newSapAnalysis(
         sap_id,
         name         = chr_or_null(read("name")),
         dataSourceId = chr_vec(read("data_source_id")),
@@ -154,8 +154,8 @@ analyses_server <- function(id, sap,
 
     coll <- sap_collection(
       sap, "analyses",
-      new_component = function(id) shinySAP::newSapAnalysis(id, validate = FALSE),
-      copy = function(source, id) shinySAP::newSapAnalysis(
+      new_component = function(id) newSapAnalysis(id, validate = FALSE),
+      copy = function(source, id) newSapAnalysis(
         id, name = copy_name(source$name), dataSourceId = source$data_source_id,
         type = source$type, parameters = source$parameters, validate = FALSE),
       to_prefill = analysis_to_prefill
