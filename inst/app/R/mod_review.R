@@ -79,13 +79,13 @@ review_server <- function(id, sap, problems = shiny::reactive(list()), app_dir =
     output$n_cohorts   <- shiny::renderText(length(sap()$cohorts))
     output$n_analyses  <- shiny::renderText(length(sap()$analyses))
 
-    output$json <- shiny::renderText(as.character(shinySAP::sapToJson(sap())))
+    output$json <- shiny::renderText(as.character(sapToJson(sap())))
 
     output$download <- shiny::downloadHandler(
       filename = function() sprintf("%s.json", sap_file_base(sap()$study)),
       # shiny hands over an extension-less temp file, which exportSap() would
       # rename to .json; write the JSON straight into it instead.
-      content  = function(file) writeLines(shinySAP::sapToJson(sap(), stamp = TRUE), file, useBytes = TRUE)
+      content  = function(file) writeLines(sapToJson(sap(), stamp = TRUE), file, useBytes = TRUE)
     )
 
     # -- Preview --------------------------------------------------------------
@@ -136,7 +136,7 @@ review_server <- function(id, sap, problems = shiny::reactive(list()), app_dir =
     shiny::observeEvent(input$gen_code, {
       tryCatch({
         unlink(study_dir, recursive = TRUE)
-        shinySAP::writeSapStudy(sap(), study_dir)
+        writeSapStudy(sap(), study_dir)
         paths <- list(
           "codelist/codelistCreation.R" = file.path(study_dir, "codelist", "codelistCreation.R"),
           "cohorts/instantiateCohorts.R" = file.path(study_dir, "cohorts", "instantiateCohorts.R"),

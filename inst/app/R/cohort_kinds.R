@@ -63,9 +63,6 @@ parse_bound_list <- function(x) {
   if (length(pairs)) pairs else NULL
 }
 
-# Delegate to the package so the validation logic and the UI share one implementation.
-format_bound_list <- shinySAP:::format_bound_list
-
 # The registry ----------------------------------------------------------------
 
 COHORT_TEMPLATES <- list()
@@ -108,7 +105,7 @@ cohort_to_prefill <- function(ch) {
 
 # The label the schema gives a type id.
 cohort_type_label <- function(type) {
-  types <- shinySAP::sapSchemaTypes("cohort")
+  types <- sapSchemaTypes("cohort")
   hit <- names(types)[match(as.character(type %||% ""), types)]
   if (is.na(hit)) as.character(type %||% "") else hit
 }
@@ -121,7 +118,7 @@ cohort_type_label <- function(type) {
 grouped_cohort_choices <- function(index) {
   index <- index %||% list()
   if (!length(index)) return(list())
-  types <- shinySAP::sapSchemaTypes("cohort")
+  types <- sapSchemaTypes("cohort")
   label_of <- function(id) {
     nm <- trimws(as.character(index[[id]]$name %||% ""))
     if (nzchar(nm)) nm else id
@@ -170,7 +167,7 @@ denominator_requirements_collect <- function(input) compact(list(
 ))
 
 denominator_requirements_flatten <- function(p) list(
-  age_group                = join_lines(format_bound_list(p$age_group, open = AGE_MAX)),
+  age_group                = join_lines(sapFormatBounds(p$age_group, open = AGE_MAX)),
   sex                      = p$sex,
   days_prior_observation   = p$days_prior_observation,
   requirement_interactions = p$requirement_interactions %||% TRUE
@@ -206,12 +203,12 @@ denominator_cohort_set <- function(cohort) {
 # One generated cohort as a line: "Age 18, 64 | Female | 365 days prior observation".
 format_denominator_cohort <- function(x) {
   parts <- c(
-    sprintf("Age %s", format_bound_list(list(x$age_group), open = AGE_MAX)),
+    sprintf("Age %s", sapFormatBounds(list(x$age_group), open = AGE_MAX)),
     x$sex,
     sprintf("%s days prior observation", format(x$days_prior_observation))
   )
   if (!is.null(x$time_at_risk)) {
-    parts <- c(parts, sprintf("time at risk %s", format_bound_list(list(x$time_at_risk))))
+    parts <- c(parts, sprintf("time at risk %s", sapFormatBounds(list(x$time_at_risk))))
   }
   paste(parts, collapse = " | ")
 }
@@ -230,7 +227,7 @@ denominator_panel <- function(cohort, intro, lead = NULL) {
   }
   bounds <- function(pairs, open = "Inf") {
     if (!length(pairs)) return("--")
-    paste(format_bound_list(pairs, open = open), collapse = " | ")
+    paste(sapFormatBounds(pairs, open = open), collapse = " | ")
   }
   is_target <- identical(as.character(cohort$type %||% ""), "target_denominator")
   shiny::div(
@@ -372,7 +369,7 @@ register_cohort_type(
       target_cohort_id               = p$target_cohort_id,
       target_cohort_date_range_start = date_bound(p$target_cohort_date_range, 1),
       target_cohort_date_range_end   = date_bound(p$target_cohort_date_range, 2),
-      time_at_risk                   = join_lines(format_bound_list(p$time_at_risk)),
+      time_at_risk                   = join_lines(sapFormatBounds(p$time_at_risk)),
       requirements_at_entry          = p$requirements_at_entry %||% TRUE
     ),
     denominator_requirements_flatten(p)

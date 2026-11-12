@@ -4,7 +4,7 @@
 # omopgenerics object -- a codelist, a codelist with details or a concept set
 # expression -- and it travels INSIDE the SAP. The card takes the object from a
 # file (the csv/json layouts omopgenerics itself exports) and writes a draft
-# shinySAP::newSapCodelist() back through the section's CRUD.
+# newSapCodelist() back through the section's CRUD.
 
 # The class the schema wants for each codelist type.
 codelist_content_class <- function(type) {
@@ -34,7 +34,7 @@ codelist_item_ui <- function(id, prefill = NULL) {
       shiny::textInput(ns("name"), "Codelist name", pf("name"), width = "100%",
                        placeholder = "influenza_vaccine"),
       shiny::selectInput(ns("type"), "Type",
-                         c("Choose a type..." = "", shinySAP::sapSchemaTypes("codelist")),
+                         c("Choose a type..." = "", sapSchemaTypes("codelist")),
                          selected = pf("type"), width = "100%")
     ),
     bslib::layout_columns(
@@ -99,10 +99,10 @@ codelist_item_server <- function(id, sap_id, prefill = NULL, on_remove = functio
       }
     }, ignoreInit = TRUE)
 
-    output$summary <- shiny::renderText(codelist_content_summary(content()))
+    output$summary <- shiny::renderText(sapCodelistSummary(content()))
     shiny::outputOptions(output, "summary", suspendWhenHidden = FALSE)
 
-    shiny::observe(write(shinySAP::newSapCodelist(
+    shiny::observe(write(newSapCodelist(
       sap_id,
       name     = chr_or_null(read("name")),
       type     = chr_or_null(read("type")),
@@ -140,8 +140,8 @@ codelists_server <- function(id, sap) {
   shiny::moduleServer(id, function(input, output, session) {
     coll <- sap_collection(
       sap, "codelists",
-      new_component = function(id) shinySAP::newSapCodelist(id, validate = FALSE),
-      copy = function(source, id) shinySAP::newSapCodelist(
+      new_component = function(id) newSapCodelist(id, validate = FALSE),
+      copy = function(source, id) newSapCodelist(
         id, name = copy_name(source$name), type = source$type, content = source$content, validate = FALSE)
     )
     item_server <- function(iid, sap_id, prefill, on_remove) {

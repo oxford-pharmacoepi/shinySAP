@@ -6,7 +6,7 @@
 # full_contribution and level. Each type's collect() writes only its own keys.
 
 prevalence_ui <- function(kind) function(ns, pf) {
-  vocab <- shinySAP::sapSchemaVocabulary()
+  vocab <- sapSchemaVocabulary()
   shiny::tagList(
     denominator_outcome_ui(ns, pf),
     denominator_summary_ui(ns, pf),

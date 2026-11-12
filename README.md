@@ -296,8 +296,8 @@ Cohort types follow the same pattern with `register_cohort_type()` in
 
 One package. The Shiny app lives in `inst/app` as a plain Shiny app
 directory: `shiny::runApp()` sources its `R/` folder (alphabetically,
-non-recursively) and sets the working directory to it, and everything it
-needs from the package it calls as `shinySAP::<fn>()`.
+non-recursively) and sets the working directory to it. The first file sourced,
+`R/00_library.R`, attaches the package and the app calls its exports bare.
 
     DESCRIPTION                  package metadata; shiny and the OMOP packages are Suggests
     R/sap.R                      SAP constructors and CRUD

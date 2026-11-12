@@ -2,9 +2,9 @@
 #
 # The SAP is ONE object -- a shinySAP `sap` held in a reactiveVal in app.R -- and
 # the only way anything in the app changes it is through the package's own
-# functions: shinySAP::addSapComponent(), updateSapComponent(),
+# functions: addSapComponent(), updateSapComponent(),
 # removeSapComponent(), updateStudy(), with validate = FALSE because a plan is
-# written incrementally and shinySAP::checkSap() reports what is still missing.
+# written incrementally and checkSap() reports what is still missing.
 # Every component is built by its package constructor, also with validate = FALSE.
 #
 # dynamic_items() is the UI half (cards on the page); sap_collection() is the data
@@ -35,28 +35,28 @@ sap_collection <- function(sap, collection, new_component, copy, to_prefill = id
   state$issued <- character(0)   # ids handed out or removed this session, never reissued
   state$undo   <- NULL
   current <- function() shiny::isolate(sap())
-  ids_now <- function() shinySAP::sapComponentIds(current(), collection)
+  ids_now <- function() sapComponentIds(current(), collection)
   mint <- function() {
-    id <- shinySAP::newSapId(current(), collection, taken = state$issued)
+    id <- newSapId(current(), collection, taken = state$issued)
     state$issued <- unique(c(state$issued, id))
     id
   }
 
   list(
-    ids = sap_view(sap, function(s) shinySAP::sapComponentIds(s, collection)),
+    ids = sap_view(sap, function(s) sapComponentIds(s, collection)),
 
-    get = function(id) shinySAP::getSapComponent(current(), collection, id),
+    get = function(id) getSapComponent(current(), collection, id),
 
     # The prefill a card is built from, plus the component itself so the card
     # can keep its parameters until its own inputs have reported.
     prefill_of = function(id) {
-      component <- shinySAP::getSapComponent(current(), collection, id)
+      component <- getSapComponent(current(), collection, id)
       c(to_prefill(component), list(.component = component))
     },
 
     add = function() {
       id <- mint()
-      sap(shinySAP::addSapComponent(current(), new_component(id), validate = FALSE))
+      sap(addSapComponent(current(), new_component(id), validate = FALSE))
       id
     },
 
@@ -64,15 +64,15 @@ sap_collection <- function(sap, collection, new_component, copy, to_prefill = id
     # by a load) writes nothing: updateSapComponent() would abort on it.
     write = function(component) {
       if (!component$id %in% ids_now()) return(invisible(FALSE))
-      sap(shinySAP::updateSapComponent(current(), component, validate = FALSE))
+      sap(updateSapComponent(current(), component, validate = FALSE))
       invisible(TRUE)
     },
 
     remove = function(id) {
       if (!id %in% ids_now()) return(invisible(NULL))
-      state$undo <- shinySAP::getSapComponent(current(), collection, id)
+      state$undo <- getSapComponent(current(), collection, id)
       state$issued <- unique(c(state$issued, id))
-      sap(shinySAP::removeSapComponent(current(), collection, id, validate = FALSE))
+      sap(removeSapComponent(current(), collection, id, validate = FALSE))
       invisible(id)
     },
 
@@ -81,7 +81,7 @@ sap_collection <- function(sap, collection, new_component, copy, to_prefill = id
       component <- state$undo
       state$undo <- NULL
       if (is.null(component) || component$id %in% ids_now()) return(NULL)
-      sap(shinySAP::addSapComponent(current(), component, validate = FALSE))
+      sap(addSapComponent(current(), component, validate = FALSE))
       component$id
     },
 
@@ -93,9 +93,9 @@ sap_collection <- function(sap, collection, new_component, copy, to_prefill = id
     },
 
     duplicate = function(id) {
-      source <- shinySAP::getSapComponent(current(), collection, id)
+      source <- getSapComponent(current(), collection, id)
       new_id <- mint()
-      sap(shinySAP::addSapComponent(current(), copy(source, new_id), validate = FALSE))
+      sap(addSapComponent(current(), copy(source, new_id), validate = FALSE))
       new_id
     }
   )

@@ -1,7 +1,7 @@
 # Study-level metadata that heads the SAP -----------------------------------
 #
 # Exactly the schema's `study` object. The card writes a draft study into the
-# SAP through shinySAP::updateStudy() on every edit; nothing is held here.
+# SAP through updateStudy() on every edit; nothing is held here.
 
 study_ui <- function(id) {
   ns <- shiny::NS(id)
@@ -40,7 +40,7 @@ study_server <- function(id, sap) {
 
     shiny::observe({
       authors <- chr_vec(strsplit(read("authors") %||% "", ",", fixed = TRUE)[[1]])
-      study <- shinySAP::newSapStudy(
+      study <- newSapStudy(
         studyId     = chr_or_null(read("study_id")),
         title       = chr_or_null(read("title")),
         authors     = authors,
@@ -48,7 +48,7 @@ study_server <- function(id, sap) {
         description = chr_or_null(read("description")),
         validate    = FALSE
       )
-      sap(shinySAP::updateStudy(shiny::isolate(sap()), study, validate = FALSE))
+      sap(updateStudy(shiny::isolate(sap()), study, validate = FALSE))
     })
 
     # After a load: show the SAP's study. The inputs report the same values

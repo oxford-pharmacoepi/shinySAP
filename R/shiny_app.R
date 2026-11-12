@@ -2,9 +2,9 @@
 #
 # inst/app is a plain Shiny app DIRECTORY (app.R + R/), not package code: it is
 # installed verbatim and run with shiny::runApp(), which sources its R/ folder
-# and sets the working directory to it. Everything the app needs from this
-# package it calls as shinySAP::<fn>(); shiny and friends are Suggests, so the
-# core package stays free of a UI dependency.
+# and sets the working directory to it. The first file sourced, R/00_library.R,
+# attaches this package, and the app calls its exports bare; shiny and friends
+# are Suggests, so the core package stays free of a UI dependency.
 
 #' Launch the SAP authoring app
 #'

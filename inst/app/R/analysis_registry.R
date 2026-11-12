@@ -8,7 +8,7 @@
 # does NOT recurse into subdirectories -- so template files must sit flat in R/,
 # and this file must sort before them ("analysis_registry.R" < "analysis_type_*.R").
 # It also sorts before cohort_kinds.R, dynamic_items.R, problems.R and utils.R,
-# so nothing here may call them -- or shinySAP:: -- at the top level. Inside a
+# so nothing here may call them -- or  -- at the top level. Inside a
 # function body they are fine.
 
 # The half of the card every analysis shares; everything else is `parameters`.
@@ -106,7 +106,7 @@ analysis_template <- function(type) {
 }
 
 analysis_type_label <- function(type) {
-  types <- shinySAP::sapSchemaTypes("analysis")
+  types <- sapSchemaTypes("analysis")
   hit <- names(types)[match(as.character(type %||% ""), types)]
   if (is.na(hit)) as.character(type %||% "") else hit
 }
@@ -114,8 +114,8 @@ analysis_type_label <- function(type) {
 # Every schema type must have a template, or a saved analysis of that type would
 # lose its parameters on load. Called from app.R once the registry is complete.
 assert_templates_cover_schema <- function() {
-  missing_analyses <- setdiff(shinySAP::sapSchemaTypes("analysis"), names(ANALYSIS_TEMPLATES))
-  missing_cohorts  <- setdiff(shinySAP::sapSchemaTypes("cohort"), names(COHORT_TEMPLATES))
+  missing_analyses <- setdiff(sapSchemaTypes("analysis"), names(ANALYSIS_TEMPLATES))
+  missing_cohorts  <- setdiff(sapSchemaTypes("cohort"), names(COHORT_TEMPLATES))
   if (length(missing_analyses) || length(missing_cohorts)) {
     stop("Schema types without a template: ",
          paste(c(missing_analyses, missing_cohorts), collapse = ", "))
@@ -212,7 +212,7 @@ denominator_summary <- function(cohort, picked = NULL) {
     return(shiny::div(class = "alert alert-warning py-2 small mb-3",
                       sprintf("'%s' is not defined on the Cohorts tab, so nothing can be inherited from it.", picked)))
   }
-  if (!shinySAP::sapIsDenominatorType(cohort$type)) {
+  if (!sapIsDenominatorType(cohort$type)) {
     return(shiny::div(
       class = "alert alert-warning py-2 small mb-3",
       sprintf(paste("'%s' is not a denominator cohort, so it fixes no age groups, sex or time at risk.",

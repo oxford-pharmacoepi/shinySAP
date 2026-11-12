@@ -3,15 +3,10 @@
 # A Shiny app DIRECTORY inside the shinySAP package (inst/app), not package
 # code: shiny::runApp() sources R/ into a shared environment (loadSupport,
 # alphabetical and non-recursive) before evaluating this file, and runs with
-# the working directory set here. Everything the app needs from the package it
-# calls as shinySAP::<fn>(); the package schema is the only definition of a SAP.
+# the working directory set here.
 #
 # Launch with shinySAP::shinySap(), or
 # shiny::runApp(system.file("app", package = "shinySAP")).
-
-if (!requireNamespace("shinySAP", quietly = TRUE)) {
-  stop("The shinySAP package must be installed to run this app: it holds the SAP schema.")
-}
 
 # Where SAPs are saved. shinySap(outputDir =) sets the option before launching;
 # without it, a per-user data folder -- never the app directory itself, which
@@ -99,7 +94,7 @@ server <- function(input, output, session) {
   # only through the package's CRUD (see R/section_crud.R). It starts as a draft
   # with an empty study and is never validated on the way in -- a plan is
   # written incrementally -- so checkSap() below reports what is still missing.
-  sap <- shiny::reactiveVal(shinySAP::createSap(shinySAP::newSapStudy(validate = FALSE), validate = FALSE))
+  sap <- shiny::reactiveVal(createSap(newSapStudy(validate = FALSE), validate = FALSE))
 
   # Change-only views the sections read: pickers and summaries wake when a name,
   # type or id changes, not on every keystroke elsewhere in the plan.
@@ -107,9 +102,9 @@ server <- function(input, output, session) {
   codelist_choices <- sap_view(sap, function(s) item_choices(s$codelists))
   cohort_light     <- sap_view(sap, function(s) stats::setNames(
     lapply(s$cohorts, function(x) list(name = x$name, type = x$type)),
-    shinySAP::sapComponentIds(s, "cohorts")))
+    sapComponentIds(s, "cohorts")))
   cohort_full      <- sap_view(sap, function(s) stats::setNames(
-    s$cohorts, shinySAP::sapComponentIds(s, "cohorts")))
+    s$cohorts, sapComponentIds(s, "cohorts")))
   cohort_choices   <- shiny::reactive(grouped_cohort_choices(cohort_light()))
 
   study     <- study_server("study", sap)
@@ -124,10 +119,7 @@ server <- function(input, output, session) {
   # Structural problems from the schema, then the few semantic checks the schema
   # cannot express (problems.R). Warn-not-block: shown on Review and counted at
   # save time, never a barrier to saving.
-  problems <- shiny::reactive(c(
-    shinySAP:::format_check_problems(shinySAP::checkSap(sap()), sap()),
-    shinySAP:::semantic_problems(sap())
-  ))
+  problems <- shiny::reactive(sapProblems(sap()))
 
   # A loaded file replaces the object outright. The sections drop their cards
   # first (a loaded plan may reuse ids already on screen) and rebuild them from
@@ -140,7 +132,7 @@ server <- function(input, output, session) {
   }
 
   shiny::observeEvent(input$load, {
-    loaded <- tryCatch(shinySAP::importSap(input$load$datapath, validate = FALSE), error = function(e) e)
+    loaded <- tryCatch(importSap(input$load$datapath, validate = FALSE), error = function(e) e)
     if (inherits(loaded, "error")) {
       shiny::showNotification(paste("Could not read that file:", conditionMessage(loaded)),
                               type = "error", duration = 10)

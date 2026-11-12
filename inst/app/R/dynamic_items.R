@@ -257,7 +257,7 @@ entity_picker <- function(inputId, label, selected = character(0), choices = cha
 # The choices one picker gets: everything on offer, plus whatever it currently
 # holds. A selectize silently drops a selection it cannot find among its
 # options, so an id whose item has been removed stays in the list, labelled as
-# removed, until the author changes it -- shinySAP::checkSap() reports the
+# removed, until the author changes it -- checkSap() reports the
 # dangling reference meanwhile.
 #
 # `available` is a named vector (label -> id) or a named list of them (optgroups).

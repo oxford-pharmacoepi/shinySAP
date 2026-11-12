@@ -49,7 +49,7 @@ modification_item_ui <- function(id, prefill = NULL) {
       col_widths = c(4, 4, 4),
       shiny::textInput(ns("name"), "Name", pf("name"), width = "100%"),
       shiny::selectInput(ns("type"), "Type",
-                         c("Choose a type..." = "", shinySAP::sapSchemaTypes("data_source_modification")),
+                         c("Choose a type..." = "", sapSchemaTypes("data_source_modification")),
                          selected = pf("type"), width = "100%"),
       entity_picker(ns("data_source_id"), "Data sources it applies to",
                     pf("data_source_id", character(0)), multiple = TRUE,
@@ -98,7 +98,7 @@ modification_item_server <- function(id, sap_id, prefill = NULL, on_remove = fun
 
     shiny::observe({
       type <- type_r()
-      write(shinySAP::newSapDataSourceModification(
+      write(newSapDataSourceModification(
         sap_id,
         name         = chr_or_null(read("name")),
         type         = chr_or_null(type),
@@ -140,8 +140,8 @@ data_source_modifications_server <- function(id, sap, source_choices = shiny::re
     settled_sources <- shiny::debounce(shiny::reactive(source_choices()), 600)
     coll <- sap_collection(
       sap, "data_source_modifications",
-      new_component = function(id) shinySAP::newSapDataSourceModification(id, validate = FALSE),
-      copy = function(source, id) shinySAP::newSapDataSourceModification(
+      new_component = function(id) newSapDataSourceModification(id, validate = FALSE),
+      copy = function(source, id) newSapDataSourceModification(
         id, name = copy_name(source$name), type = source$type, dataSourceId = source$data_source_id,
         parameters = source$parameters, validate = FALSE),
       to_prefill = modification_to_prefill
