@@ -56,8 +56,17 @@
 - [`removeSapComponent()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/removeSapComponent.md)
   : Remove a component from a SAP by id
 
+- [`sapCodelistSummary()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapCodelistSummary.md)
+  : Summarise a codelist's content in one line
+
 - [`sapComponentIds()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapComponentIds.md)
   : List the ids in a SAP collection
+
+- [`sapDataSourceNames()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapDataSourceNames.md)
+  : Display names of a SAP's data sources
+
+- [`sapFormatBounds()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapFormatBounds.md)
+  : Format numeric bound pairs as labels
 
 - [`sapFromJson()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapFromJson.md)
   : Read a SAP from JSON
@@ -90,6 +99,9 @@
 
 - [`sapScriptSections()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapScriptSections.md)
   : Generate the labelled code blocks for a SAP
+
+- [`sapStrataVariables()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapStrataVariables.md)
+  : Strata variables a cohort can be stratified by
 
 - [`sapStudyExportNotes()`](https://oxford-pharmacoepi.github.io/shinySAP/reference/sapStudyExportNotes.md)
   : Notes about what the SAP decides that lives outside the generated

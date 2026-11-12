@@ -308,7 +308,7 @@
 <div class="section level2">
 <h2 id="layout">Layout<a class="anchor" aria-label="anchor" href="#layout"></a>
 </h2>
-<p>One package. The Shiny app lives in <code>inst/app</code> as a plain Shiny app directory: <code><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">shiny::runApp()</a></code> sources its <code>R/</code> folder (alphabetically, non-recursively) and sets the working directory to it, and everything it needs from the package it calls as <code>shinySAP::&lt;fn&gt;()</code>.</p>
+<p>One package. The Shiny app lives in <code>inst/app</code> as a plain Shiny app directory: <code><a href="https://rdrr.io/pkg/shiny/man/runApp.html" class="external-link">shiny::runApp()</a></code> sources its <code>R/</code> folder (alphabetically, non-recursively) and sets the working directory to it. The first file sourced, <code>R/00_library.R</code>, attaches the package and the app calls its exports bare.</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode R"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>DESCRIPTION                  package metadata; shiny and the OMOP packages are Suggests</span>
 <span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>R<span class="sc">/</span>sap.R                      SAP constructors and CRUD</span>
 <span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>R<span class="sc">/</span>sap_schema.R               schema accessors, <span class="fu">checkSap</span>(), <span class="fu">validateSap</span>()</span>
