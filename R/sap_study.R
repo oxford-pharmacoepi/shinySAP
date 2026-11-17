@@ -5,19 +5,20 @@
 #' @param title Study title.
 #' @param authors Character vector of study authors.
 #' @param version Study version label.
-#' @param description Optional study description.
-#' @param validate Whether to require a complete study. With `FALSE` a draft is
-#'   built from whatever is given and [checkSap()] reports what is missing.
+#' @param description Optional string containing the study description.
 #'
 #' @return An object of class `sap_study`.
 #' @export
-newSapStudy <- function(studyId = NULL,
+newSapStudy <- function(studyId,
                         title = NULL,
                         authors = character(),
-                        version = "v1.0.0",
-                        description = NULL,
-                        validate = TRUE) {
-  omopgenerics::assertCharacter(studyId)
+                        version = "1.0.0",
+                        description = NULL) {
+  # input validation
+  omopgenerics::assertCharacter(studyId, length = 1)
+  omopgenerics::assertCharacter(title, length = 1, null = TRUE)
+  omopgenerics::assertCharacter(authors)
+  omopgenerics::assertCharacter(version, length = 1)
   if (isTRUE(validate)) {
     assertId(studyId, "studyId")
     assertId(title, "title")
@@ -42,6 +43,7 @@ newSapStudy <- function(studyId = NULL,
   )
 }
 
-createStudySap <- function() {
+
+validateSapStudy <- function(study) {
 
 }

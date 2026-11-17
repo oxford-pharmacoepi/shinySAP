@@ -42,7 +42,8 @@ newSap <- function(x,
 }
 
 constructSap <- function(x,
-                         version) {
+                         version,
+                         call = parent.frame()) {
 
   if (is.null(x$sap_schema_version)) {
     x$sap_schema_version <- version
@@ -68,7 +69,7 @@ constructSap <- function(x,
   }
   x$study <- asSapComponent(x$study, "study")
 
-  structure(x, class = c("sap", "list"))
+  structure(x, class = c("omop_sap", "list"))
 }
 
 # Add the sap_<object> class to a list that lacks it; anything that is not a
@@ -292,11 +293,9 @@ createSap <- function(study,
                       cohorts = list(),
                       analyses = list(),
                       validate = TRUE) {
+  # input validation is done inside `newSap()`
+
   # input validation
-  validateStudy(study)
-
-  codelists <- prepareCodelists(codelist)
-
   list(
     study = study,
     data_sources = dataSources,
@@ -487,4 +486,13 @@ updateStudy <- function(sap, study, validate = TRUE) {
   omopgenerics::assertClass(study, class = "sap_study", all = TRUE, nm = "study")
   sap$study <- study
   newSap(sap, validate = validate)
+}
+
+`[<-.omop_sap` <- function(x, i, value) {
+  x[[i]] <- value
+  return(x)
+}
+`[[<-.omop_sap` <- function(x, i, value) {
+  omopgenerics::assertCharacter(i, length = 1)
+
 }
