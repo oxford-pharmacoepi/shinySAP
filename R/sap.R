@@ -41,11 +41,16 @@ constructSap <- function(x,
   }
 
   # names
-  notPresent <- setdiff(sapComponents, names(x))
+  nms <- names(x)
+  dup <- unique(nms[duplicated(nms)])
+  if (length(dup) > 0) {
+    cli::cli_abort(c(x = "Duplicated fields not allowed in {.cls omop_sap}: {.var {dup}}."))
+  }
+  notPresent <- setdiff(sapComponents, nms)
   if (length(notPresent) > 0) {
     cli::cli_abort(c(x = "Missing compulsory fields in {.cls omop_sap}: {.var {notPresent}}."))
   }
-  extraFields <- setdiff(names(x), sapComponents)
+  extraFields <- setdiff(nms, sapComponents)
   if (length(extraFields) > 0) {
     cli::cli_abort(c(x = "Extra not allowed fields in {.cls omop_sap}: {.var {extraFields}}."))
   }
@@ -62,7 +67,7 @@ constructSap <- function(x,
 
 #' Create a complete SAP from its components
 #'
-#' @param study A `sap_study` object.
+#' @param study An `omop_sap_study` object.
 #' @param dataSources List of `sap_data_source` objects.
 #' @param dataSourceModifications List of `sap_data_source_modification` objects.
 #' @param codelists List of `sap_codelist` objects.
@@ -79,7 +84,7 @@ constructSap <- function(x,
 #' library(omopgenerics)
 #'
 #' # create study metadata
-#' study <- newSapStudy(studyId = "EUPAS00000000")
+#' study <- createStudySap(studyId = "EUPAS00000000")
 #'
 #' # create codelists
 #' codelists <- newCodelist(list(
@@ -117,12 +122,13 @@ print.omop_sap <- function(x, ...) {
   print(x$study, description = FALSE)
   print(x$data_sources)
   print(x$codelists)
+
+  invisible(x)
 }
 
 #' @export
 `[<-.omop_sap` <- function(x, i, value) {
-  x[[i]] <- value
-  return(x)
+  cli::cli_abort(c(x = "Use `$` or `[[` to edit individual sap fields."))
 }
 
 #' @export
@@ -132,11 +138,11 @@ print.omop_sap <- function(x, ...) {
     value <- prepareCodelists(value)
   } else if (i == "study") {
     if (!inherits(value, "omop_sap_study")) {
-      value <- tryCatch({newSapStudy(value)}, error = \(e) NULL)
+      value <- tryCatch({newStudySap(value)}, error = \(e) NULL)
       if (is.null(value)) {
         cli::cli_abort(c(
           x = "You can only assign to <study> a valid {.cls omop_sap_study}.",
-          i = "Please use `newSapStudy()` to create a new study metadata object."
+          i = "Please use `newStudySap()` or `createStudySap()` to create a new study metadata object."
         ))
       }
     }
@@ -152,8 +158,15 @@ print.omop_sap <- function(x, ...) {
     }
   }
 
+  # diagnostics
   # data_source_modifications = dataSourceModifications,
   # cohorts = cohorts,
   # analyses = analyses
   NextMethod()
+}
+
+#' @export
+`$<-.omop_sap` <- function(x, i, value) {
+  x[[i]] <- value
+  return(x)
 }

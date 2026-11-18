@@ -1,16 +1,25 @@
 
-# TODO
-# updateStudy
-# updateStudy <- function(sap, field, value) {
-#   # input check
-#   sap <- validateSap(sap)
-#   omopgenerics::assertChoice(field, names(studyValidations), length = 1)
-#
-#   # append
-#   sap$study[[field]] <- value
-#
-#   return(sap)
-# }
+#' Construct study metadata from a list
+#'
+#' @param x A named list containing `study_id`, `title`, `authors`, `version`,
+#'   and `description`. Optional values may be `NULL`, as in [createStudySap()].
+#'
+#' @return An object of class `omop_sap_study`.
+#' @export
+#'
+newStudySap <- function(x) {
+  omopgenerics::assertList(x, named = TRUE, na = TRUE)
+  omopgenerics::assertChoice(
+    names(x), choices = names(studyValidations),
+    length = length(studyValidations), unique = TRUE
+  )
+
+  x <- structure(x[names(studyValidations)], class = c("omop_sap_study", "list"))
+  for (field in names(studyValidations)) {
+    x[[field]] <- x[[field]]
+  }
+  x
+}
 
 #' Create the study metadata component of a SAP
 #'
@@ -20,15 +29,15 @@
 #' @param version Study version label.
 #' @param description Optional string containing the study description.
 #'
-#' @return An object of class `sap_study`.
+#' @return An object of class `omop_sap_study`.
 #' @export
 #'
 #' @examples
 #' library(shinySAP)
 #'
-#' newSapStudy("EUPAS00000000000")
+#' createStudySap("EUPAS00000000000")
 #'
-#' study <- newSapStudy(
+#' study <- createStudySap(
 #'   studyId = "EUPAS00000000000",
 #'   title = "Effectiveness of drug A",
 #'   authors = c("Martí Català", "Shihao Shenzhang", "Niko Moller-Grell"),
@@ -40,28 +49,19 @@
 #'
 #' print(study, description = FALSE)
 #'
-newSapStudy <- function(studyId,
-                        title = NULL,
-                        authors = character(),
-                        version = "1.0.0",
-                        description = NULL) {
-  # input validation
-  studyValidations$study_id(studyId)
-  studyValidations$title(title)
-  studyValidations$authors(authors)
-  studyValidations$version(version)
-  studyValidations$description(description)
-
-  structure(
-    list(
-      study_id = studyId,
-      title = title,
-      authors = authors,
-      version = version,
-      description = description
-    ),
-    class = c("omop_sap_study", "list")
-  )
+createStudySap <- function(studyId,
+                           title = NULL,
+                           authors = character(),
+                           version = "1.0.0",
+                           description = NULL) {
+  list(
+    study_id = studyId,
+    title = title,
+    authors = authors,
+    version = version,
+    description = description
+  ) |>
+    newStudySap()
 }
 
 studyValidations <- list(
@@ -79,7 +79,7 @@ studyValidations <- list(
 
 #' @export
 print.omop_sap_study <- function(x, description = TRUE, ...) {
-  x <- x |>
+  xp <- x |>
     purrr::imap(\(x, nm) {
       if (length(x) == 0) {
         x <- "─"
@@ -93,11 +93,11 @@ print.omop_sap_study <- function(x, description = TRUE, ...) {
     })
   cli_title("OMOP Study metadata")
   cli::cli_inform(c(
-    "*" = paste0("{.emph Study ID}: {.strong ", x$study_id, "}"),
-    "*" = paste0("{.emph Title}: ", x$title),
-    "*" = paste0("{.emph Authors}: ", x$authors),
-    "*" = paste0("{.emph Version}: ", x$version),
-    if (description) c("*" = paste0("{.emph Description}: ", x$description))
+    "*" = paste0("{.emph Study ID}: {.strong ", xp$study_id, "}"),
+    "*" = paste0("{.emph Title}: ", xp$title),
+    "*" = paste0("{.emph Authors}: ", xp$authors),
+    "*" = paste0("{.emph Version}: ", xp$version),
+    if (description) c("*" = paste0("{.emph Description}: ", xp$description))
   ))
   invisible(x)
 }
@@ -131,4 +131,40 @@ cli_title <- function(title) {
 #' @export
 `[<-.omop_sap_study` <- function(x, i, value) {
   cli::cli_abort(c(x = "Use `$` or `[[` to edit individual study fields."))
+}
+
+#' Update the study metadata of a SAP
+#'
+#' @param sap A `omop_sap` object.
+#' @param field One of the study fields (`study_id`, `title`, `authors`, `version`,
+#' and `description`).
+#' @param value The value to assign, validated using the same rules as
+#'   [newStudySap()]. Authors may be a character vector. `title` and
+#'   `description` may be cleared with `NULL`.
+#'
+#' @return The updated `omop_sap` object. The input object is unchanged.
+#' @export
+#'
+#' @examples
+#' library(shinySAP)
+#'
+#' # create study metadata
+#' study <- createStudySap(studyId = "EUPAS00000000")
+#'
+#' # nearly empty SAP
+#' sap <- createSap(study = study)
+#' sap
+#'
+#' # update the title
+#' sap <- updateStudy(sap, "title", "Effectiveness of drug B")
+#' sap
+#'
+updateStudy <- function(sap, field, value) {
+  validateSapArgument(sap)
+  omopgenerics::assertCharacter(field, length = 1)
+  omopgenerics::assertCharacter(value, length = 1, null = TRUE)
+
+  sap$study[[field]] <- value
+
+  sap
 }

@@ -15,7 +15,7 @@ createSap(
 )
 }
 \arguments{
-\item{study}{A \code{sap_study} object.}
+\item{study}{An \code{omop_sap_study} object or a list accepted by \code{\link[=newStudySap]{newStudySap()}}.}
 
 \item{dataSources}{List of \code{sap_data_source} objects.}
 
@@ -41,7 +41,7 @@ library(shinySAP)
 library(omopgenerics)
 
 # create study metadata
-study <- newSapStudy(studyId = "EUPAS00000000")
+study <- createStudySap(studyId = "EUPAS00000000")
 
 # create codelists
 codelists <- newCodelist(list(

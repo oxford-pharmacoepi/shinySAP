@@ -77,6 +77,9 @@ print.omop_sap_codelist <- function(x, ...) {
   )
   # shorten names
   cli_title("OMOP Codelists")
+  if (length(nms) == 0) {
+    cli::cli_inform(c("i" = "{.emph No codelists included in this study.}"))
+  }
   for (typ in typs) {
     cli::cli_inform(c("*" = "{sum(types == typ)} {.emph {titles[[typ]]}}:"))
     printNames(nms[types == typ])

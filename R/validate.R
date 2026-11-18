@@ -1,7 +1,12 @@
 
 # TODO update the name when validateSap have been deprecated
-.validateSap <- function(sap, call = parent.frame()) {
-  # TODO add validation
+validateSapArgument <- function(sap, call = parent.frame()) {
+  if (!inherits(sap, "omop_sap")) {
+    cli::cli_abort(c(
+      x = "`sap` must be an `omop_sap` object.",
+      i = "Use `createSap()` to create a valid `omop_sap` object."
+    ), call = call)
+  }
   sap
 }
 

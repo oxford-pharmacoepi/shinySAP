@@ -26,7 +26,16 @@ test_that("codelist assignments store normalized content for each supported type
     expect_identical(codelists$existing, expected)
     expect_named(codelists, c("existing", "added"))
     expect_s3_class(codelists, "omop_sap_codelist")
-    expect_no_error(capture.output(capture_messages(print(codelists))))
+    output <- capture.output(messages <- capture_messages(expect_invisible(print(codelists))))
+    title <- switch(type,
+      codelist = "Codelists",
+      codelist_with_details = "Codelists with details",
+      concept_set_expression = "Concept set expressions"
+    )
+    expect_true(any(grepl(paste0("2 ", title, ":"), messages, fixed = TRUE)))
+    expect_true(all(vapply(c("added", "existing"), function(name) {
+      any(grepl(name, output, fixed = TRUE))
+    }, logical(1))))
   }
 })
 
@@ -88,6 +97,19 @@ test_that("c rejects duplicate names across prepared and raw codelists", {
   expect_error(c(prepared, duplicate), "Duplicated names.*a")
   expect_error(c(prepared, prepared), "Duplicated names.*a")
   expect_error(c(first = prepared, second = duplicate), "Duplicated names.*a")
+})
+
+test_that("preparation handles empty and nested codelist collections", {
+  empty <- prepareCodelists(list())
+  expect_identical(empty, structure(list(), class = c("omop_sap_codelist", "list")))
+  expect_identical(prepareCodelists(empty), empty)
+
+  first <- omopgenerics::newCodelist(list(b = 1L))
+  second <- omopgenerics::newCodelist(list(a = 2L))
+  combined <- prepareCodelists(list(list(first), second))
+  expect_named(combined, c("a", "b"))
+  expect_identical(combined$a$content$concept_id, 2L)
+  expect_identical(combined$b$content$concept_id, 1L)
 })
 
 test_that("unsupported inputs and assignment methods cannot corrupt codelists", {

@@ -5,7 +5,7 @@
 #' @param dataSourceId Identifier of the data source(s) used by the cohort.
 #' @param type Cohort type.
 #' @param parameters Type-specific cohort parameters.
-#' @inheritParams newSapStudy
+#' @inheritParams createStudySap
 #'
 #' @return An object of class `sap_cohort`.
 #' @export

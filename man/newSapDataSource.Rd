@@ -4,12 +4,11 @@
 \alias{newSapDataSource}
 \title{Create a Data Source Description}
 \usage{
-newSapDataSource(x = list())
+newSapDataSource(x)
 }
 \arguments{
 \item{x}{A description of a data source or a list of descriptions of data
-sources. Defaults to an empty collection. \code{NULL} also creates an empty
-collection.}
+sources}
 }
 \value{
 An object of class \code{omop_sap_data_source}.
@@ -19,8 +18,6 @@ Create a Data Source Description
 }
 \examples{
 library(shinySAP)
-
-newSapDataSource()
 
 newSapDataSource(list(
   administrative_details = list(

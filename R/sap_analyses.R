@@ -5,7 +5,7 @@
 #' @param dataSourceId Identifier of the data source(s) used by the analysis.
 #' @param type Analysis type.
 #' @param parameters Type-specific analysis parameters.
-#' @inheritParams newSapStudy
+#' @inheritParams createStudySap
 #'
 #' @return An object of class `sap_analysis`.
 #' @export

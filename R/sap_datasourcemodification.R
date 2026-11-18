@@ -5,7 +5,7 @@
 #' @param type Data-source modification type.
 #' @param dataSourceId Identifier of the affected data source(s).
 #' @param parameters Type-specific modification parameters.
-#' @inheritParams newSapStudy
+#' @inheritParams createStudySap
 #'
 #' @return An object of class `sap_data_source_modification`.
 #' @export

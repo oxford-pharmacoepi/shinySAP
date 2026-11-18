@@ -69,6 +69,20 @@ test_that("data-source validation rejects malformed sections and fields", {
   expect_error(newSapDataSource(description), "name_of_data_source.*must not be NULL")
 })
 
+test_that("required data-source names and acronyms reject missing or invalid text", {
+  for (field in c("name_of_data_source", "data_source_acronym")) {
+    for (value in list("", NA_character_, 123)) {
+      description <- sourceDescription("A")
+      description$administrative_details[[field]] <- value
+      expect_error(newSapDataSource(description), "must", info = field)
+    }
+  }
+
+  description <- sourceDescription("A")
+  description$data_collection$geography <- NA_character_
+  expect_identical(newSapDataSource(description)$A$data_collection$geography, NA_character_)
+})
+
 test_that("data-source printing describes both populated and empty collections", {
   withr::local_options(list(cli.num_colors = 1, cli.width = 80))
   empty <- newSapDataSource(list())
