@@ -1,4 +1,17 @@
 
+# TODO
+# updateStudy
+# updateStudy <- function(sap, field, value) {
+#   # input check
+#   sap <- validateSap(sap)
+#   omopgenerics::assertChoice(field, names(studyValidations), length = 1)
+#
+#   # append
+#   sap$study[[field]] <- value
+#
+#   return(sap)
+# }
+
 #' Create the study metadata component of a SAP
 #'
 #' @param studyId Immutable study identifier.
