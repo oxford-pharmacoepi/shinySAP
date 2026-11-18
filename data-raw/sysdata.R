@@ -69,4 +69,9 @@ if (length(schemaVersions) > 1L) {
   }
 }
 
-usethis::use_data(sapSchema, sapTypes, currentVersion, internal = TRUE, overwrite = TRUE)
+sapComponents <- c(
+  "generated_at", "sap_schema_version", "study", "data_sources",
+  "data_source_modifications", "codelists", "cohorts", "analyses"
+)
+
+usethis::use_data(sapComponents, sapSchema, sapTypes, currentVersion, internal = TRUE, overwrite = TRUE)

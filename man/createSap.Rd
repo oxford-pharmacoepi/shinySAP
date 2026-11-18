@@ -36,3 +36,23 @@ An object of class \code{sap}.
 \description{
 Create a complete SAP from its components
 }
+\examples{
+library(shinySAP)
+library(omopgenerics)
+
+# create study metadata
+study <- newSapStudy(studyId = "EUPAS00000000")
+
+# create codelists
+codelists <- newCodelist(list(
+  acetaminophen = c(1125315L, 1127078L, 1127433L, 19133768L, 40162522L)
+))
+
+sap <- createSap(
+  study = study,
+  codelists = codelists
+)
+
+sap
+
+}
