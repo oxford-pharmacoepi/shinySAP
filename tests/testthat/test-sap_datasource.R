@@ -9,6 +9,89 @@ sourceDescription <- function(acronym) {
   )
 }
 
+test_that("createSapDataSource creates a complete structure from minimal input", {
+  source <- createSapDataSource("Example data source", "EDS")
+
+  expect_identical(class(source), c("omop_sap_data_source", "list"))
+  expect_named(source, "EDS")
+  expect_named(source$EDS, c("administrative_details", "data_collection", "omop_standardisation"))
+  expect_identical(source$EDS$administrative_details$name_of_data_source, "Example data source")
+  expect_identical(source$EDS$administrative_details$data_source_acronym, "EDS")
+  optional <- c(
+    source$EDS$administrative_details[-c(1, 2)],
+    source$EDS$data_collection,
+    source$EDS$omop_standardisation
+  )
+  expect_length(optional, 15)
+  expect_true(all(vapply(optional, identical, logical(1), NA_character_)))
+  expect_identical(newSapDataSource(source), source)
+
+  sap <- createSap(study = createStudySap("example"), dataSources = source)
+  expect_identical(sap$data_sources, source)
+  other <- createSapDataSource("Another data source", "ADS")
+  expect_named(c(source, other), c("ADS", "EDS"))
+})
+
+test_that("createSapDataSource maps all arguments to the upstream schema", {
+  source <- createSapDataSource(
+    dataSourceName = "Example data source",
+    dataSourceAcronym = "EDS",
+    dataSourceWebsite = "https://example.org",
+    hmaEmaCatalogue = "https://catalogues.ema.europa.eu/data-source/example",
+    mainReferences = c("Reference one", "Reference two"),
+    geography = c("England", "Wales"),
+    population = "Adults registered in participating practices",
+    healthcareSettingTypeOfData = "Primary care electronic health records",
+    dataCollectionProcess = "Captured during routine care",
+    generalRepresentativeness = "Representative of participating practices",
+    dataSourceCoding = "Read codes",
+    sourceQualityControl = "Checked before release",
+    linkage = "Linked to hospital records",
+    mortality = "Linked to death registrations",
+    sourceLimitations = "Hospital prescribing may be incomplete",
+    omopQualityControl = "Checked using the Data Quality Dashboard",
+    omopMapping = "Mapped to OMOP CDM v5.4"
+  )
+
+  expect_identical(source$EDS, list(
+    administrative_details = list(
+      name_of_data_source = "Example data source",
+      data_source_acronym = "EDS",
+      data_source_website = "https://example.org",
+      hma_ema_catalogue = "https://catalogues.ema.europa.eu/data-source/example",
+      main_references = "Reference one\nReference two"
+    ),
+    data_collection = list(
+      geography = "England\nWales",
+      population = "Adults registered in participating practices",
+      healthcare_setting_type_of_data = "Primary care electronic health records",
+      data_collection_process = "Captured during routine care",
+      general_representativeness = "Representative of participating practices",
+      data_source_coding = "Read codes",
+      source_quality_control = "Checked before release",
+      linkage = "Linked to hospital records",
+      mortality = "Linked to death registrations",
+      source_limitations = "Hospital prescribing may be incomplete"
+    ),
+    omop_standardisation = list(
+      omop_mapping = "Mapped to OMOP CDM v5.4",
+      omop_quality_control = "Checked using the Data Quality Dashboard"
+    )
+  ))
+})
+
+test_that("createSapDataSource validates required and optional arguments", {
+  for (value in list(NULL, "", NA_character_, 123)) {
+    expect_error(createSapDataSource(value, "EDS"), "must")
+    expect_error(createSapDataSource("Example data source", value), "must")
+  }
+  optionalFields <- setdiff(names(formals(createSapDataSource)), c("dataSourceName", "dataSourceAcronym"))
+  for (field in optionalFields) {
+    args <- c(list(dataSourceName = "Example data source", dataSourceAcronym = "EDS"), setNames(list(123), field))
+    expect_error(do.call(createSapDataSource, args), "must", info = field)
+  }
+})
+
 test_that("c combines data-source collections and raw descriptions", {
   prepared <- newSapDataSource(list(sourceDescription("D"), sourceDescription("B")))
   original <- prepared

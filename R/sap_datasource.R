@@ -74,6 +74,120 @@ newSapDataSource <- function(x) {
   return(x)
 }
 
+#' Create a SAP data source from descriptive fields
+#'
+#' @param dataSourceName Full name of the data source. Required, non-empty
+#'   character text.
+#' @param dataSourceAcronym Acronym identifying the data source. Required,
+#'   non-empty character text. Acronyms must be unique when combining sources.
+#' @param dataSourceWebsite URL of the data source's website.
+#' @param hmaEmaCatalogue URL of the data source's entry in the HMA-EMA
+#'   Catalogues of real-world data sources and studies.
+#' @param mainReferences Bibliographic references describing the data source.
+#' @param geography Geographic coverage of the data source.
+#' @param population Description of the population covered by the data source.
+#' @param healthcareSettingTypeOfData Healthcare settings and types of data
+#'   recorded, such as primary care electronic health records.
+#' @param dataCollectionProcess How the source data are collected and processed.
+#' @param generalRepresentativeness Representativeness of the source population
+#'   relative to the population of interest.
+#' @param dataSourceCoding Coding systems used in the source data before OMOP
+#'   standardisation.
+#' @param sourceQualityControl Quality checks applied to the source data before
+#'   OMOP standardisation.
+#' @param linkage Available linkages to other data sources and any restrictions.
+#' @param mortality How deaths are captured and validated in the source data.
+#' @param sourceLimitations Known limitations of the source data and coverage.
+#' @param omopQualityControl Quality checks applied after mapping to the OMOP
+#'   Common Data Model (CDM).
+#' @param omopMapping Description of the mapping to the OMOP CDM and standard
+#'   vocabularies, including relevant versions and mapping decisions.
+#'
+#' @details
+#' All arguments accept character text; vectors are collapsed into a single
+#' string separated by newlines by [newSapDataSource()]. Optional arguments
+#' default to `NULL` and are stored as `NA_character_`.
+#'
+#' @return An object of class `omop_sap_data_source` containing one description,
+#'   named by `dataSourceAcronym`. It can be passed to [createSap()] as
+#'   `dataSources` or combined with other sources using [c()].
+#' @seealso [newSapDataSource()] for constructing a collection from lists.
+#' @export
+#'
+#' @examples
+#' library(shinySAP)
+#'
+#' source1 <- createSapDataSource(
+#'   dataSourceName = "Example data source",
+#'   dataSourceAcronym = "EDS",
+#'   geography = "United Kingdom",
+#'   healthcareSettingTypeOfData = "Primary care electronic health records",
+#'   sourceLimitations = "Care outside participating practices may be incomplete.",
+#'   omopMapping = "Mapped to OMOP CDM v5.4 and standard vocabularies."
+#' )
+#' source1
+#'
+#' source2 <- createSapDataSource(
+#'   dataSourceName = "Example data source 2",
+#'   dataSourceAcronym = "EDS2"
+#' )
+#' source2
+#'
+#' sources <- c(source1, source2)
+#' sources
+#'
+#' sap <- createSap(
+#'   study = createStudySap(studyId = "EUPAS1000000000"),
+#'   dataSources = sources
+#' )
+#' sap
+#'
+createSapDataSource <- function(dataSourceName,
+                                dataSourceAcronym,
+                                dataSourceWebsite = NULL,
+                                hmaEmaCatalogue = NULL,
+                                mainReferences = NULL,
+                                geography = NULL,
+                                population = NULL,
+                                healthcareSettingTypeOfData = NULL,
+                                dataCollectionProcess = NULL,
+                                generalRepresentativeness = NULL,
+                                dataSourceCoding = NULL,
+                                sourceQualityControl = NULL,
+                                linkage = NULL,
+                                mortality = NULL,
+                                sourceLimitations = NULL,
+                                omopQualityControl = NULL,
+                                omopMapping = NULL) {
+  # Delegate validation and normalisation to the list constructor.
+  list(
+    administrative_details = list(
+      name_of_data_source = dataSourceName,
+      data_source_acronym = dataSourceAcronym,
+      data_source_website = dataSourceWebsite,
+      hma_ema_catalogue = hmaEmaCatalogue,
+      main_references = mainReferences
+    ),
+    data_collection = list(
+      geography = geography,
+      population = population,
+      healthcare_setting_type_of_data = healthcareSettingTypeOfData,
+      data_collection_process = dataCollectionProcess,
+      general_representativeness = generalRepresentativeness,
+      data_source_coding = dataSourceCoding,
+      source_quality_control = sourceQualityControl,
+      linkage = linkage,
+      mortality = mortality,
+      source_limitations = sourceLimitations
+    ),
+    omop_standardisation = list(
+      omop_mapping = omopMapping,
+      omop_quality_control = omopQualityControl
+    )
+  ) |>
+    newSapDataSource()
+}
+
 validateDataSourceDescription <- function(x,
                                           call = parent.frame()) {
   if (length(x) == 0) {

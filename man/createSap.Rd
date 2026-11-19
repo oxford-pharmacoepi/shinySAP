@@ -15,7 +15,7 @@ createSap(
 )
 }
 \arguments{
-\item{study}{An \code{omop_sap_study} object or a list accepted by \code{\link[=newStudySap]{newStudySap()}}.}
+\item{study}{An \code{omop_sap_study} object.}
 
 \item{dataSources}{List of \code{sap_data_source} objects.}
 
